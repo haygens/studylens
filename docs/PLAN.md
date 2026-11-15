@@ -13,7 +13,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 - [x] **P1. Repo scaffold** — npm workspaces (`extension/`, `web/`, `packages/shared/`), WXT + React +
       TypeScript extension, Next.js app, Vitest, ESLint/Prettier, `.gitignore`, GitHub Actions CI
       (install, lint, test). Push to a public GitHub repo.
-- [ ] **P2. Activity tracking (background)** — track active tab's _hostname_ + time, using `tabs` and
+- [x] **P2. Activity tracking (background)** — track active tab's _hostname_ + time, using `tabs` and
       `idle`. Ignore private windows. Store raw records locally. Unit tests for the time-accounting logic.
 - [ ] **P3. Site categories** — options page where the user labels domains study / neutral / distraction.
       Sensible empty default (nothing pre-labeled except a few suggestions the user can accept).
