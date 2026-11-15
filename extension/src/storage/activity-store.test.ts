@@ -6,6 +6,7 @@ import {
   isTrackingPaused,
   loadTrackerState,
   memoryStore,
+  recentHostTotals,
   saveTrackerState,
   setTrackingPaused,
 } from './activity-store';
@@ -64,6 +65,21 @@ describe('totalsByHostname', () => {
     expect(totals).toEqual([
       { hostname: 'a.com', ms: 6 * MIN },
       { hostname: 'b.com', ms: 2 * MIN },
+    ]);
+  });
+});
+
+describe('recentHostTotals', () => {
+  it('sums the last N local days and ignores older buckets', async () => {
+    const store = memoryStore();
+    const DAY = 24 * 60 * MIN;
+    await appendSegments(store, [
+      { hostname: 'a.com', start: noon, end: noon + MIN },
+      { hostname: 'a.com', start: noon - 6 * DAY, end: noon - 6 * DAY + MIN },
+      { hostname: 'b.com', start: noon - 7 * DAY, end: noon - 7 * DAY + MIN }, // 8th day back
+    ]);
+    expect(await recentHostTotals(store, 7, noon + 2 * MIN)).toEqual([
+      { hostname: 'a.com', ms: 2 * MIN },
     ]);
   });
 });

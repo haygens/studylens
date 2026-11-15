@@ -99,3 +99,52 @@ Problems / open questions:
 - Manual browser test on Firefox still to do by hs (checklist in session output).
 
 Next piece (from PLAN.md): P3 — Site categories.
+
+## 2026-11-14 — P2 manual test
+
+P2 manual test in Firefox (2026-11-14): tracking works; time stops when Firefox loses focus; private
+windows not tracked. Idle test not yet done. Observed wikipedia.org and en.wikipedia.org as separate
+rows (fixed in P3).
+
+## Handoff — 2026-11-14 (P3)
+
+Done:
+
+- Site grouping: `extension/src/tracker/registrable-domain.ts` → `registrableDomain(host)` using the
+  bundled tldts public suffix list (offline; ICANN suffixes only, so `foo.github.io` → `github.io`).
+  IPs/localhost returned unchanged. Kept out of `hostname.ts` so the background script stays 3.8 kB.
+  Hostnames are still stored as-is; grouping happens only when reading.
+- Category rules (`src/categories/rules.ts`, pure): `{ domain, category }`; a rule covers its
+  subdomains; most specific (longest) domain wins; unlabeled = neutral. `siteKey()` gives a
+  subdomain with its own rule (docs.google.com) its own display row so rows never mix categories.
+  `normalizeRuleDomain()` accepts pasted URLs / `www.` / caps, rejects bare suffixes (`com`, `co.uk`).
+- `src/categories/sites.ts`: `totalsBySite()` / `unlabeledSites()`. `src/categories/suggestions.ts`:
+  12 built-in suggestions, only applied on Accept / Accept all; hidden once any rule exists for that
+  domain. `SiteCategory` type added to `packages/shared`.
+- `src/storage/categories-store.ts`: rules in `storage.local` key `categories:rules` (validated,
+  de-duplicated on load and save). `recentHostTotals()` added to activity-store (last N days).
+- Options page (`entrypoints/options/`, opens in a tab): Your labels (add / edit domain / change
+  category / remove), Sites you visited recently (unlabeled, last 7 days, top 15, quick buttons),
+  Suggestions (Accept / Accept all).
+- Popup debug view: rows grouped by site with category column (hover shows merged hostnames),
+  current site's category, "Edit site categories…" button.
+
+Changed files: `extension/src/tracker/{hostname,registrable-domain}.ts`,
+`extension/src/categories/{rules,rules.test,sites,suggestions,display}.ts`,
+`extension/src/storage/{activity-store,activity-store.test,categories-store,categories-store.test}.ts`,
+`extension/entrypoints/options/{index.html,main.tsx,App.tsx}`,
+`extension/entrypoints/popup/DebugActivity.tsx`, `extension/package.json`, `package-lock.json`,
+`packages/shared/src/{types,types.test}.ts`, docs/PLAN.md, docs/LOG.md.
+
+Tests: pass — 46 tests in 8 files (23 new). Lint, format check, typecheck, Firefox + Edge builds
+clean. Permissions unchanged (storage/tabs/idle/alarms), incognito not_allowed, no host permissions.
+
+Problems / open questions:
+
+- Private suffixes (github.io, vercel.app) are NOT treated as suffixes, so all `*.github.io` sites
+  group together. Flip `allowPrivateDomains` in registrable-domain.ts if that's unwanted.
+- "Recently visited" counts finished segments only (the open segment appears after it closes).
+- Options page doesn't live-update if tracking happens while it's open; reload the page.
+- Manual Firefox test of P3 still to do by hs.
+
+Next piece (from PLAN.md): P4 — Focus sessions.

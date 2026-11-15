@@ -15,7 +15,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       (install, lint, test). Push to a public GitHub repo.
 - [x] **P2. Activity tracking (background)** — track active tab's _hostname_ + time, using `tabs` and
       `idle`. Ignore private windows. Store raw records locally. Unit tests for the time-accounting logic.
-- [ ] **P3. Site categories** — options page where the user labels domains study / neutral / distraction.
+- [x] **P3. Site categories** — options page where the user labels domains study / neutral / distraction.
       Sensible empty default (nothing pre-labeled except a few suggestions the user can accept).
 - [ ] **P4. Focus sessions** — popup: set a goal + duration (Pomodoro-style), start/stop, timer.
       Session record = start, end, goal, per-category time, distraction visit count.

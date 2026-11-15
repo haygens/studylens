@@ -8,6 +8,7 @@
  *                           Day buckets keep writes small and make retention (P12) easy.
  */
 import { initialState, type Segment, type TrackerState } from '../tracker/tracker';
+import { startOfLocalDay, totalsByHostname, type HostTotal } from '../tracker/totals';
 
 /** The tiny slice of `browser.storage.local` we use, so this module is testable without a browser. */
 export interface KeyValueStore {
@@ -104,4 +105,15 @@ export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStor
       Object.assign(data, structuredClone(items));
     },
   };
+}
+
+/** Per-hostname totals for the last `days` local days (including today), finished segments only. */
+export async function recentHostTotals(
+  store: KeyValueStore,
+  days: number,
+  now: number,
+): Promise<HostTotal[]> {
+  const times = Array.from({ length: days }, (_, i) => now - i * 24 * 60 * 60 * 1000);
+  const from = startOfLocalDay(times[times.length - 1] ?? now);
+  return totalsByHostname(await getSegmentsForDays(store, times), from, now + 1);
 }

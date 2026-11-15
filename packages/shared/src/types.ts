@@ -29,3 +29,11 @@ export interface SessionSummary {
   focusRating?: 1 | 2 | 3 | 4 | 5;
   goalCompleted?: boolean;
 }
+
+/** How the user labels a site. Unlabeled sites count as `neutral`. */
+export const SITE_CATEGORIES = ['study', 'neutral', 'distraction'] as const;
+export type SiteCategory = (typeof SITE_CATEGORIES)[number];
+
+export function isSiteCategory(value: unknown): value is SiteCategory {
+  return typeof value === 'string' && (SITE_CATEGORIES as readonly string[]).includes(value);
+}
