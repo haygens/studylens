@@ -88,7 +88,7 @@ https://github.com/haygens/studylens/blob/main/PRIVACY.md
 
 ## This add-on is experimental
 
-No.
+Yes. (Ticked on AMO for the v0.1 testing stage; plan to untick it once friends have tested it.)
 
 ## Requires payment / non-free services
 
