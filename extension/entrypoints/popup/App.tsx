@@ -1,7 +1,7 @@
 import { appTitle } from '@/src/title';
-import DebugActivity from './DebugActivity';
 import ErrorBoundary from './ErrorBoundary';
 import FocusSession from './FocusSession';
+import TodayActivity from './TodayActivity';
 import TrackingStatus from './TrackingStatus';
 
 export default function App() {
@@ -14,9 +14,8 @@ export default function App() {
       <ErrorBoundary name="Focus session">
         <FocusSession />
       </ErrorBoundary>
-      {/* TEMPORARY: remove in P6 (My Data page). */}
-      <ErrorBoundary name="Debug view">
-        <DebugActivity />
+      <ErrorBoundary name="Today">
+        <TodayActivity />
       </ErrorBoundary>
     </main>
   );

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- StudyLens icon (original artwork): a lens over a page, on a rounded blue square. -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#2f5bd3"/>
+  <circle cx="54" cy="54" r="29" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-width="12"/>
+  <path d="M40 47h28M40 61h20" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
+  <path d="M76 76l24 24" stroke="#ffffff" stroke-width="15" stroke-linecap="round"/>
+</svg>

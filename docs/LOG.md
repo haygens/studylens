@@ -395,3 +395,63 @@ Problems / open questions:
 - "Delete everything" keeps `tracking:paused: true` if paused. Say if you'd rather it reset too.
 
 Next piece (from PLAN.md): P7 — Privacy policy + store listing.
+
+## Handoff — 2026-11-16 (P7 v0.1.0 release prep for AMO)
+
+Done:
+
+- Version 0.1.0 (`extension/package.json` + its `package-lock.json` entry). Firefox add-on ID is
+  now `studylens@haygens.github.io`. It appears only in `extension/wxt.config.ts` (`GECKO_ID`) and
+  must never change. The old placeholder ID appears nowhere except an earlier entry in this log.
+- `strict_min_version: 142.0`, because `data_collection_permissions` needs Firefox 140 on desktop
+  and 142 on Android, and 142 keeps lint free of that warning. Added `homepage_url` and an
+  explicit toolbar `default_icon`.
+- Icons: original lens-over-a-page SVG (`extension/assets/icon.svg`). PNGs at 16/32/48/96/128 in
+  `extension/public/icon/`. They are rendered with the Playwright + Edge we already have
+  (`npm run icons -w extension`), so there is no new dependency.
+- Popup: the debug view became a plain "Today" section (Site / Category / Minutes table, "Now:"
+  line, "Edit site categories…"). Renamed `DebugActivity` → `TodayActivity` and
+  `loadDebugSnapshot` → `loadTodaySnapshot`. No "debug" or "P2/P3" wording is visible anywhere.
+  E2E e1 now checks for that.
+- PRIVACY.md finalized for 0.1.0: effective date, no network requests at all, 60 s idle rule,
+  pause setting stored, cleanup "planned for a later version", future opt-in features
+  described as not in 0.1.0, contact via GitHub issues.
+- README.md: what it is, privacy summary, install placeholder, exact reviewer build steps
+  (Windows 11, Node 24.22.0, npm 11.19.1, `npm ci`, `npm run build:firefox -w extension`).
+- `docs/store/amo-listing.md`: name, summary (213 chars), description, categories, URLs, and
+  reviewer notes covering every permission, domains-only, no remote code, and test steps.
+- Screenshots (1280×800) in `docs/store/screenshots/`, made by `npm run screenshots -w extension`.
+  It uses the E2E build (ignores OS idle, short session) but never captures the Start form, and
+  checks before each capture that no test-only text is on screen.
+- Zips: `wxt zip` now zips sources from the repo root with an allowlist (root package.json +
+  lock, tsconfig.base, README, PRIVACY, `extension/**`, `packages/shared/**`,
+  `web/package.json`). Excluded: node_modules, .output, .wxt, .env\*, tests, e2e,
+  Playwright output.
+- Reproducibility verified: unzipped the sources into a clean temp folder, ran `npm ci` and the
+  Firefox build, and all 12 output files had SHA-256 hashes identical to the upload zip. The temp
+  folder was then deleted.
+- addons-linter 10.15.0 (the linter inside `web-ext lint`, installed temporarily and then
+  removed): 0 errors, 0 notices, 2 warnings. Both are `innerHTML` inside React DOM's library
+  code; our code never uses innerHTML.
+
+Changed files: `extension/wxt.config.ts`, `extension/package.json`, `package-lock.json`,
+`extension/entrypoints/popup/{App,TodayActivity}.tsx` (TodayActivity renamed from DebugActivity),
+`extension/src/popup/popup-data{,.test}.ts`, `extension/e2e/popup-loading.e2e.ts`,
+`extension/assets/icon.svg`, `extension/public/icon/{16,32,48,96,128}.png`,
+`extension/scripts/{make-icons,screenshots}.mjs` (new), PRIVACY.md, README.md (new),
+`docs/store/amo-listing.md` + `docs/store/screenshots/*.png` (new), CLAUDE.md, docs/LOG.md.
+
+Tests: unit pass — 143 tests in 18 files. E2E pass — 10 tests in local Edge. Lint, format check,
+typecheck, Firefox + Edge builds, `check:builds` clean. CI green on the release commit, tagged
+`v0.1.0`.
+
+Problems / open questions:
+
+- C: has 1.54 GB free (was 2.3 GB). Most of the drop is the npm download cache growing during the
+  clean-room `npm ci`. `npm cache clean --force` would free it, but future installs would be slower.
+- No LICENSE file. AMO asks for a license (e.g. MIT). Pick one before or during upload.
+- P7 is not checked off; it is done when Mozilla accepts the upload.
+- "Delete everything" still keeps tracking paused (decision from P6, unchanged).
+
+Next piece (from PLAN.md): P7 finish — upload to AMO after the manual Firefox check. Then P8 —
+Intervention engine.

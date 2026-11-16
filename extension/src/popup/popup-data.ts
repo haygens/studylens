@@ -73,20 +73,20 @@ export function loadSessionView(
   return settle(load(), timeoutMs);
 }
 
-export interface DebugSnapshot {
+export interface TodaySnapshot {
   sites: SiteTotal[];
   current: string | null;
   currentCategory: ReturnType<typeof categoryOf> | null;
   paused: boolean;
 }
 
-/** Today's (local day) minutes per site, for the temporary debug view. */
-export function loadDebugSnapshot(
+/** Today's (local day) minutes per site, for the popup's "Today" section. */
+export function loadTodaySnapshot(
   store: KeyValueStore,
   now: number,
   timeoutMs = LOAD_TIMEOUT_MS,
-): Promise<LoadState<DebugSnapshot>> {
-  const load = async (): Promise<DebugSnapshot> => {
+): Promise<LoadState<TodaySnapshot>> {
+  const load = async (): Promise<TodaySnapshot> => {
     const dayStart = startOfLocalDay(now);
     // Include yesterday's bucket so a segment that started before midnight is clipped into today.
     const [stored, state, rules, paused] = await Promise.all([

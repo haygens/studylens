@@ -23,9 +23,13 @@ function patchStorage(mode: 'slow' | 'hang') {
     }, mode);
 }
 
-test('e1. shows the Start form normally', async ({ openPopup }) => {
+test('e1. shows the Start form and the "Today" section normally', async ({ openPopup }) => {
   const popup = await openPopup();
   await expect(popup.getByRole('button', { name: 'Start focus session' })).toBeVisible();
+  await expect(popup.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(popup.getByText('Nothing tracked today.')).toBeVisible();
+  // Public release: no leftover developer wording.
+  await expect(popup.getByText(/debug|temporary|\bP\d+\b/i)).toHaveCount(0);
 });
 
 test('e2. shows "Loading..." while storage is slow, then the Start form', async ({ openPopup }) => {

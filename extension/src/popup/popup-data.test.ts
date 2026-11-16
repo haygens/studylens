@@ -1,6 +1,6 @@
 /**
  * Regression tests for the P4 manual-test bug: after a session ended with the popup closed, the
- * popup rendered only an empty debug box — no session section, no rows, no error. Both popup
+ * popup rendered only an empty "Today" box — no session section, no rows, no error. Both popup
  * sections waited on `browser.storage.local.get` with no error handling and no timeout, and
  * rendered nothing while waiting, so a storage read that failed or never answered was invisible.
  */
@@ -9,7 +9,7 @@ import { STATE_KEY, dayKey, memoryStore, type KeyValueStore } from '../storage/a
 import { RULES_KEY } from '../storage/categories-store';
 import { reconcileSession, startSession, type SessionDeps } from '../sessions/session-controller';
 import { initialState, type TrackerState } from '../tracker/tracker';
-import { LOAD_TIMEOUT_MS, loadDebugSnapshot, loadSessionView, settle } from './popup-data';
+import { LOAD_TIMEOUT_MS, loadTodaySnapshot, loadSessionView, settle } from './popup-data';
 
 const MIN = 60_000;
 
@@ -58,9 +58,9 @@ describe.each(Object.entries(brokenStores))('popup with %s', (_name, store) => {
     expect((await pending).status).toBe('error');
   });
 
-  it('debug view reports an error instead of staying blank forever', async () => {
+  it('Today section reports an error instead of staying blank forever', async () => {
     vi.useFakeTimers();
-    const pending = loadDebugSnapshot(store, Date.now());
+    const pending = loadTodaySnapshot(store, Date.now());
     await vi.advanceTimersByTimeAsync(LOAD_TIMEOUT_MS);
     expect((await pending).status).toBe('error');
   });
@@ -124,7 +124,7 @@ describe('popup after a session ended with the popup closed', () => {
   });
 });
 
-describe('debug view day buckets in late-evening Pacific time', () => {
+describe('Today section day buckets in late-evening Pacific time', () => {
   it('uses the local date, not the UTC date (which is already tomorrow)', async () => {
     process.env.TZ = 'America/Los_Angeles';
     // 23:30 PST on Nov 15 = 07:30 UTC on Nov 16.
@@ -136,7 +136,7 @@ describe('debug view day buckets in late-evening Pacific time', () => {
       [STATE_KEY]: state,
       'activity:2026-11-15': [{ hostname: 'en.wikipedia.org', start: now - 10 * MIN, end: now }],
     });
-    const snap = await loadDebugSnapshot(store, now);
+    const snap = await loadTodaySnapshot(store, now);
     expect(snap.status).toBe('ready');
     if (snap.status !== 'ready') return;
     expect(snap.data.sites.map((s) => s.site)).toEqual(['wikipedia.org']);
