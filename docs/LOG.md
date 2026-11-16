@@ -455,3 +455,5 @@ Problems / open questions:
 
 Next piece (from PLAN.md): P7 finish — upload to AMO after the manual Firefox check. Then P8 —
 Intervention engine.
+
+2026-11-16: Final manual Firefox check passed (popup, Today section, icon, new ID, idle test: +0.9 min over 2 min untouched). Submitted v0.1.0 to addons.mozilla.org as a listed add-on (Firefox desktop only, experimental, MIT, categories Tabs + Alerts & Updates) with the sources zip. Validator: 0 errors, 2 warnings (React innerHTML). Added the icon, 4 screenshots, and version notes to the listing. Status: Awaiting Review.
