@@ -1,7 +1,7 @@
 /**
  * TEMPORARY (P2/P3 debug view) — shows today's minutes per site (registrable domain) with its
  * category, so tracking and labels can be checked by hand.
- * Replace with the real popup in P4 and the My Data page in P6.
+ * Shown below the focus session UI; replace with the My Data page in P6.
  */
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';

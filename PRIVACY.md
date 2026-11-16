@@ -8,7 +8,8 @@ StudyLens helps you see how you study. It is built so that your browsing stays y
 
 - The **website domain** of your active tab (for example, `youtube.com`) and how long it was active,
   only while tracking is on.
-- Focus sessions you start: your goal, duration, and your end-of-session answers (goal finished,
+- Focus sessions you start: your goal, duration, start/end times, minutes per category and number
+  of distraction-site visits during the session, and your end-of-session answers (goal finished,
   focus rating 1–5).
 - The site categories you choose (study / neutral / distraction).
 

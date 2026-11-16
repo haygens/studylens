@@ -25,6 +25,15 @@ describe('registrableDomain', () => {
     expect(registrableDomain('news.bbc.co.uk')).toBe('bbc.co.uk');
   });
 
+  it('gives hosted sites on private suffixes their own site', () => {
+    expect(registrableDomain('someone.github.io')).toBe('someone.github.io');
+    expect(registrableDomain('other.github.io')).toBe('other.github.io');
+    expect(registrableDomain('app.vercel.app')).toBe('app.vercel.app');
+    expect(registrableDomain('preview.app.vercel.app')).toBe('app.vercel.app');
+    // The host's own site is still grouped normally.
+    expect(registrableDomain('docs.github.com')).toBe('github.com');
+  });
+
   it('returns hosts without a registrable domain unchanged', () => {
     expect(registrableDomain('localhost')).toBe('localhost');
     expect(registrableDomain('192.168.1.10')).toBe('192.168.1.10');
@@ -168,6 +177,19 @@ describe('totalsBySite / unlabeledSites', () => {
       'wikipedia.org',
       'google.com',
       'youtube.com',
+    ]);
+  });
+
+  it('keeps different hosted sites (github.io, vercel.app) in separate rows', () => {
+    const hosted = [
+      { hostname: 'alice.github.io', ms: 3000 },
+      { hostname: 'bob.github.io', ms: 2000 },
+      { hostname: 'app.vercel.app', ms: 1000 },
+    ];
+    expect(totalsBySite(hosted, []).map((r) => r.site)).toEqual([
+      'alice.github.io',
+      'bob.github.io',
+      'app.vercel.app',
     ]);
   });
 });

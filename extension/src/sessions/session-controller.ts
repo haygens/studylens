@@ -1,0 +1,129 @@
+/**
+ * Runs focus sessions in the background script (P4). The background can be suspended or the
+ * browser restarted at any time, so all state lives in storage and every function here is safe to
+ * call again. Browser side effects (alarms, badge) are injected so this is unit-testable.
+ */
+import {
+  getSegmentsForDays,
+  loadTrackerState,
+  type KeyValueStore,
+} from '../storage/activity-store';
+import { loadRules } from '../storage/categories-store';
+import { finishSession, loadActiveSession, saveActiveSession } from '../storage/sessions-store';
+import type { Segment } from '../tracker/tracker';
+import {
+  badgeText,
+  createSession,
+  isDue,
+  type ActiveSession,
+  type FocusSession,
+  type StartError,
+} from './session';
+import { computeSessionStats } from './session-stats';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface SessionEffects {
+  /** (Re)create the alarms that end the session and tick the badge. */
+  scheduleAlarms(session: ActiveSession): Promise<void>;
+  clearAlarms(): Promise<void>;
+  /** Badge text on the toolbar icon; '' hides it. */
+  setBadge(text: string): Promise<void>;
+}
+
+export interface SessionDeps {
+  store: KeyValueStore;
+  effects: SessionEffects;
+  newId: () => string;
+}
+
+export type StartResult = { ok: true; session: ActiveSession } | { ok: false; error: StartError };
+
+export async function startSession(
+  deps: SessionDeps,
+  goal: string,
+  minutes: number,
+  now: number,
+): Promise<StartResult> {
+  if (await loadActiveSession(deps.store)) return { ok: false, error: 'already-running' };
+  const session = createSession(goal, minutes, now, deps.newId());
+  if (typeof session === 'string') return { ok: false, error: session };
+  await saveActiveSession(deps.store, session);
+  await deps.effects.scheduleAlarms(session);
+  await deps.effects.setBadge(badgeText(session, now));
+  return { ok: true, session };
+}
+
+/** Finished segments that may overlap [start, end], plus the tracker's open segment so far. */
+async function segmentsDuring(
+  store: KeyValueStore,
+  start: number,
+  end: number,
+): Promise<Segment[]> {
+  // Day buckets are keyed by the day a segment *started*, so include the day before `start`.
+  const times: number[] = [];
+  for (let t = start - DAY_MS; t < end; t += DAY_MS) times.push(t);
+  times.push(end);
+  const segments = await getSegmentsForDays(store, times);
+  const { open } = await loadTrackerState(store);
+  if (open) segments.push({ hostname: open.hostname, start: open.start, end: open.lastSeen });
+  return segments;
+}
+
+async function endAt(
+  deps: SessionDeps,
+  session: ActiveSession,
+  end: number,
+  endedEarly: boolean,
+): Promise<FocusSession> {
+  const segments = await segmentsDuring(deps.store, session.start, end);
+  const rules = await loadRules(deps.store);
+  const finished: FocusSession = {
+    ...session,
+    actualEnd: end,
+    endedEarly,
+    ...computeSessionStats(segments, session.start, end, rules),
+    condition: null,
+    checkIn: null,
+  };
+  await finishSession(deps.store, finished);
+  await deps.effects.clearAlarms();
+  await deps.effects.setBadge('');
+  return finished;
+}
+
+/**
+ * Ends the active session if its planned end has passed — at the planned end time, even if we
+ * only notice later (alarm delayed, background suspended, browser closed). Otherwise makes sure
+ * the alarms and badge are in place. Call on every wake-up and on every session alarm.
+ */
+export async function reconcileSession(
+  deps: SessionDeps,
+  now: number,
+): Promise<FocusSession | null> {
+  const session = await loadActiveSession(deps.store);
+  if (!session) {
+    await deps.effects.setBadge('');
+    return null;
+  }
+  if (isDue(session, now)) return endAt(deps, session, session.plannedEnd, false);
+  await deps.effects.scheduleAlarms(session);
+  await deps.effects.setBadge(badgeText(session, now));
+  return null;
+}
+
+/** "End early" from the popup. If the planned end already passed, it ends normally instead. */
+export async function endSessionEarly(
+  deps: SessionDeps,
+  now: number,
+): Promise<FocusSession | null> {
+  const session = await loadActiveSession(deps.store);
+  if (!session) return null;
+  if (isDue(session, now)) return endAt(deps, session, session.plannedEnd, false);
+  return endAt(deps, session, now, true);
+}
+
+/** Updates the badge's minutes (on the per-minute tick alarm). */
+export async function refreshBadge(deps: SessionDeps, now: number): Promise<void> {
+  await deps.effects.setBadge(badgeText(await loadActiveSession(deps.store), now));
+}

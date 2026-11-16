@@ -5,6 +5,7 @@
 import { browser, type Browser } from 'wxt/browser';
 import type { KeyValueStore } from '../storage/activity-store';
 import { trackableHostname } from '../tracker/hostname';
+import type { SessionEffects } from '../sessions/session-controller';
 import type { IdleState, TrackerContext } from '../tracker/tracker';
 
 export const localStore: KeyValueStore = {
@@ -48,3 +49,32 @@ export async function readContext(
   ]);
   return { hostname, windowFocused, idle, paused };
 }
+
+export const SESSION_END_ALARM = 'studylens-session-end';
+export const SESSION_TICK_ALARM = 'studylens-session-tick';
+const MINUTE_MS = 60_000;
+
+/**
+ * Alarms and toolbar badge for focus sessions. The badge shows the minutes left, so no
+ * notifications permission is needed.
+ */
+export const sessionEffects: SessionEffects = {
+  async scheduleAlarms(session) {
+    const now = Date.now();
+    const left = session.plannedEnd - now;
+    // Tick exactly when the rounded-up minutes on the badge change.
+    const nextTick = now + (left % MINUTE_MS || MINUTE_MS);
+    await browser.alarms.create(SESSION_END_ALARM, { when: session.plannedEnd });
+    await browser.alarms.create(SESSION_TICK_ALARM, { when: nextTick, periodInMinutes: 1 });
+  },
+  async clearAlarms() {
+    await Promise.all([
+      browser.alarms.clear(SESSION_END_ALARM),
+      browser.alarms.clear(SESSION_TICK_ALARM),
+    ]);
+  },
+  async setBadge(text) {
+    if (text) await browser.action.setBadgeBackgroundColor({ color: '#1a7f37' });
+    await browser.action.setBadgeText({ text });
+  },
+};

@@ -148,3 +148,54 @@ Problems / open questions:
 - Manual Firefox test of P3 still to do by hs.
 
 Next piece (from PLAN.md): P4 — Focus sessions.
+
+## Handoff — 2026-11-15 (P4)
+
+Done:
+
+- Fix: registrable-domain grouping now uses tldts `allowPrivateDomains`, so hosted sites
+  (`someone.github.io`, `app.vercel.app`) get their own rows. Tests added.
+- `src/sessions/session.ts`: session types (`ActiveSession`, `FocusSession` with `condition: null`
+  for P8 and `checkIn: null` for P5), goal/duration validation (5–180 whole minutes), badge text,
+  countdown formatting.
+- `src/sessions/session-stats.ts` (pure): `computeSessionStats()` → minutes per category (clipped
+  to the session, rounded to 0.1) + distraction visits. A visit = a distraction segment that starts
+  during the session and is not a no-gap continuation of the same site. Switching between two
+  different distraction sites counts; coming back after a gap counts; a distraction site already
+  open at session start does not count (its minutes do).
+- `src/storage/sessions-store.ts`: `sessions:active` (one at a time) and `sessions:history` in
+  `storage.local`, validated on load.
+- `src/sessions/session-controller.ts`: start / end early / reconcile / badge refresh, with alarms
+  and badge injected. Reconcile runs on every background wake-up, on `runtime.onStartup`, and on
+  the end alarm: an overdue session ends at its planned end time.
+- Background: one shared task queue for tracking + sessions; the tracker gets a heartbeat right
+  before a session ends so the current site is counted. Popup → background messages
+  (`session:start`, `session:end-early`, `session:check`). Alarms: `studylens-session-end` at the
+  planned end, `studylens-session-tick` every minute aligned to the badge's minute changes.
+- Popup: goal box, 25 / 50 / custom (5–180) minutes, Start; while running: goal, live countdown,
+  end time, End early; "Last session" summary line. Debug view moved below.
+- PRIVACY.md: lists the per-session numbers stored.
+
+Changed files: `extension/src/tracker/registrable-domain.ts`, `extension/src/categories/rules.test.ts`,
+`extension/src/sessions/{session,session.test,session-stats,session-stats.test,session-controller,session-controller.test,messages}.ts`,
+`extension/src/storage/{sessions-store,sessions-store.test}.ts`,
+`extension/src/background/browser-adapter.ts`, `extension/entrypoints/background.ts`,
+`extension/entrypoints/popup/{App,FocusSession,DebugActivity}.tsx`, PRIVACY.md, docs/PLAN.md,
+docs/LOG.md.
+
+Tests: pass — 77 tests in 12 files (31 new). Lint, format check, typecheck, Firefox + Edge builds
+clean. Permissions unchanged (storage/tabs/idle/alarms), incognito not_allowed, no notifications.
+
+Problems / open questions:
+
+- A goal is required to start (needed for P5's "did you finish your goal?"). Say if it should be
+  optional.
+- Category rules are applied when the session ends; editing rules later doesn't recompute old
+  sessions.
+- Bare private suffixes (e.g. a rule for `github.io`) are still accepted as rule domains and label
+  every `*.github.io` site.
+- When the session ends with the popup closed, nothing pops up — the badge just disappears (P5 adds
+  the check-in).
+- Manual Firefox test of P3 + P4 still to do by hs.
+
+Next piece (from PLAN.md): P5 — End-of-session check-in.

@@ -17,7 +17,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       `idle`. Ignore private windows. Store raw records locally. Unit tests for the time-accounting logic.
 - [x] **P3. Site categories** — options page where the user labels domains study / neutral / distraction.
       Sensible empty default (nothing pre-labeled except a few suggestions the user can accept).
-- [ ] **P4. Focus sessions** — popup: set a goal + duration (Pomodoro-style), start/stop, timer.
+- [x] **P4. Focus sessions** — popup: set a goal + duration (Pomodoro-style), start/stop, timer.
       Session record = start, end, goal, per-category time, distraction visit count.
 - [ ] **P5. End-of-session check-in** — "Did you finish your goal?" (y/n) + "How focused were you?" (1–5).
 - [ ] **P6. My Data page** — raw records table, export JSON, delete everything, pause tracking.
