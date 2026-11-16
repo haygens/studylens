@@ -84,3 +84,7 @@ npm run typecheck
 ## Support
 
 Questions and bug reports: [GitHub issues](https://github.com/haygens/studylens/issues).
+
+## License
+
+[MIT](LICENSE) © 2026 haygens

@@ -84,7 +84,7 @@ https://github.com/haygens/studylens/blob/main/PRIVACY.md
 
 ## License
 
-Pick the license that matches the repository (no LICENSE file yet; see open questions in docs/LOG.md).
+**MIT License** (see `LICENSE` in the repository root).
 
 ## This add-on is experimental
 
