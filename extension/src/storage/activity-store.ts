@@ -3,12 +3,15 @@
  *
  * Keys:
  * - `tracker:state`      — the pure tracker's state, including the open segment
- * - `tracking:paused`    — boolean "tracking paused" flag (UI arrives in P6)
+ * - `tracking:paused`    — boolean "tracking paused" flag (toggled in the popup and My Data)
  * - `activity:YYYY-MM-DD` — finished segments, bucketed by the local day the segment started.
  *                           Day buckets keep writes small and make retention (P12) easy.
+ *
+ * Key names come from ./keys.ts, the single list of everything StudyLens stores.
  */
 import { initialState, type Segment, type TrackerState } from '../tracker/tracker';
 import { startOfLocalDay, totalsByHostname, type HostTotal } from '../tracker/totals';
+import { ACTIVITY_DAY_PREFIX, STORAGE_KEYS } from './keys';
 
 /** The tiny slice of `browser.storage.local` we use, so this module is testable without a browser. */
 export interface KeyValueStore {
@@ -16,9 +19,15 @@ export interface KeyValueStore {
   set(items: Record<string, unknown>): Promise<void>;
 }
 
-export const STATE_KEY = 'tracker:state';
-export const PAUSED_KEY = 'tracking:paused';
-const DAY_PREFIX = 'activity:';
+/** A store that can also list and remove everything (My Data: export and delete, P6). */
+export interface FullStore extends KeyValueStore {
+  getAll(): Promise<Record<string, unknown>>;
+  remove(keys: string[]): Promise<void>;
+}
+
+export const STATE_KEY = STORAGE_KEYS.trackerState;
+export const PAUSED_KEY = STORAGE_KEYS.trackingPaused;
+const DAY_PREFIX = ACTIVITY_DAY_PREFIX;
 
 /** `activity:2026-11-14` for the local day containing `time`. */
 export function dayKey(time: number): string {
@@ -39,7 +48,7 @@ function isSegment(value: unknown): value is Segment {
   );
 }
 
-function asSegments(value: unknown): Segment[] {
+export function asSegments(value: unknown): Segment[] {
   return Array.isArray(value) ? value.filter(isSegment) : [];
 }
 
@@ -90,7 +99,7 @@ export async function getSegmentsForDays(
 }
 
 /** In-memory KeyValueStore for tests. */
-export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStore & {
+export function memoryStore(initial: Record<string, unknown> = {}): FullStore & {
   data: Record<string, unknown>;
 } {
   const data: Record<string, unknown> = structuredClone(initial);
@@ -103,6 +112,12 @@ export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStor
     },
     async set(items) {
       Object.assign(data, structuredClone(items));
+    },
+    async getAll() {
+      return structuredClone(data);
+    },
+    async remove(keys) {
+      for (const k of keys) delete data[k];
     },
   };
 }

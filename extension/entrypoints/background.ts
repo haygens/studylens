@@ -8,6 +8,7 @@ import {
   sessionEffects,
 } from '@/src/background/browser-adapter';
 import { E2E_BUILD_MARKER, testSecondsFrom } from '@/src/e2e/test-seconds';
+import { deleteEverything } from '@/src/my-data/delete-all';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
   endSessionEarly,
@@ -113,6 +114,10 @@ export default defineBackground(() => {
               } as const);
         return enqueue(() => submitCheckIn(sessionDeps, msg.sessionId, input, Date.now()));
       }
+      case 'data:delete-all':
+        // Queued like everything else, so no tracker write from before can land afterwards.
+        await enqueue(() => deleteEverything(localStore, sessionEffects));
+        return { ok: true };
     }
   }
 

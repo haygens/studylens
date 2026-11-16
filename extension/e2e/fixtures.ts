@@ -48,6 +48,7 @@ async function stubInternet(context: BrowserContext): Promise<void> {
 interface Chrome {
   chrome: {
     action: { getBadgeText(details: object): Promise<string> };
+    alarms: { getAll(): Promise<{ name: string }[]> };
     storage: { local: { get(keys: null): Promise<Record<string, unknown>> } };
   };
 }
@@ -80,6 +81,13 @@ export class Background {
     );
   }
 
+  async alarmNames(): Promise<string[]> {
+    const alarms = await this.run((sw) =>
+      sw.evaluate(() => (globalThis as unknown as Chrome).chrome.alarms.getAll()),
+    );
+    return alarms.map((a) => a.name).sort();
+  }
+
   storage(): Promise<Record<string, unknown>> {
     return this.run((sw) =>
       sw.evaluate(() => (globalThis as unknown as Chrome).chrome.storage.local.get(null)),
@@ -98,6 +106,7 @@ interface Fixtures {
   /** `beforeLoad` runs before the popup's scripts (e.g. to add an init script). */
   openPopup: (beforeLoad?: (page: Page) => Promise<unknown>) => Promise<Page>;
   openOptions: () => Promise<Page>;
+  openMyData: () => Promise<Page>;
 }
 
 export const test = base.extend<Fixtures>({
@@ -142,6 +151,15 @@ export const test = base.extend<Fixtures>({
     await use(async () => {
       const page = await context.newPage();
       await page.goto(`chrome-extension://${extensionId}/options.html`);
+      return page;
+    });
+  },
+
+  openMyData: async ({ context, extensionId }, use) => {
+    await use(async () => {
+      const page = await context.newPage();
+      await page.goto(`chrome-extension://${extensionId}/options.html#my-data`);
+      await expect(page.getByRole('heading', { name: 'My Data', level: 1 })).toBeVisible();
       return page;
     });
   },

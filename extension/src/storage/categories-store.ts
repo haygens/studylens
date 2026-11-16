@@ -6,11 +6,12 @@
 import { isSiteCategory } from '@studylens/shared';
 import { normalizeRuleDomain, sortRules, type CategoryRule } from '../categories/rules';
 import type { KeyValueStore } from './activity-store';
+import { STORAGE_KEYS } from './keys';
 
-export const RULES_KEY = 'categories:rules';
+export const RULES_KEY = STORAGE_KEYS.categoryRules;
 
 /** Drops anything malformed (e.g. hand-edited storage) and de-duplicates by domain (last wins). */
-function asRules(value: unknown): CategoryRule[] {
+export function asRules(value: unknown): CategoryRule[] {
   if (!Array.isArray(value)) return [];
   const byDomain = new Map<string, CategoryRule>();
   for (const item of value) {

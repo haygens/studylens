@@ -339,3 +339,59 @@ Problems / open questions:
 - The E2E build ignores OS idle, so idle handling is only unit-tested.
 
 Next piece (from PLAN.md): P6 — My Data page.
+
+## Handoff — 2026-11-16 (P6 My Data page)
+
+Done:
+
+- Options page now has two tabs: Site categories and **My Data** (`options.html#my-data`).
+  The popup has a "My Data" link that opens it.
+- My Data shows the raw stored data in tables: "Right now" (site being recorded, running
+  session), activity records grouped by day (site, start, end, duration; newest day open),
+  focus sessions (goal, planned/actual length, study/neutral/distraction minutes, distraction
+  visits, check-in answers or skip reason in words, condition), and site labels. Also a "What
+  StudyLens never collects" box matching PRIVACY.md and a plain retention note: 30 days, and the
+  automatic cleanup isn't on yet (P12).
+- Export: one button downloads every stored key, exactly as stored, as
+  `studylens-export-YYYY-MM-DD.json` (Blob + temporary link, no downloads permission).
+- Delete everything: type DELETE to confirm (no browser dialogs). The background removes every
+  stored key, which ends a running session without a check-in. It also stops the session alarms
+  and clears the badge. The page then says "Everything is deleted." The pause setting is kept
+  if tracking was paused, so deleting never silently turns tracking back on.
+- Pause tracking: a toggle in the popup ("Pause tracking" / yellow "Tracking paused" banner with
+  Resume) and on My Data. Both use `tracking:paused`. A running session keeps its timer; the
+  tracker records nothing while paused.
+- Single source of truth: `extension/src/storage/keys.ts` lists every storage key; the stores take
+  their key names from it. Delete removes *all* keys present, including unknown ones. A test runs
+  every write path (tracking, labels, sessions, check-ins, pause) and fails if any key isn't
+  listed, then checks delete leaves storage empty.
+- Pure modules with tests: `src/storage/keys.ts`, `src/my-data/{export,tables,delete-all}.ts`.
+- E2E (`e2e/my-data.e2e.ts`): tables show a visited site and a finished session; export is
+  valid JSON with those records; delete-all empties storage (only the tracker's empty
+  bookkeeping returns), ends the running session, clears badge and alarms, and the popup shows
+  the Start form with no Last session; pause records nothing, the session timer keeps running,
+  and resume records again.
+- Debug view in the popup left as is. No new permissions; incognito still `not_allowed`.
+- PRIVACY.md: controls section describes My Data, pause, export, delete; retention notes that
+  cleanup isn't on yet.
+
+Changed files: `extension/src/storage/keys{,.test}.ts`, `extension/src/my-data/{export,tables,
+delete-all}.ts` + `{export,tables}.test.ts`, `extension/src/ui/use-tracking-paused.ts`,
+`extension/entrypoints/options/{App,MyData}.tsx`, `extension/entrypoints/popup/TrackingStatus.tsx`,
+`extension/e2e/my-data.e2e.ts` (new); `extension/entrypoints/options/SiteCategories.tsx` (renamed
+from App.tsx), `extension/entrypoints/options/index.html`, `extension/entrypoints/popup/App.tsx`,
+`extension/entrypoints/background.ts`, `extension/src/background/browser-adapter.ts`,
+`extension/src/sessions/messages.ts`, `extension/src/storage/{activity,categories,sessions}-store.ts`,
+`extension/e2e/fixtures.ts`, PRIVACY.md, docs/PLAN.md, docs/LOG.md.
+
+Tests: unit pass — 143 tests in 18 files (16 new). E2E pass — 10 tests (3 new) in local Edge.
+Lint, format check, typecheck, Firefox + Edge builds, `check:builds` clean.
+
+Problems / open questions:
+
+- C: has 2.3 GB free (unchanged this session).
+- Retention text promises 30 days, but nothing deletes old records until P12. Both My Data and
+  PRIVACY.md say so plainly.
+- "Delete everything" keeps `tracking:paused: true` if paused. Say if you'd rather it reset too.
+
+Next piece (from PLAN.md): P7 — Privacy policy + store listing.

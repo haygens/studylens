@@ -25,7 +25,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       in CI) with stub sites; covers labels, session → badge "?" → check-in, Skip, End early, and
       popup loading/error states. Test-only seconds + ignored OS idle exist only in the E2E build
       (`check:builds` proves it). Separate CI job.
-- [ ] **P6. My Data page** — raw records table, export JSON, delete everything, pause tracking.
+- [x] **P6. My Data page** — raw records table, export JSON, delete everything, pause tracking.
 - [ ] **P7. Privacy policy + store listing** — finalize PRIVACY.md, icons, screenshots. Submit v0.1 to
       Firefox Add-ons (AMO) early so review never blocks the deadline.
 

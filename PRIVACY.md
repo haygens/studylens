@@ -1,6 +1,6 @@
 # StudyLens Privacy Policy (draft)
 
-_Last updated: November 16, 2026_
+_Last updated: November 16, 2026 (My Data page)_
 
 StudyLens helps you see how you study. It is built so that your browsing stays yours.
 
@@ -36,15 +36,18 @@ StudyLens has no access to it unless you turn on an optional feature below.
 ## Retention
 
 - Detailed records on your device older than 30 days are combined into weekly totals, and the
-  details are deleted.
+  details are deleted. (This automatic cleanup is not switched on yet; until it is, records stay
+  until you delete them on the My Data page.)
 - Server error logs (which contain no browsing data) are deleted after 14 days.
 - Leaving a group or deleting your account deletes your shared summaries.
 
 ## Your controls
 
-- Pause tracking at any time.
-- The **My Data** page shows exactly what is stored.
-- Export everything as a file, or delete everything with one click.
+- Pause tracking at any time, from the popup or the My Data page. While paused, nothing is
+  recorded; a running focus session keeps its timer.
+- The **My Data** page (linked from the popup) shows exactly what is stored, in plain tables.
+- Export everything as one JSON file, or delete everything (you type DELETE to confirm). Deleting
+  also stops a running session. If tracking is paused, it stays paused.
 
 ## No third parties
 

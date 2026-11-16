@@ -3,14 +3,16 @@
  * live in the pure tracker (src/tracker/tracker.ts).
  */
 import { browser, type Browser } from 'wxt/browser';
-import type { KeyValueStore } from '../storage/activity-store';
+import type { FullStore } from '../storage/activity-store';
 import { trackableHostname } from '../tracker/hostname';
 import type { SessionEffects } from '../sessions/session-controller';
 import type { IdleState, TrackerContext } from '../tracker/tracker';
 
-export const localStore: KeyValueStore = {
+export const localStore: FullStore = {
   get: (keys) => browser.storage.local.get(keys),
   set: (items) => browser.storage.local.set(items),
+  getAll: () => browser.storage.local.get(null),
+  remove: (keys) => browser.storage.local.remove(keys),
 };
 
 /** Hostname of a tab, or null if it must not be tracked (private window, non-http URL). */

@@ -9,9 +9,10 @@
 import { isCheckIn } from '@studylens/shared';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import type { KeyValueStore } from './activity-store';
+import { STORAGE_KEYS } from './keys';
 
-export const ACTIVE_SESSION_KEY = 'sessions:active';
-export const SESSION_HISTORY_KEY = 'sessions:history';
+export const ACTIVE_SESSION_KEY = STORAGE_KEYS.activeSession;
+export const SESSION_HISTORY_KEY = STORAGE_KEYS.sessionHistory;
 
 export function isActiveSession(value: unknown): value is ActiveSession {
   const v = value as ActiveSession | null;
@@ -39,7 +40,7 @@ function isFocusSession(value: unknown): value is FocusSession {
 }
 
 /** Valid sessions only. A missing or malformed check-in counts as not answered yet. */
-function asHistory(value: unknown): FocusSession[] {
+export function asHistory(value: unknown): FocusSession[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter(isFocusSession)
