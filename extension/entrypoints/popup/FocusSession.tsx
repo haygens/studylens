@@ -3,7 +3,7 @@
  * its own: it reads the active session from storage, follows storage changes, and asks the
  * background script to start or end sessions.
  */
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
@@ -19,12 +19,9 @@ import {
   type ActiveSession,
   type FocusSession as FinishedSession,
 } from '@/src/sessions/session';
-import {
-  ACTIVE_SESSION_KEY,
-  SESSION_HISTORY_KEY,
-  loadActiveSession,
-  loadSessions,
-} from '@/src/storage/sessions-store';
+import { loadSessionView, type LoadState, type SessionView } from '@/src/popup/popup-data';
+import { ACTIVE_SESSION_KEY, SESSION_HISTORY_KEY } from '@/src/storage/sessions-store';
+import { LoadError, Loading } from './LoadStatus';
 
 const ERROR_TEXT: Record<string, string> = {
   'already-running': 'A session is already running.',
@@ -37,33 +34,31 @@ async function send(message: SessionMessage): Promise<SessionReply> {
   return (await browser.runtime.sendMessage(message)) as SessionReply;
 }
 
-/** Active + most recent finished session, kept in sync with storage. */
+/** Active + most recent finished session, kept in sync with storage. Never stuck on "loading". */
 function useSessions() {
-  const [active, setActive] = useState<ActiveSession | null>(null);
-  const [last, setLast] = useState<FinishedSession | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [state, setState] = useState<LoadState<SessionView>>({ status: 'loading' });
+
+  const reload = useCallback(() => {
+    void loadSessionView(localStore).then(setState);
+  }, []);
 
   useEffect(() => {
-    const load = async () => {
-      const [a, history] = await Promise.all([
-        loadActiveSession(localStore),
-        loadSessions(localStore),
-      ]);
-      setActive(a);
-      setLast(history.at(-1) ?? null);
-      setLoaded(true);
-    };
-    void load();
+    reload();
     const onChanged = (changes: Record<string, unknown>, area: string) => {
       if (area === 'local' && (ACTIVE_SESSION_KEY in changes || SESSION_HISTORY_KEY in changes)) {
-        void load();
+        reload();
       }
     };
     browser.storage.onChanged.addListener(onChanged);
     return () => browser.storage.onChanged.removeListener(onChanged);
-  }, []);
+  }, [reload]);
 
-  return { active, last, loaded };
+  const retry = useCallback(() => {
+    setState({ status: 'loading' });
+    reload();
+  }, [reload]);
+
+  return { state, retry };
 }
 
 /** The current time, updated twice a second. */
@@ -218,8 +213,12 @@ function LastSession({ session }: { session: FinishedSession }) {
 }
 
 export default function FocusSession() {
-  const { active, last, loaded } = useSessions();
-  if (!loaded) return null;
+  const { state, retry } = useSessions();
+  if (state.status === 'loading') return <Loading />;
+  if (state.status === 'error') {
+    return <LoadError what="Focus session" message={state.message} onRetry={retry} />;
+  }
+  const { active, last } = state.data;
   return (
     <section style={{ marginTop: 12 }}>
       {active ? <RunningSession session={active} /> : <StartForm />}

@@ -199,3 +199,43 @@ Problems / open questions:
 - Manual Firefox test of P3 + P4 still to do by hs.
 
 Next piece (from PLAN.md): P5 — End-of-session check-in.
+
+## Handoff — 2026-11-16 (P4 popup bug fix)
+
+Done:
+
+- Bug from the P4 manual test in Firefox: the popup showed only an empty debug box, with no
+  session section, no rows and no console error.
+- Root cause (code side): both popup sections loaded from `browser.storage.local` with no error
+  handling and no timeout, and drew nothing while waiting (`if (!loaded) return null` in
+  FocusSession; `snap === null` in the debug view). One storage read that failed or never
+  answered left both sections blank. The empty debug box itself proves this: both
+  sections were stuck waiting at the same time, and they share nothing except `storage.local`.
+- Likely trigger: the C: drive was full (0 MB free) when the test ran. Firefox keeps
+  `storage.local` in IndexedDB in the profile on C:, so storage could not answer. Not confirmed
+  in the browser; re-test now that there is space.
+- Ruled out with tests: the session-end path with the popup closed (alarm → reconcile → history
+  written, `sessions:active` = null), the storage shape the popup reads after that, and UTC/local
+  mixing (`dayKey` and `startOfLocalDay` both use local time; a test at 23:30 Pacific confirms).
+- Fix: new `extension/src/popup/popup-data.ts`. `loadSessionView` and `loadDebugSnapshot` return a
+  `LoadState` (loading / ready / error) and never reject or hang (`settle` with a 5 s timeout;
+  errors are also logged with `console.error`).
+- Popup: "Loading..." while loading, a red error box with the message and a Retry button on
+  failure, and a React `ErrorBoundary` around each section so a render crash shows an error
+  instead of a blank popup.
+
+Changed files: `extension/src/popup/{popup-data,popup-data.test}.ts` (new),
+`extension/entrypoints/popup/{ErrorBoundary,LoadStatus}.tsx` (new),
+`extension/entrypoints/popup/{App,FocusSession,DebugActivity}.tsx`, docs/LOG.md.
+
+Tests: pass — 86 tests in 13 files (9 new). Lint, format check, typecheck, Firefox + Edge builds
+clean.
+
+Problems / open questions:
+
+- The disk-full trigger is not confirmed. Re-run the P4 manual test now that C: has space, and
+  keep C: above a few GB free.
+- If the popup now shows "Timed out ... reading extension storage" or another error, check the
+  background console (steps in the session reply) and send the error text.
+
+Next piece (from PLAN.md): P5 — End-of-session check-in.
