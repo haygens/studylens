@@ -362,7 +362,7 @@ Done:
   Resume) and on My Data. Both use `tracking:paused`. A running session keeps its timer; the
   tracker records nothing while paused.
 - Single source of truth: `extension/src/storage/keys.ts` lists every storage key; the stores take
-  their key names from it. Delete removes *all* keys present, including unknown ones. A test runs
+  their key names from it. Delete removes _all_ keys present, including unknown ones. A test runs
   every write path (tracking, labels, sessions, check-ins, pause) and fails if any key isn't
   listed, then checks delete leaves storage empty.
 - Pure modules with tests: `src/storage/keys.ts`, `src/my-data/{export,tables,delete-all}.ts`.
