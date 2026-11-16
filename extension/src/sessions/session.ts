@@ -5,7 +5,7 @@
  * Anything shared later (P17) is built from `SessionSummary` in packages/shared, which has no goal
  * and no domains.
  */
-import type { InterventionId, SiteCategory } from '@studylens/shared';
+import type { CheckIn, InterventionId, SiteCategory } from '@studylens/shared';
 
 export const PRESET_MINUTES = [25, 50] as const;
 export const MIN_CUSTOM_MINUTES = 5;
@@ -34,8 +34,8 @@ export interface FocusSession extends ActiveSession {
   distractionVisits: number;
   /** Research condition — assigned by the intervention engine in P8. */
   condition: InterventionId | null;
-  /** End-of-session check-in — added in P5. */
-  checkIn: null;
+  /** End-of-session check-in (P5). Null until it is answered or skipped. */
+  checkIn: CheckIn | null;
 }
 
 /** Cleans the goal text; null if it is empty. */

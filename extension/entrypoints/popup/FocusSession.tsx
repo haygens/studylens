@@ -21,12 +21,16 @@ import {
 } from '@/src/sessions/session';
 import { loadSessionView, type LoadState, type SessionView } from '@/src/popup/popup-data';
 import { ACTIVE_SESSION_KEY, SESSION_HISTORY_KEY } from '@/src/storage/sessions-store';
+import { formatCheckIn } from '@/src/sessions/check-in';
+import CheckIn from './CheckIn';
 import { LoadError, Loading } from './LoadStatus';
 
 const ERROR_TEXT: Record<string, string> = {
   'already-running': 'A session is already running.',
   'invalid-goal': 'Write what you will work on.',
   'invalid-duration': `Pick ${MIN_CUSTOM_MINUTES}–${MAX_CUSTOM_MINUTES} minutes.`,
+  'not-pending': 'That check-in is no longer open.',
+  'invalid-answer': 'Pick an answer for both questions.',
   unknown: 'Something went wrong. Try again.',
 };
 
@@ -34,12 +38,16 @@ async function send(message: SessionMessage): Promise<SessionReply> {
   return (await browser.runtime.sendMessage(message)) as SessionReply;
 }
 
-/** Active + most recent finished session, kept in sync with storage. Never stuck on "loading". */
+/**
+ * Active session, most recent finished session and any waiting check-in, kept in sync with
+ * storage. Never stuck on "loading". When a session ends with the popup open, the history change
+ * reloads this and the popup switches straight to the check-in.
+ */
 function useSessions() {
   const [state, setState] = useState<LoadState<SessionView>>({ status: 'loading' });
 
   const reload = useCallback(() => {
-    void loadSessionView(localStore).then(setState);
+    void loadSessionView(localStore, Date.now()).then(setState);
   }, []);
 
   useEffect(() => {
@@ -58,7 +66,7 @@ function useSessions() {
     reload();
   }, [reload]);
 
-  return { state, retry };
+  return { state, retry, reload };
 }
 
 /** The current time, updated twice a second. */
@@ -202,23 +210,33 @@ function RunningSession({ session }: { session: ActiveSession }) {
 function LastSession({ session }: { session: FinishedSession }) {
   const mins = session.minutesByCategory;
   const actual = Math.round((session.actualEnd - session.start) / 60_000);
+  const checkIn = formatCheckIn(session.checkIn);
   return (
     <div style={{ fontSize: 12, color: '#57606a', marginTop: 10 }}>
       Last session: {actual} of {session.plannedMinutes} min
       {session.endedEarly ? ' (ended early)' : ''} · study {mins.study} · neutral {mins.neutral} ·
       distraction {mins.distraction} min · {session.distractionVisits} distraction visit
       {session.distractionVisits === 1 ? '' : 's'}
+      {checkIn && ` · ${checkIn}`}
     </div>
   );
 }
 
 export default function FocusSession() {
-  const { state, retry } = useSessions();
+  const { state, retry, reload } = useSessions();
   if (state.status === 'loading') return <Loading />;
   if (state.status === 'error') {
     return <LoadError what="Focus session" message={state.message} onRetry={retry} />;
   }
-  const { active, last } = state.data;
+  const { active, last, pending } = state.data;
+  // A check-in waiting for an answer comes first, before the Start form (P5).
+  if (pending) {
+    return (
+      <section style={{ marginTop: 12 }}>
+        <CheckIn key={pending.id} session={pending} onClosed={reload} />
+      </section>
+    );
+  }
   return (
     <section style={{ marginTop: 12 }}>
       {active ? <RunningSession session={active} /> : <StartForm />}

@@ -94,12 +94,33 @@ describe('popup after a session ended with the popup closed', () => {
     // The end alarm fires with the popup closed.
     await reconcileSession(deps, t0 + 5 * MIN + 1);
 
-    const view = await loadSessionView(store);
+    const view = await loadSessionView(store, t0 + 6 * MIN);
     expect(view.status).toBe('ready');
     if (view.status !== 'ready') return;
     expect(view.data.active).toBeNull();
     expect(view.data.last?.goal).toBe('test session');
     expect(view.data.last?.distractionVisits).toBe(1);
+    // P5: the next popup opens on the check-in for that session.
+    expect(view.data.pending?.id).toBe(view.data.last?.id);
+  });
+
+  it('no longer offers the check-in once it has been waiting 12 hours', async () => {
+    const t0 = Date.UTC(2026, 10, 16, 18, 0);
+    const store = memoryStore({ [RULES_KEY]: [] });
+    const deps: SessionDeps = {
+      store,
+      newId: () => 's1',
+      effects: {
+        scheduleAlarms: () => Promise.resolve(),
+        clearAlarms: () => Promise.resolve(),
+        setBadge: () => Promise.resolve(),
+      },
+    };
+    await startSession(deps, 'test session', 5, t0);
+    await reconcileSession(deps, t0 + 5 * MIN);
+
+    const view = await loadSessionView(store, t0 + 5 * MIN + 12 * 60 * MIN);
+    expect(view.status === 'ready' && view.data.pending).toBe(null);
   });
 });
 

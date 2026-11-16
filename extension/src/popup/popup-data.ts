@@ -6,6 +6,7 @@
  */
 import { categoryOf } from '../categories/rules';
 import { totalsBySite, type SiteTotal } from '../categories/sites';
+import { pendingCheckIn } from '../sessions/check-in';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import {
   getSegmentsForDays,
@@ -56,15 +57,18 @@ export function settle<T>(promise: Promise<T>, timeoutMs: number): Promise<LoadS
 export interface SessionView {
   active: ActiveSession | null;
   last: FocusSession | null;
+  /** The session waiting for its check-in (P5), shown before the Start form. */
+  pending: FocusSession | null;
 }
 
 export function loadSessionView(
   store: KeyValueStore,
+  now = Date.now(),
   timeoutMs = LOAD_TIMEOUT_MS,
 ): Promise<LoadState<SessionView>> {
   const load = async (): Promise<SessionView> => {
     const [active, history] = await Promise.all([loadActiveSession(store), loadSessions(store)]);
-    return { active, last: history.at(-1) ?? null };
+    return { active, last: history.at(-1) ?? null, pending: pendingCheckIn(history, active, now) };
   };
   return settle(load(), timeoutMs);
 }

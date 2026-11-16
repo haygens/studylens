@@ -239,3 +239,50 @@ Problems / open questions:
   background console (steps in the session reply) and send the error text.
 
 Next piece (from PLAN.md): P5 — End-of-session check-in.
+
+P4 retest in Firefox (2026-11-16) after the popup fix and freeing disk
+space: 5-min session ended on its own with the popup closed; Last session showed study 0.6 /
+distraction 0.6 min and 2 distraction visits, matching what I did; labels survived a reload; no
+background console errors. P3 manual checks (grouping, suggestions, labels) also passed.
+
+## Handoff — 2026-11-16 (P5 end-of-session check-in)
+
+Done:
+
+- Logged the P4/P3 Firefox retest (passed).
+- Check-in after every focus session: shows the goal, "Did you finish your goal?" (Yes / Partly /
+  No), "How focused were you?" (1–5, 1 = very distracted, 5 = fully focused), Save and Skip.
+- Saved on the session as `checkIn`: `{ goalCompleted, focusRating, answeredAt }` or
+  `{ skipped: true, reason, answeredAt }`. `reason` is `user` / `expired` / `new-session` (added
+  beyond the spec so analysis can tell a real Skip from an auto-skip). Shared types:
+  `CheckIn`, `GoalCompleted`, `FocusRating`, `SkipReason`, `isCheckIn` in packages/shared.
+  `SessionSummary.goalCompleted` is now `'yes' | 'partly' | 'no'` instead of boolean.
+- Popup open when the session ends → switches straight to the check-in (history change reloads
+  the view). Popup closed → badge "?" and the next popup open shows the check-in first.
+- Only the latest session can be pending. Auto-skip: older unanswered sessions, the pending one
+  when a new session starts, and the pending one 12 h after it ended (checked on the 1-minute
+  heartbeat, which also clears the "?" badge).
+- Pure logic in `extension/src/sessions/check-in.ts` (pending selection, auto-skip, validation,
+  formatting). The background validates every answer again before saving.
+- Last session line now ends with e.g. "Finished: partly · Focus 4/5" or "Check-in skipped".
+- Sessions saved before P5 have `checkIn: null`; the latest one may show a check-in once (or is
+  auto-skipped if older than 12 h).
+- PRIVACY.md: check-in answers (incl. skipped) stay on the device; no browser notifications.
+  No new permissions; incognito still `not_allowed`.
+
+Changed files: `extension/src/sessions/check-in{,.test}.ts` (new),
+`extension/entrypoints/popup/CheckIn.tsx` (new), `extension/entrypoints/popup/FocusSession.tsx`,
+`extension/entrypoints/background.ts`, `extension/src/sessions/{session,session-controller,
+session-controller.test,messages}.ts`, `extension/src/storage/sessions-store.ts`,
+`extension/src/popup/popup-data{,.test}.ts`, `packages/shared/src/types{,.test}.ts`, PRIVACY.md,
+docs/PLAN.md, docs/LOG.md.
+
+Tests: pass — 122 tests in 14 files (36 new). Lint, format check, typecheck, Firefox + Edge
+builds clean.
+
+Problems / open questions:
+
+- Manual Firefox test of P5 not done yet (checklist in the session reply).
+- Confirm `reason` on skipped check-ins is fine for the research design (P17 summaries can drop it).
+
+Next piece (from PLAN.md): P6 — My Data page.

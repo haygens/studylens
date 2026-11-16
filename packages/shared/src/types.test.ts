@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { INTERVENTION_IDS, isInterventionId, isSiteCategory } from './types';
+import {
+  INTERVENTION_IDS,
+  isCheckIn,
+  isFocusRating,
+  isGoalCompleted,
+  isInterventionId,
+  isSiteCategory,
+} from './types';
 
 describe('InterventionId', () => {
   it('lists the three research conditions', () => {
@@ -19,5 +26,33 @@ describe('SiteCategory', () => {
     expect(isSiteCategory('distraction')).toBe(true);
     expect(isSiteCategory('blocked')).toBe(false);
     expect(isSiteCategory(undefined)).toBe(false);
+  });
+});
+
+describe('CheckIn', () => {
+  it('accepts an answered check-in', () => {
+    expect(isCheckIn({ goalCompleted: 'partly', focusRating: 4, answeredAt: 1 })).toBe(true);
+  });
+
+  it('accepts a skipped check-in with a known reason', () => {
+    expect(isCheckIn({ skipped: true, reason: 'user', answeredAt: 1 })).toBe(true);
+    expect(isCheckIn({ skipped: true, reason: 'expired', answeredAt: 1 })).toBe(true);
+    expect(isCheckIn({ skipped: true, reason: 'bored', answeredAt: 1 })).toBe(false);
+  });
+
+  it('rejects bad answers, ratings and timestamps', () => {
+    expect(isCheckIn({ goalCompleted: true, focusRating: 4, answeredAt: 1 })).toBe(false);
+    expect(isCheckIn({ goalCompleted: 'yes', focusRating: 6, answeredAt: 1 })).toBe(false);
+    expect(isCheckIn({ goalCompleted: 'yes', focusRating: 2.5, answeredAt: 1 })).toBe(false);
+    expect(isCheckIn({ goalCompleted: 'yes', focusRating: 3 })).toBe(false);
+    expect(isCheckIn(null)).toBe(false);
+  });
+
+  it('type guards for the single answers', () => {
+    expect(isGoalCompleted('no')).toBe(true);
+    expect(isGoalCompleted('maybe')).toBe(false);
+    expect(isFocusRating(1)).toBe(true);
+    expect(isFocusRating(0)).toBe(false);
+    expect(isFocusRating('3')).toBe(false);
   });
 });

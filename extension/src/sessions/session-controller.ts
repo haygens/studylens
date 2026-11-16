@@ -9,7 +9,13 @@ import {
   type KeyValueStore,
 } from '../storage/activity-store';
 import { loadRules } from '../storage/categories-store';
-import { finishSession, loadActiveSession, saveActiveSession } from '../storage/sessions-store';
+import {
+  finishSession,
+  loadActiveSession,
+  loadSessions,
+  saveActiveSession,
+  saveSessions,
+} from '../storage/sessions-store';
 import type { Segment } from '../tracker/tracker';
 import {
   badgeText,
@@ -19,6 +25,13 @@ import {
   type FocusSession,
   type StartError,
 } from './session';
+import {
+  applyAutoSkips,
+  checkInBadge,
+  recordCheckIn,
+  type CheckInError,
+  type CheckInInput,
+} from './check-in';
 import { computeSessionStats } from './session-stats';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -48,6 +61,9 @@ export async function startSession(
   if (await loadActiveSession(deps.store)) return { ok: false, error: 'already-running' };
   const session = createSession(goal, minutes, now, deps.newId());
   if (typeof session === 'string') return { ok: false, error: session };
+  // A check-in still waiting is skipped: only the latest session is ever asked about.
+  const skipped = applyAutoSkips(await loadSessions(deps.store), now, true);
+  if (skipped) await saveSessions(deps.store, skipped);
   await saveActiveSession(deps.store, session);
   await deps.effects.scheduleAlarms(session);
   await deps.effects.setBadge(badgeText(session, now));
@@ -88,7 +104,8 @@ async function endAt(
   };
   await finishSession(deps.store, finished);
   await deps.effects.clearAlarms();
-  await deps.effects.setBadge('');
+  // "?" until the check-in is answered (no notifications permission needed).
+  await deps.effects.setBadge('?');
   return finished;
 }
 
@@ -103,7 +120,7 @@ export async function reconcileSession(
 ): Promise<FocusSession | null> {
   const session = await loadActiveSession(deps.store);
   if (!session) {
-    await deps.effects.setBadge('');
+    await expireCheckIns(deps, now);
     return null;
   }
   if (isDue(session, now)) return endAt(deps, session, session.plannedEnd, false);
@@ -121,6 +138,39 @@ export async function endSessionEarly(
   if (!session) return null;
   if (isDue(session, now)) return endAt(deps, session, session.plannedEnd, false);
   return endAt(deps, session, now, true);
+}
+
+/**
+ * Skips check-ins that waited too long, and shows "?" on the badge while one is waiting.
+ * Does nothing while a session runs (its badge shows the minutes). Run on every heartbeat.
+ */
+export async function expireCheckIns(deps: SessionDeps, now: number): Promise<void> {
+  const active = await loadActiveSession(deps.store);
+  if (active) return;
+  let history = await loadSessions(deps.store);
+  const updated = applyAutoSkips(history, now, false);
+  if (updated) {
+    await saveSessions(deps.store, updated);
+    history = updated;
+  }
+  await deps.effects.setBadge(checkInBadge(history, null, now));
+}
+
+export type CheckInResult = { ok: true } | { ok: false; error: CheckInError };
+
+/** Saves the popup's answer (or Skip) on the pending session and clears the "?" badge. */
+export async function submitCheckIn(
+  deps: SessionDeps,
+  sessionId: string,
+  input: CheckInInput,
+  now: number,
+): Promise<CheckInResult> {
+  if (await loadActiveSession(deps.store)) return { ok: false, error: 'not-pending' };
+  const result = recordCheckIn(await loadSessions(deps.store), sessionId, input, now);
+  if (typeof result === 'string') return { ok: false, error: result };
+  await saveSessions(deps.store, result);
+  await deps.effects.setBadge(checkInBadge(result, null, now));
+  return { ok: true };
 }
 
 /** Updates the badge's minutes (on the per-minute tick alarm). */

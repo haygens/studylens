@@ -1,6 +1,6 @@
 # StudyLens Privacy Policy (draft)
 
-_Last updated: November 14, 2026_
+_Last updated: November 16, 2026_
 
 StudyLens helps you see how you study. It is built so that your browsing stays yours.
 
@@ -9,8 +9,9 @@ StudyLens helps you see how you study. It is built so that your browsing stays y
 - The **website domain** of your active tab (for example, `youtube.com`) and how long it was active,
   only while tracking is on.
 - Focus sessions you start: your goal, duration, start/end times, minutes per category and number
-  of distraction-site visits during the session, and your end-of-session answers (goal finished,
-  focus rating 1–5).
+  of distraction-site visits during the session, and your end-of-session check-in answers (goal
+  finished: yes / partly / no, focus rating 1–5, or that you skipped it). The check-in is shown in
+  the extension's own popup; StudyLens does not use browser notifications.
 - The site categories you choose (study / neutral / distraction).
 
 ## What StudyLens never records

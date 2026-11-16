@@ -10,9 +10,11 @@ import {
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
   endSessionEarly,
+  expireCheckIns,
   reconcileSession,
   refreshBadge,
   startSession,
+  submitCheckIn,
   type SessionDeps,
 } from '@/src/sessions/session-controller';
 import {
@@ -39,7 +41,7 @@ const sessionDeps: SessionDeps = {
 };
 
 /**
- * Activity tracking (P2) and focus sessions (P4). This script can be suspended at any time, so
+ * Activity tracking (P2), focus sessions (P4) and their check-ins (P5). This script can be suspended at any time, so
  * nothing lives in memory: every event loads its state from storage, runs pure logic, and saves
  * the result. All work runs one task at a time, in order, through `queue`, so session end-of-time
  * calculations always see the tracker's latest saved state.
@@ -95,6 +97,19 @@ export default defineBackground(() => {
       case 'session:check':
         await reconcile();
         return { ok: true };
+      case 'checkin:answer':
+      case 'checkin:skip': {
+        if (typeof msg.sessionId !== 'string') return { ok: false, error: 'invalid-answer' };
+        const input =
+          msg.type === 'checkin:skip'
+            ? ({ kind: 'skip' } as const)
+            : ({
+                kind: 'answer',
+                goalCompleted: msg.goalCompleted,
+                focusRating: msg.focusRating,
+              } as const);
+        return enqueue(() => submitCheckIn(sessionDeps, msg.sessionId, input, Date.now()));
+      }
     }
   }
 
@@ -133,7 +148,11 @@ export default defineBackground(() => {
 
   browser.alarms.onAlarm.addListener((alarm) => {
     // The heartbeat re-reads the full browser state, which also repairs any missed event.
-    if (alarm.name === HEARTBEAT_ALARM) sync();
+    if (alarm.name === HEARTBEAT_ALARM) {
+      sync();
+      // Auto-skip a check-in left unanswered for 12 hours and keep the "?" badge right.
+      void enqueue(() => expireCheckIns(sessionDeps, Date.now())).catch(() => undefined);
+    }
     if (alarm.name === SESSION_END_ALARM) void reconcile().catch(() => undefined);
     if (alarm.name === SESSION_TICK_ALARM) {
       void enqueue(() => refreshBadge(sessionDeps, Date.now())).catch(() => undefined);

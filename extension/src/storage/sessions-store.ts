@@ -6,6 +6,7 @@
  * - `sessions:active`  — the running session, or null. Only one session at a time.
  * - `sessions:history` — finished sessions, oldest first.
  */
+import { isCheckIn } from '@studylens/shared';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import type { KeyValueStore } from './activity-store';
 
@@ -37,8 +38,12 @@ function isFocusSession(value: unknown): value is FocusSession {
   );
 }
 
+/** Valid sessions only. A missing or malformed check-in counts as not answered yet. */
 function asHistory(value: unknown): FocusSession[] {
-  return Array.isArray(value) ? value.filter(isFocusSession) : [];
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isFocusSession)
+    .map((s) => ({ ...s, checkIn: isCheckIn(s.checkIn) ? s.checkIn : null }));
 }
 
 export async function loadActiveSession(store: KeyValueStore): Promise<ActiveSession | null> {
@@ -56,6 +61,11 @@ export async function saveActiveSession(
 export async function loadSessions(store: KeyValueStore): Promise<FocusSession[]> {
   const { [SESSION_HISTORY_KEY]: saved } = await store.get([SESSION_HISTORY_KEY]);
   return asHistory(saved);
+}
+
+/** Replaces the whole history (used to save check-in answers and auto-skips). */
+export async function saveSessions(store: KeyValueStore, history: FocusSession[]): Promise<void> {
+  await store.set({ [SESSION_HISTORY_KEY]: history });
 }
 
 /** Saves a finished session and clears the active one in a single write. */

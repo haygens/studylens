@@ -19,7 +19,8 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       Sensible empty default (nothing pre-labeled except a few suggestions the user can accept).
 - [x] **P4. Focus sessions** — popup: set a goal + duration (Pomodoro-style), start/stop, timer.
       Session record = start, end, goal, per-category time, distraction visit count.
-- [ ] **P5. End-of-session check-in** — "Did you finish your goal?" (y/n) + "How focused were you?" (1–5).
+- [x] **P5. End-of-session check-in** — "Did you finish your goal?" (yes/partly/no) + "How focused
+      were you?" (1–5). Badge "?" when the popup was closed; auto-skip after 12 h or a new session.
 - [ ] **P6. My Data page** — raw records table, export JSON, delete everything, pause tracking.
 - [ ] **P7. Privacy policy + store listing** — finalize PRIVACY.md, icons, screenshots. Submit v0.1 to
       Firefox Add-ons (AMO) early so review never blocks the deadline.

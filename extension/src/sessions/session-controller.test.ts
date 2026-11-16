@@ -3,11 +3,14 @@ import { STATE_KEY, dayKey, memoryStore } from '../storage/activity-store';
 import { RULES_KEY } from '../storage/categories-store';
 import { ACTIVE_SESSION_KEY, loadActiveSession, loadSessions } from '../storage/sessions-store';
 import { initialState, type Segment, type TrackerState } from '../tracker/tracker';
+import { CHECK_IN_EXPIRY_MS } from './check-in';
 import {
   endSessionEarly,
+  expireCheckIns,
   reconcileSession,
   refreshBadge,
   startSession,
+  submitCheckIn,
   type SessionDeps,
 } from './session-controller';
 import type { ActiveSession } from './session';
@@ -119,7 +122,8 @@ describe('session controller', () => {
     expect(await loadSessions(t.store)).toEqual([done]);
     expect(await loadActiveSession(t.store)).toBeNull();
     expect(t.calls.at(-1)).toBe('clear');
-    expect(t.badge).toBe('');
+    // P5: the badge asks for the check-in.
+    expect(t.badge).toBe('?');
   });
 
   it('on wake-up after the planned end, ends the session at the planned end time', async () => {
@@ -179,5 +183,118 @@ describe('session controller', () => {
     expect(await endSessionEarly(t.deps, T0)).toBeNull();
     expect(await reconcileSession(t.deps, T0)).toBeNull();
     expect(t.badge).toBe('');
+  });
+});
+
+describe('end-of-session check-in (P5)', () => {
+  async function finished() {
+    const t = setup();
+    await startSession(t.deps, 'Essay', 25, T0);
+    await reconcileSession(t.deps, T0 + 25 * MIN); // Ends with the popup closed.
+    return t;
+  }
+
+  it('shows "?" on the badge after a session ends, and clears it once answered', async () => {
+    const t = await finished();
+    expect(t.badge).toBe('?');
+    // A later wake-up keeps the "?".
+    await reconcileSession(t.deps, T0 + 60 * MIN);
+    expect(t.badge).toBe('?');
+
+    const now = T0 + 61 * MIN;
+    expect(
+      await submitCheckIn(
+        t.deps,
+        's1',
+        { kind: 'answer', goalCompleted: 'partly', focusRating: 4 },
+        now,
+      ),
+    ).toEqual({ ok: true });
+    expect(t.badge).toBe('');
+    expect((await loadSessions(t.store))[0]?.checkIn).toEqual({
+      goalCompleted: 'partly',
+      focusRating: 4,
+      answeredAt: now,
+    });
+  });
+
+  it('records Skip and refuses a second answer', async () => {
+    const t = await finished();
+    expect(await submitCheckIn(t.deps, 's1', { kind: 'skip' }, T0 + 30 * MIN)).toEqual({
+      ok: true,
+    });
+    expect((await loadSessions(t.store))[0]?.checkIn).toEqual({
+      skipped: true,
+      reason: 'user',
+      answeredAt: T0 + 30 * MIN,
+    });
+    expect(
+      await submitCheckIn(
+        t.deps,
+        's1',
+        { kind: 'answer', goalCompleted: 'yes', focusRating: 5 },
+        T0 + 31 * MIN,
+      ),
+    ).toEqual({ ok: false, error: 'not-pending' });
+    expect(t.badge).toBe('');
+  });
+
+  it('rejects an invalid answer without saving', async () => {
+    const t = await finished();
+    expect(
+      await submitCheckIn(
+        t.deps,
+        's1',
+        { kind: 'answer', goalCompleted: 'yes', focusRating: 0 },
+        T0 + 30 * MIN,
+      ),
+    ).toEqual({ ok: false, error: 'invalid-answer' });
+    expect((await loadSessions(t.store))[0]?.checkIn).toBeNull();
+    expect(t.badge).toBe('?');
+  });
+
+  it('auto-skips after 12 hours on the heartbeat and clears the badge', async () => {
+    const t = await finished();
+    await expireCheckIns(t.deps, T0 + 25 * MIN + CHECK_IN_EXPIRY_MS - 1);
+    expect((await loadSessions(t.store))[0]?.checkIn).toBeNull();
+    expect(t.badge).toBe('?');
+
+    const now = T0 + 25 * MIN + CHECK_IN_EXPIRY_MS;
+    await expireCheckIns(t.deps, now);
+    expect((await loadSessions(t.store))[0]?.checkIn).toEqual({
+      skipped: true,
+      reason: 'expired',
+      answeredAt: now,
+    });
+    expect(t.badge).toBe('');
+  });
+
+  it('auto-skips the waiting check-in when a new session starts', async () => {
+    const t = await finished();
+    await startSession(t.deps, 'Next', 25, T0 + 30 * MIN);
+    expect((await loadSessions(t.store))[0]?.checkIn).toEqual({
+      skipped: true,
+      reason: 'new-session',
+      answeredAt: T0 + 30 * MIN,
+    });
+    expect(t.badge).toBe('25');
+    // And no check-in can be submitted while the new session runs.
+    expect(await submitCheckIn(t.deps, 's1', { kind: 'skip' }, T0 + 31 * MIN)).toEqual({
+      ok: false,
+      error: 'not-pending',
+    });
+  });
+
+  it('leaves the minutes badge alone on the heartbeat while a session runs', async () => {
+    const t = setup();
+    await startSession(t.deps, 'Essay', 25, T0);
+    await expireCheckIns(t.deps, T0 + 5 * MIN);
+    expect(t.badge).toBe('25');
+  });
+
+  it('an invalid start does not skip the waiting check-in', async () => {
+    const t = await finished();
+    await startSession(t.deps, '   ', 25, T0 + 30 * MIN);
+    expect((await loadSessions(t.store))[0]?.checkIn).toBeNull();
   });
 });
