@@ -21,6 +21,7 @@ import {
 } from '@/src/sessions/session';
 import { loadSessionView, type LoadState, type SessionView } from '@/src/popup/popup-data';
 import { ACTIVE_SESSION_KEY, SESSION_HISTORY_KEY } from '@/src/storage/sessions-store';
+import { E2E_BUILD_MARKER, MAX_TEST_SECONDS } from '@/src/e2e/test-seconds';
 import { formatCheckIn } from '@/src/sessions/check-in';
 import CheckIn from './CheckIn';
 import { LoadError, Loading } from './LoadStatus';
@@ -86,8 +87,13 @@ function StartForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // E2E test build only: a length in seconds overrides the minutes (compiled away otherwise).
+  const [testSeconds, setTestSeconds] = useState('');
+  const seconds = __STUDYLENS_E2E__ && testSeconds ? Number(testSeconds) : null;
+
   const minutes = choice === 'custom' ? Number(custom) : choice;
-  const canStart = normalizeGoal(goal) !== null && isValidDuration(minutes) && !busy;
+  const canStart =
+    normalizeGoal(goal) !== null && (seconds !== null || isValidDuration(minutes)) && !busy;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -95,7 +101,12 @@ function StartForm() {
     setBusy(true);
     setError(null);
     try {
-      const reply = await send({ type: 'session:start', goal, minutes });
+      const reply = await send({
+        type: 'session:start',
+        goal,
+        minutes,
+        ...(seconds !== null && { testSeconds: seconds }),
+      });
       if (!reply.ok) setError(ERROR_TEXT[reply.error] ?? ERROR_TEXT.unknown!);
     } catch {
       setError(ERROR_TEXT.unknown!);
@@ -154,6 +165,19 @@ function StartForm() {
           </div>
         )}
       </fieldset>
+      {__STUDYLENS_E2E__ && (
+        <label style={{ fontSize: 12, color: '#9a6700' }} data-testid={E2E_BUILD_MARKER}>
+          Test length in seconds (E2E build only){' '}
+          <input
+            type="number"
+            min={1}
+            max={MAX_TEST_SECONDS}
+            value={testSeconds}
+            style={{ width: 70 }}
+            onChange={(e) => setTestSeconds(e.target.value)}
+          />
+        </label>
+      )}
       <button type="submit" disabled={!canStart}>
         Start focus session
       </button>

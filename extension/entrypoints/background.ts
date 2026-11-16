@@ -7,6 +7,7 @@ import {
   readContext,
   sessionEffects,
 } from '@/src/background/browser-adapter';
+import { E2E_BUILD_MARKER, testSecondsFrom } from '@/src/e2e/test-seconds';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
   endSessionEarly,
@@ -85,8 +86,10 @@ export default defineBackground(() => {
   async function handleSessionMessage(msg: SessionMessage): Promise<SessionReply> {
     switch (msg.type) {
       case 'session:start': {
+        // `__STUDYLENS_E2E__` is a build-time literal: normal builds always pass null here.
+        const seconds = __STUDYLENS_E2E__ ? testSecondsFrom(msg.testSeconds, true) : null;
         const result = await enqueue(() =>
-          startSession(sessionDeps, msg.goal, msg.minutes, Date.now()),
+          startSession(sessionDeps, msg.goal, msg.minutes, Date.now(), seconds),
         );
         return result.ok ? { ok: true } : { ok: false, error: result.error };
       }
@@ -113,6 +116,8 @@ export default defineBackground(() => {
     }
   }
 
+  if (__STUDYLENS_E2E__) console.info(`[StudyLens] ${E2E_BUILD_MARKER}: test seconds enabled`);
+
   // Listeners must be registered synchronously at the top level so a suspended background
   // script is woken up for them.
   browser.idle.setDetectionInterval(IDLE_THRESHOLD_SECONDS);
@@ -136,9 +141,12 @@ export default defineBackground(() => {
     }
   });
 
-  browser.idle.onStateChanged.addListener((newState) =>
-    dispatch(() => ({ type: 'idle', state: newState as IdleState })),
-  );
+  // The E2E test build ignores OS idle (see readIdleState); normal builds always listen.
+  if (!__STUDYLENS_E2E__) {
+    browser.idle.onStateChanged.addListener((newState) =>
+      dispatch(() => ({ type: 'idle', state: newState as IdleState })),
+    );
+  }
 
   browser.storage.onChanged.addListener((changes, area) => {
     const change = changes[PAUSED_KEY];

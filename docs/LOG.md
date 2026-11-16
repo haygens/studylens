@@ -286,3 +286,56 @@ Problems / open questions:
 - Confirm `reason` on skipped check-ins is fine for the research design (P17 summaries can drop it).
 
 Next piece (from PLAN.md): P6 — My Data page.
+
+## Handoff — 2026-11-16 (P5b E2E tests)
+
+Done:
+
+- Playwright E2E tests in `extension/e2e/`. They load the E2E build of the extension into a fresh
+  persistent browser profile: installed Microsoft Edge locally (`channel: 'msedge'`, no browser
+  download), Playwright's Chromium in CI. Override with `E2E_CHANNEL`.
+- No real internet: request routing serves stub pages for en.wikipedia.org and www.youtube.com
+  and blocks every other http(s) request.
+- Badge and storage are read from the background service worker
+  (`chrome.action.getBadgeText`, `chrome.storage.local.get`), not from screenshots.
+- Scenarios (7 tests, ~55 s): a) labels via the options page; b) 25 s session, Wikipedia →
+  YouTube → Wikipedia → YouTube with the popup closed → badge "?", popup opens on the check-in,
+  Partly + 4 → "Finished: partly · Focus 4/5", badge clears, `distractionVisits` = 2 and study /
+  distraction minutes > 0; c) popup open at the end switches to the check-in, Skip → "Check-in
+  skipped", reason `user`; d) End early → check-in right away, `endedEarly: true`; e) popup shows
+  "Loading..." with slow storage and an error + Retry when storage never answers.
+- E2E-only build: `wxt build -b edge --mode e2e` → `.output/edge-mv3-e2e`, named "StudyLens (E2E
+  test build)". `__STUDYLENS_E2E__` is a build-time literal; only that build gets (1) a "Test length
+  in seconds" field in the popup, which the background honors, and (2) OS idle ignored. Problem
+  found: Chrome's idle state is system-wide, so with nobody touching the PC (or on a CI runner)
+  the tracker correctly stopped counting and test b failed sometimes. Idle rules stay covered by
+  unit tests.
+- Proof the normal builds don't include it: `npm run check:builds -w extension` scans
+  `.output/firefox-mv3` and `.output/edge-mv3` for the E2E markers and fails if found. It also
+  fails if the E2E build lacks them, so it can't pass by accident. Runs in CI after both builds.
+  Unit test: the flag is false in normal (test) builds and the gate ignores seconds when off.
+- Scripts: `npm run test:e2e` (root or extension) builds the E2E version, then runs Playwright.
+  CI has a separate `e2e` job; the fast `check` job now also builds both targets + `check:builds`.
+- Playwright output folders (`test-results/`, `playwright-report/`, `blob-report/`) are gitignored.
+
+Changed files: `extension/e2e/{fixtures,sessions.e2e,popup-loading.e2e}.ts`,
+`extension/playwright.config.ts`, `extension/scripts/check-builds.mjs`,
+`extension/src/e2e/test-seconds{,.test}.ts`, `extension/build-flags.d.ts` (all new);
+`extension/{wxt.config,vitest.config}.ts`, `extension/package.json`, `extension/entrypoints/
+{background.ts,popup/FocusSession.tsx}`, `extension/src/background/browser-adapter.ts`,
+`extension/src/sessions/{session,session.test,session-controller,messages}.ts`,
+`.github/workflows/ci.yml`, `.gitignore`, `.prettierignore`, `eslint.config.js`, `package.json`,
+`package-lock.json`, CLAUDE.md, docs/PLAN.md, docs/LOG.md.
+
+Tests: unit pass — 127 tests in 15 files (5 new). E2E pass — 7 tests (Edge 139, headless).
+Lint, format check, typecheck, Firefox + Edge builds, `check:builds` clean.
+
+Problems / open questions:
+
+- C: has only ~2.3 GB free. E2E runs use a temporary browser profile that is deleted afterwards.
+- Playwright's own browsers are not installed locally (on purpose). If a future Edge update blocks
+  `--load-extension`, the fallback is `npx playwright install chromium` (~150 MB) +
+  `E2E_CHANNEL=chromium`.
+- The E2E build ignores OS idle, so idle handling is only unit-tested.
+
+Next piece (from PLAN.md): P6 — My Data page.

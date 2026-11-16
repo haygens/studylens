@@ -53,3 +53,15 @@ describe('session helpers', () => {
     expect(formatCountdown(90 * MIN)).toBe('1:30:00');
   });
 });
+
+describe('createSession with test seconds (E2E build only)', () => {
+  it('uses seconds and skips the minutes check', () => {
+    const s = createSession('Read', 0, T0, 'id', 30) as ActiveSession;
+    expect(s.plannedEnd).toBe(T0 + 30_000);
+    expect(s.plannedMinutes).toBe(0.5);
+  });
+
+  it('still requires a goal', () => {
+    expect(createSession(' ', 25, T0, 'id', 30)).toBe('invalid-goal');
+  });
+});

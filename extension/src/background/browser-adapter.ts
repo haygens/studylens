@@ -35,6 +35,9 @@ export async function readWindowFocused(): Promise<boolean> {
 }
 
 export async function readIdleState(thresholdSeconds: number): Promise<IdleState> {
+  // E2E test build only: the OS idle state reflects real keyboard/mouse input on the whole
+  // machine, which automated tests (and CI runners) don't produce. Idle rules are unit-tested.
+  if (__STUDYLENS_E2E__) return 'active';
   return (await browser.idle.queryState(thresholdSeconds)) as IdleState;
 }
 

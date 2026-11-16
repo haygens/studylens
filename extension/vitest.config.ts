@@ -5,5 +5,7 @@ import { fileURLToPath } from 'node:url';
 export default defineProject({
   // root: tests run from the repo root, so tell WXT where the extension lives.
   plugins: [WxtVitest({ root: fileURLToPath(new URL('./', import.meta.url)) })],
-  test: { name: 'extension', environment: 'node' },
+  // Unit tests run like a normal build: E2E-only features are off.
+  define: { __STUDYLENS_E2E__: 'false' },
+  test: { name: 'extension', environment: 'node', exclude: ['**/node_modules/**', 'e2e/**'] },
 });

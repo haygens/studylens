@@ -53,14 +53,28 @@ export function isValidDuration(minutes: number): boolean {
 
 export type StartError = 'already-running' | 'invalid-goal' | 'invalid-duration';
 
+/**
+ * `testSeconds` (E2E test build only, see src/e2e/test-seconds.ts) replaces `minutes` with a
+ * length in seconds. Normal builds always pass null.
+ */
 export function createSession(
   goalInput: string,
   minutes: number,
   now: number,
   id: string,
+  testSeconds: number | null = null,
 ): ActiveSession | StartError {
   const goal = normalizeGoal(goalInput);
   if (!goal) return 'invalid-goal';
+  if (testSeconds !== null) {
+    return {
+      id,
+      goal,
+      plannedMinutes: testSeconds / 60,
+      start: now,
+      plannedEnd: now + testSeconds * 1000,
+    };
+  }
   if (!isValidDuration(minutes)) return 'invalid-duration';
   return { id, goal, plannedMinutes: minutes, start: now, plannedEnd: now + minutes * MINUTE_MS };
 }

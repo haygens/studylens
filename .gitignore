@@ -17,6 +17,11 @@ next-env.d.ts
 coverage/
 web-ext-artifacts/
 
+# Playwright E2E output
+test-results/
+playwright-report/
+blob-report/
+
 # editor / OS
 .vscode/*
 !.vscode/extensions.json

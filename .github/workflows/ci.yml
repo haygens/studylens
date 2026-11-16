@@ -9,6 +9,7 @@ permissions:
   contents: read
 
 jobs:
+  # Fast checks: lint, format, types, unit tests, and both store builds.
   check:
     runs-on: ubuntu-latest
     steps:
@@ -22,3 +23,31 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
+      - run: npm run build:firefox -w extension
+      - run: npm run build:edge -w extension
+      # Proves the normal builds contain no E2E-only test code.
+      - run: npm run check:builds -w extension
+
+  # Slower browser tests, in their own job so they never hold up the fast checks.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps --no-shell chromium
+        working-directory: extension
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            extension/playwright-report/
+            extension/test-results/
+          retention-days: 7

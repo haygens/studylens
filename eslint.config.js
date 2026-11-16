@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/.next/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
       '**/next-env.d.ts',
     ],
   },
@@ -38,8 +40,13 @@ export default tseslint.config(
     settings: { next: { rootDir: 'web/' } },
   },
   {
-    files: ['*.{js,ts}', '**/*.config.{js,ts,mjs}'],
+    files: ['*.{js,ts}', '**/*.config.{js,ts,mjs}', 'extension/scripts/**', 'extension/e2e/**'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    // Playwright fixtures call `use(...)`, which is not React's `use` hook.
+    files: ['extension/e2e/**'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
   },
   prettier,
 );

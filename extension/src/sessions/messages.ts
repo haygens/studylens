@@ -3,7 +3,13 @@ import type { CheckInError } from './check-in';
 import type { StartError } from './session';
 
 export type SessionMessage =
-  | { type: 'session:start'; goal: string; minutes: number }
+  | {
+      type: 'session:start';
+      goal: string;
+      minutes: number;
+      /** Honored only by the E2E test build (src/e2e/test-seconds.ts). */
+      testSeconds?: number;
+    }
   | { type: 'session:end-early' }
   /** The popup saw the countdown reach zero: end the session now if it is due. */
   | { type: 'session:check' }

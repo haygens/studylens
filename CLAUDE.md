@@ -87,10 +87,14 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - Web dev: `npm run dev -w web` (http://localhost:3000, health check at `/api/health`)
 - Web build: `npm run build -w web`
 - Tests (all workspaces): `npm test` — watch mode: `npm run test:watch`
+- E2E tests (builds the E2E version, runs Playwright in installed Edge): `npm run test:e2e`
+  — watch in a visible browser: `npm run test:e2e -- --headed`. Never install extra browsers locally.
+- Prove normal builds have no E2E-only code (after both builds): `npm run check:builds -w extension`
 - Lint: `npm run lint`
 - Format: `npm run format` — check only: `npm run format:check`
 - Typecheck (all workspaces): `npm run typecheck`
-- Everything CI runs: `npm run lint; npm run format:check; npm run typecheck; npm test`
+- Everything CI runs: `npm run lint; npm run format:check; npm run typecheck; npm test`, both builds +
+  `check:builds`, and (separate job) `npm run test:e2e`
 
 ## End-of-session handoff (always print this)
 

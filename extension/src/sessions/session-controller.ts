@@ -57,9 +57,11 @@ export async function startSession(
   goal: string,
   minutes: number,
   now: number,
+  /** E2E test build only; null in normal builds. */
+  testSeconds: number | null = null,
 ): Promise<StartResult> {
   if (await loadActiveSession(deps.store)) return { ok: false, error: 'already-running' };
-  const session = createSession(goal, minutes, now, deps.newId());
+  const session = createSession(goal, minutes, now, deps.newId(), testSeconds);
   if (typeof session === 'string') return { ok: false, error: session };
   // A check-in still waiting is skipped: only the latest session is ever asked about.
   const skipped = applyAutoSkips(await loadSessions(deps.store), now, true);
