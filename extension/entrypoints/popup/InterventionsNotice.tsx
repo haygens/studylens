@@ -1,15 +1,15 @@
 /**
- * One-time notice about research interventions (P8), shown the first time the popup opens while
- * the feature is on. It counts as seen as soon as it is shown, so it never appears again, even
- * if the popup is closed without pressing a button (interventions then stay on, the default).
+ * One-time notice about research interventions (P8), shown when the popup opens while the feature
+ * is on. It keeps showing every time the popup opens until the user presses "Keep on" or "Turn
+ * off": closing the popup without choosing doesn't count as seen.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { shouldShowNotice } from '@/src/storage/interventions-store';
 import { useInterventions } from '@/src/ui/use-interventions';
 
 export default function InterventionsNotice() {
-  const { state, setParticipating, noticeSeen, saveError } = useInterventions();
-  // Decided once per popup: stays up after it is marked seen until a button is pressed.
+  const { state, answerNotice, saveError } = useInterventions();
+  // Decided once per popup, so it stays up (e.g. while the answer is saving) until a button is pressed.
   const [show, setShow] = useState<boolean | null>(null);
 
   // Adjusting state while rendering (not in an effect) is React's recommended pattern here.
@@ -17,15 +17,10 @@ export default function InterventionsNotice() {
     setShow(state.status === 'ready' && shouldShowNotice(state.data));
   }
 
-  // Record that it was shown (a storage write, not React state).
-  useEffect(() => {
-    if (show) noticeSeen();
-  }, [show, noticeSeen]);
-
   if (!show) return null;
 
-  function choose(on: boolean) {
-    if (!on) setParticipating(false);
+  function choose(keepOn: boolean) {
+    answerNotice(keepOn);
     setShow(false);
   }
 

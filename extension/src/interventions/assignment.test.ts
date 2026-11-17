@@ -14,6 +14,7 @@ import {
   OPTED_OUT_KEY,
   loadInterventionSettings,
   loadNoticeState,
+  answerNotice,
   shouldShowNotice,
 } from '../storage/interventions-store';
 import { ACTIVE_SESSION_KEY, loadActiveSession, loadSessions } from '../storage/sessions-store';
@@ -166,5 +167,20 @@ describe('one-time notice', () => {
         await loadNoticeState(memoryStore({ [ENABLED_KEY]: true, [OPTED_OUT_KEY]: true })),
       ),
     ).toBe(false);
+  });
+
+  it('keeps showing until the user answers: "Keep on" stays on, "Turn off" opts out', async () => {
+    const keep = memoryStore({ [ENABLED_KEY]: true });
+    // Opening the popup only reads: until a button is pressed, it shows again every time.
+    expect(shouldShowNotice(await loadNoticeState(keep))).toBe(true);
+    expect(shouldShowNotice(await loadNoticeState(keep))).toBe(true);
+    await answerNotice(keep, true);
+    expect(await loadNoticeState(keep)).toEqual({ enabled: true, optedOut: false, seen: true });
+    expect(shouldShowNotice(await loadNoticeState(keep))).toBe(false);
+
+    const off = memoryStore({ [ENABLED_KEY]: true });
+    await answerNotice(off, false);
+    expect(await loadNoticeState(off)).toEqual({ enabled: true, optedOut: true, seen: true });
+    expect(shouldShowNotice(await loadNoticeState(off))).toBe(false);
   });
 });

@@ -5,7 +5,7 @@
  * - `interventions:enabled`     — feature flag. Missing = INTERVENTIONS_DEFAULT_ENABLED.
  * - `interventions:opted-out`   — `true` if the user turned research interventions off.
  * - `interventions:block`       — the conditions left in the current shuffled block.
- * - `interventions:notice-seen` — `true` once the popup has shown the one-time notice.
+ * - `interventions:notice-seen` — `true` once the user answered the one-time notice.
  */
 import type { InterventionId } from '@studylens/shared';
 import { asBlock, type InterventionSettings } from '../interventions/randomize';
@@ -73,6 +73,11 @@ export function shouldShowNotice(state: NoticeState): boolean {
   return state.enabled && !state.seen && !state.optedOut;
 }
 
-export async function markNoticeSeen(store: KeyValueStore): Promise<void> {
-  await store.set({ [NOTICE_SEEN_KEY]: true });
+/**
+ * The user pressed "Keep on" (`keepOn = true`) or "Turn off" in the one-time notice. Only this
+ * marks the notice as seen; closing the popup without choosing does not. One write, so the
+ * notice can never be marked seen without the choice being saved.
+ */
+export async function answerNotice(store: KeyValueStore, keepOn: boolean): Promise<void> {
+  await store.set({ [NOTICE_SEEN_KEY]: true, ...(!keepOn && { [OPTED_OUT_KEY]: true }) });
 }

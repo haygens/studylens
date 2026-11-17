@@ -1,7 +1,7 @@
 /**
  * End-to-end: the intervention engine (P8) with the feature flag turned on for the test.
  * Conditions are assigned per session from a shuffled block, can be opted out of on My Data,
- * and the popup's one-time notice shows exactly once.
+ * and the popup's one-time notice shows until the user answers it.
  */
 import type { Page } from '@playwright/test';
 import type { FocusSession } from '../src/sessions/session';
@@ -63,7 +63,10 @@ test('after turning research interventions off on My Data, the next session is "
   ).toBeVisible();
 });
 
-test('the one-time notice shows once and never again', async ({ openPopup, background }) => {
+test('the notice shows until Keep on or Turn off is pressed, then never again', async ({
+  openPopup,
+  background,
+}) => {
   // Feature off: no notice.
   const off = await openPopup();
   await expect(off.getByRole('button', { name: 'Start focus session' })).toBeVisible();
@@ -71,6 +74,14 @@ test('the one-time notice shows once and never again', async ({ openPopup, backg
   await off.close();
 
   await enableInterventions(background);
+  // Closing the popup without choosing doesn't count: it shows again next time.
+  for (let i = 0; i < 2; i++) {
+    const ignored = await openPopup();
+    await expect(ignored.getByRole('dialog', { name: 'Research interventions' })).toBeVisible();
+    await ignored.close();
+    expect(await background.get('interventions:notice-seen')).toBeUndefined();
+  }
+
   const first = await openPopup();
   const notice = first.getByRole('dialog', { name: 'Research interventions' });
   await expect(notice).toBeVisible();
@@ -94,6 +105,7 @@ test('"Turn off" in the notice opts out', async ({ openPopup, background }) => {
   const popup = await openPopup();
   await popup.getByRole('button', { name: 'Turn off' }).click();
   await expect.poll(() => background.get('interventions:opted-out')).toBe(true);
+  expect(await background.get('interventions:notice-seen')).toBe(true);
   await expect(popup.getByRole('dialog', { name: 'Research interventions' })).toHaveCount(0);
   await shortSession(popup, 'Opted out');
   expect(await conditions(background)).toEqual(['opted-out']);

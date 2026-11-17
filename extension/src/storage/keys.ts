@@ -25,7 +25,7 @@ export const STORAGE_KEYS = {
   interventionsOptedOut: 'interventions:opted-out',
   /** Research conditions left in the current shuffled block (P8). */
   interventionBlock: 'interventions:block',
-  /** `true` once the popup has shown the one-time research interventions notice. */
+  /** `true` once the user answered the one-time research interventions notice (Keep on / Turn off). */
   interventionsNoticeSeen: 'interventions:notice-seen',
 } as const;
 

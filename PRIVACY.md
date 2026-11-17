@@ -19,8 +19,8 @@ anything anywhere.**
 - Your "pause tracking" setting.
 - **From version 0.2.0 (research interventions):** which research condition each focus session was
   given (`control`, `friction`, `intention`, or `opted-out`), the list of conditions left in the
-  current random order, your "Research interventions" on/off setting, and whether you have seen the
-  one-time notice about it. See "Research interventions" below.
+  current random order, your "Research interventions" on/off setting, and whether you have answered
+  the one-time notice about it. See "Research interventions" below.
 
 ## What StudyLens never records
 
@@ -39,8 +39,8 @@ not told the condition when you start a session; the My Data page shows it for e
 - The condition is stored with the session, **only on your device**. Nothing is sent anywhere.
 - You can turn research interventions off at any time on the My Data page (or the Settings tab).
   Sessions after that are marked `opted-out` and get no helper.
-- The first time the popup opens after this feature is switched on, it shows a one-time notice
-  with "Keep on" and "Turn off" buttons.
+- When this feature is switched on, the popup shows a notice with "Keep on" and "Turn off"
+  buttons. It keeps showing each time the popup opens until you press one of them.
 - No new browser permissions are needed for assigning conditions.
 - The feature is **switched off in version 0.1.0**, and stays off until the friction and intention
   helpers are finished.

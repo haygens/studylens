@@ -7,6 +7,10 @@ Solo project for TCSS 490 Artifact 5 ("moonshot"). Final show and tell: **Monday
 ## Owner and workflow
 
 - Owner: hs (solo). Windows machine, PowerShell. Comfortable with JS/TS basics, newer to the command line.
+- Repo location: **`M:\Projects\studylens`** (moved from C: in Nov 2026 because C: ran out of space).
+  The npm cache and TEMP/TMP/CLAUDE_CODE_TMPDIR point to M: as well.
+- **Keep build/test output and caches off C:.** Don't redirect anything (Playwright browsers, npm/npx
+  caches, temp profiles, logs) to C:. Report C: and M: free space in every Handoff.
 - hs plans in a separate claude.ai chat and pastes prompts here. **At the end of every session, print a
   "Handoff" block** (see bottom) so hs can paste it back into the planning chat.
 - When giving hs commands to run, give numbered, copy-paste PowerShell commands. No bash-only syntax.
@@ -107,6 +111,7 @@ Done: <bullets>
 Changed files: <list>
 Tests: <pass/fail + count>
 Problems / open questions: <bullets>
+Disk space: C: <GB free>, M: <GB free>
 Next piece (from PLAN.md): <id + name>
 ```
 

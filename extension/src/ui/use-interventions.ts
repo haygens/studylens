@@ -11,8 +11,8 @@ import {
   ENABLED_KEY,
   NOTICE_SEEN_KEY,
   OPTED_OUT_KEY,
+  answerNotice as saveNoticeAnswer,
   loadNoticeState,
-  markNoticeSeen,
   setOptedOut,
   type NoticeState,
 } from '../storage/interventions-store';
@@ -57,12 +57,23 @@ export function useInterventions() {
     [save],
   );
 
-  const noticeSeen = useCallback(() => save(markNoticeSeen(localStore)), [save]);
+  /** The user pressed "Keep on" (`true`) or "Turn off" in the one-time notice. */
+  const answerNotice = useCallback(
+    (keepOn: boolean) => {
+      setState((s) =>
+        s.status === 'ready'
+          ? { ...s, data: { ...s.data, seen: true, optedOut: keepOn ? s.data.optedOut : true } }
+          : s,
+      );
+      save(saveNoticeAnswer(localStore, keepOn));
+    },
+    [save],
+  );
 
   const retry = useCallback(() => {
     setState({ status: 'loading' });
     reload();
   }, [reload]);
 
-  return { state, setParticipating, noticeSeen, saveError, retry };
+  return { state, setParticipating, answerNotice, saveError, retry };
 }
