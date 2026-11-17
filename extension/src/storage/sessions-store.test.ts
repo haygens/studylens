@@ -20,6 +20,9 @@ const done: FocusSession = {
   minutesByCategory: { study: 20, neutral: 5, distraction: 0 },
   distractionVisits: 0,
   condition: null,
+  frictionShown: 0,
+  frictionContinued: 0,
+  frictionTurnedBack: 0,
   checkIn: null,
 };
 

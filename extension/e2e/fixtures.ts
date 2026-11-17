@@ -206,3 +206,38 @@ export async function startSession(popup: Page, goal: string, seconds: number): 
   await popup.getByRole('button', { name: 'Start focus session' }).click();
   await expect(popup.getByText('Focusing on')).toBeVisible();
 }
+
+/**
+ * Stops the background service worker (as the browser does when it is idle) and waits until it
+ * really has stopped: no worker answers, or the one that answers is a fresh start (a mark set on
+ * the old worker's global is gone). `page` is any open page, used for the DevTools session.
+ */
+export async function stopBackground(context: BrowserContext, page: Page): Promise<void> {
+  const [worker] = context.serviceWorkers();
+  await worker?.evaluate(() => ((globalThis as Record<string, unknown>).__studylensMark = 1));
+  const cdp = await context.newCDPSession(page);
+  const running = new Promise<string[]>((resolve) => {
+    cdp.on('ServiceWorker.workerVersionUpdated', ({ versions }) => {
+      const ids = versions
+        .filter((v) => v.scriptURL.endsWith('/background.js') && v.runningStatus === 'running')
+        .map((v) => v.versionId);
+      if (ids.length) resolve(ids);
+    });
+  });
+  await cdp.send('ServiceWorker.enable');
+  for (const versionId of await running) await cdp.send('ServiceWorker.stopWorker', { versionId });
+  await cdp.detach();
+
+  const state = async (): Promise<string> => {
+    const current = context.serviceWorkers()[0];
+    if (!current) return 'stopped';
+    const answer = current
+      .evaluate(() => ((globalThis as Record<string, unknown>).__studylensMark ? 'same' : 'fresh'))
+      // Playwright reports a worker that was stopped as "Service worker restarted".
+      .catch((err: unknown) => (/restarted|closed/i.test(String(err)) ? 'stopped' : 'error'));
+    // A stopped worker that nothing has woken yet doesn't answer at all.
+    const silent = new Promise<string>((resolve) => setTimeout(() => resolve('stopped'), 2000));
+    return Promise.race([answer, silent]);
+  };
+  await expect.poll(state).toMatch(/^(stopped|fresh)$/);
+}

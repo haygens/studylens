@@ -27,6 +27,11 @@ export const STORAGE_KEYS = {
   interventionBlock: 'interventions:block',
   /** `true` once the user answered the one-time research interventions notice (Keep on / Turn off). */
   interventionsNoticeSeen: 'interventions:notice-seen',
+  /**
+   * Friction intervention (P9): per-site grace periods and short-lived bookkeeping for the
+   * running session. Site names, tab ids and times only — never a URL.
+   */
+  frictionState: 'friction:state',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

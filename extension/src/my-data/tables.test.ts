@@ -88,6 +88,9 @@ const finished = (over: Partial<FocusSession>): FocusSession => ({
   minutesByCategory: { study: 20, neutral: 3.5, distraction: 1.5 },
   distractionVisits: 2,
   condition: null,
+  frictionShown: 0,
+  frictionContinued: 0,
+  frictionTurnedBack: 0,
   checkIn: null,
   ...over,
 });
@@ -136,6 +139,7 @@ describe('sessionRows', () => {
       distractionVisits: 2,
       checkIn: 'Goal finished: partly · Focus 4/5',
       condition: 'None (research interventions not active)',
+      friction: '—',
     });
     expect(rows[0]).toMatchObject({
       actual: '10 min (ended early)',

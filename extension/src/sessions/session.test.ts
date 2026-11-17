@@ -32,6 +32,10 @@ describe('session helpers', () => {
       plannedEnd: T0 + 25 * MIN,
       // Assigned by the session controller when the session starts (P8).
       condition: null,
+      // Friction countdowns (P9), counted while the session runs.
+      frictionShown: 0,
+      frictionContinued: 0,
+      frictionTurnedBack: 0,
     });
     expect(createSession('', 25, T0, 'id')).toBe('invalid-goal');
     expect(createSession('Read', 200, T0, 'id')).toBe('invalid-duration');

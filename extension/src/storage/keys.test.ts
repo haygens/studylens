@@ -4,6 +4,7 @@
  * (keys.ts), and that deleting removes all of it.
  */
 import { describe, expect, it } from 'vitest';
+import { checkTab, recordFrictionChoice } from '../interventions/friction-controller';
 import { deleteEverything } from '../my-data/delete-all';
 import {
   endSessionEarly,
@@ -90,6 +91,17 @@ async function useEverything(store: FullStore) {
   await startSession(d, 'Second', 25, T0 + 30 * MIN);
   await endSessionEarly(d, T0 + 31 * MIN);
   await startSession(d, 'Third', 25, T0 + 32 * MIN);
+  // Friction (P9): a countdown shown and continued on the running session.
+  const friction = { store, pageUrl: 'ext://friction.html' };
+  const running = await store.get([STORAGE_KEYS.activeSession]);
+  await store.set({
+    [STORAGE_KEYS.activeSession]: {
+      ...(running[STORAGE_KEYS.activeSession] as object),
+      condition: 'friction',
+    },
+  });
+  await checkTab(friction, { tabId: 1, url: 'https://youtube.com/watch?v=x' }, null, T0 + 33 * MIN);
+  await recordFrictionChoice(friction, 'continue', 's3', 'youtube.com', 1, T0 + 33 * MIN);
 }
 
 describe('storage key list', () => {

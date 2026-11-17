@@ -5,6 +5,7 @@
 import { browser, type Browser } from 'wxt/browser';
 import type { FullStore } from '../storage/activity-store';
 import { trackableHostname } from '../tracker/hostname';
+import type { TabAction } from '../interventions/friction-controller';
 import type { SessionEffects } from '../sessions/session-controller';
 import type { IdleState, TrackerContext } from '../tracker/tracker';
 
@@ -53,6 +54,28 @@ export async function readContext(
     readIdleState(thresholdSeconds),
   ]);
   return { hostname, windowFocused, idle, paused };
+}
+
+/** The friction countdown page (P9). */
+export function frictionPageUrl(): string {
+  return browser.runtime.getURL('/friction.html');
+}
+
+/**
+ * Carries out a friction decision on a tab. Only the browser does anything with the URL here;
+ * it is never logged or stored.
+ */
+export async function applyTabAction(tabId: number, action: TabAction): Promise<void> {
+  if (action.type === 'redirect') {
+    await browser.tabs.update(tabId, { url: action.url });
+  } else if (action.type === 'go-back') {
+    try {
+      await browser.tabs.goBack(tabId);
+    } catch {
+      // Nothing to go back to: show the neutral "back to studying" page instead.
+      await browser.tabs.update(tabId, { url: action.fallbackUrl });
+    }
+  }
 }
 
 export const SESSION_END_ALARM = 'studylens-session-end';

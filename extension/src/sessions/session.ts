@@ -6,6 +6,7 @@
  * and no domains.
  */
 import type { CheckIn, SessionCondition, SiteCategory } from '@studylens/shared';
+import { NO_FRICTION, type FrictionCounts } from '../interventions/friction';
 
 export const PRESET_MINUTES = [25, 50] as const;
 export const MIN_CUSTOM_MINUTES = 5;
@@ -14,8 +15,11 @@ export const MAX_GOAL_LENGTH = 200;
 
 const MINUTE_MS = 60_000;
 
-/** The session that is running right now. At most one exists. */
-export interface ActiveSession {
+/**
+ * The session that is running right now. At most one exists. The friction counts (P9) are
+ * updated while it runs and stay on the finished session (0 unless the condition is `friction`).
+ */
+export interface ActiveSession extends FrictionCounts {
   id: string;
   goal: string;
   plannedMinutes: number;
@@ -78,6 +82,7 @@ export function createSession(
       start: now,
       plannedEnd: now + testSeconds * 1000,
       condition: null,
+      ...NO_FRICTION,
     };
   }
   if (!isValidDuration(minutes)) return 'invalid-duration';
@@ -88,6 +93,7 @@ export function createSession(
     start: now,
     plannedEnd: now + minutes * MINUTE_MS,
     condition: null,
+    ...NO_FRICTION,
   };
 }
 

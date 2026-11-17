@@ -20,7 +20,10 @@ anything anywhere.**
 - **From version 0.2.0 (research interventions):** which research condition each focus session was
   given (`control`, `friction`, `intention`, or `opted-out`), the list of conditions left in the
   current random order, your "Research interventions" on/off setting, and whether you have answered
-  the one-time notice about it. See "Research interventions" below.
+  the one-time notice about it. For sessions with the friction helper: how many times the countdown
+  was shown, how many times you pressed "Continue", and how many times "Back to studying", plus
+  which sites (domain names only) are in their 5-minute "no countdown again" period. See "Research
+  interventions" below.
 
 ## What StudyLens never records
 
@@ -41,7 +44,17 @@ not told the condition when you start a session; the My Data page shows it for e
   Sessions after that are marked `opted-out` and get no helper.
 - When this feature is switched on, the popup shows a notice with "Keep on" and "Turn off"
   buttons. It keeps showing each time the popup opens until you press one of them.
-- No new browser permissions are needed for assigning conditions.
+- **How the friction countdown works:** when you open a site you labeled Distraction during a
+  friction session (or switch to a tab that is already on one), StudyLens sends that tab to its own
+  countdown page, which shows the site's domain and your session goal. After 10 seconds you can
+  press "Continue to <site>"; "Back to studying" works right away. After "Continue", that site gets
+  no countdown again for 5 minutes in that session. It never happens in private windows, on browser
+  or extension pages, or while tracking is paused.
+- **The full web address stays out of storage.** To let "Continue" take you back to the exact page
+  you opened, the countdown page receives that page's address in its own address. StudyLens never
+  saves it, logs it, or sends it anywhere; only the domain and the three counts above are stored.
+- No new browser permissions are needed: the countdown uses the `tabs` permission StudyLens already
+  has to open its own page in the tab.
 - The feature is **switched off in version 0.1.0**, and stays off until the friction and intention
   helpers are finished.
 

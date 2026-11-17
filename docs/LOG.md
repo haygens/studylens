@@ -511,3 +511,70 @@ Problems / open questions:
   The extension version is still 0.1.0 in `extension/package.json`.
 
 Next piece (from PLAN.md): P9 — Friction intervention.
+
+## Handoff — 2026-11-16 (P9)
+
+Done:
+
+- Housekeeping (separate commit): CLAUDE.md notes the repo is now at `M:\Projects\studylens`, that
+  build/test output and caches stay off C:, and that every Handoff reports C: and M: free space. No
+  tracked file still pointed at the old C: path.
+- P8 follow-up: the research notice now keeps showing until "Keep on" or "Turn off" is pressed.
+  Closing the popup no longer counts as seen. `answerNotice()` saves the choice and the "seen" flag
+  in one write. Unit and E2E tests updated.
+- P9 friction intervention:
+  - Trigger: entering a Distraction site (navigating to it, or switching into a tab already on it)
+    during a running `friction` session, while tracking isn't paused. "Entering" means the tracker's
+    previous active site was a different site, the same rule `distractionVisits` uses.
+  - Mechanism: `tabs.update` to the extension's own `friction.html`. It shows the domain, the
+    session goal, a 10 s countdown, then "Continue to <site>". "Back to studying" works right away:
+    it goes back in history (passing through the Distraction site goes back once more, with no
+    second countdown), or shows a neutral "Back to studying" page when there's nowhere to go back to.
+  - Constants: `FRICTION_COUNTDOWN_SECONDS = 10`, `FRICTION_GRACE_MINUTES = 5`
+    (`src/interventions/friction.ts`).
+  - Counts on every session: `frictionShown`, `frictionContinued`, `frictionTurnedBack` (0 for older
+    sessions). They appear in My Data (new "Friction countdowns" column) and in the export.
+  - New storage key `friction:state` (grace periods, last redirect, "back" marker: site names, tab
+    ids and times only). It's in the single key list, and "Delete everything" removes it.
+  - Privacy: the full target URL lives only in the countdown page's own address. A unit test runs
+    every friction path with secret-looking URLs and checks that no path, query or scheme ends up in
+    storage. The E2E test checks the same in a real browser.
+  - Edge cases: never on extension, about: or edge:// pages, private windows, or friction.html
+    itself. Duplicate events for one navigation are ignored (3 s). If the session ends during the
+    countdown, Continue still works and is counted on the finished session. The background keeps no
+    state in memory. The E2E Continue test stops the service worker during the countdown (and
+    proves it stopped).
+  - No new permissions; incognito stays `not_allowed` (checked in both built manifests).
+  - PRIVACY.md: how the countdown works, what's counted, and that full addresses are never stored.
+
+Changed files: `CLAUDE.md`, `PRIVACY.md`, `docs/PLAN.md`, `docs/LOG.md`,
+`extension/entrypoints/background.ts`, `extension/entrypoints/friction/{index.html,main.tsx,App.tsx}`
+(new), `extension/entrypoints/popup/InterventionsNotice.tsx`,
+`extension/entrypoints/options/MyData.tsx`,
+`extension/src/interventions/{friction,friction-controller}{,.test}.ts` (new),
+`extension/src/interventions/assignment.test.ts`, `extension/src/storage/friction-store.ts` (new),
+`extension/src/storage/{keys,keys.test,interventions-store,sessions-store,sessions-store.test}.ts`,
+`extension/src/sessions/{session,messages}.ts` + tests,
+`extension/src/background/browser-adapter.ts`, `extension/src/ui/use-interventions.ts`,
+`extension/src/my-data/tables{,.test}.ts`, `extension/e2e/{fixtures,interventions.e2e,friction.e2e}.ts`.
+
+Tests: unit pass, 203 tests in 22 files. E2E pass, 19 tests in local Edge (5 new friction tests;
+the friction file passed 3 times in a row, and the Continue test 6 times in a row). Lint, format
+check, typecheck, Firefox and Edge builds, and `check:builds` are clean.
+
+Problems / open questions:
+
+- Friction is E2E-tested only in Edge/Chromium. Try it by hand in Firefox (steps below).
+- Coming back to the browser from another app while a Distraction tab is active doesn't trigger
+  friction. Only navigating and switching tabs do, as specified. `distractionVisits` still counts
+  that case as a visit.
+- To try friction by hand (the flag is still OFF until P10), open the background console:
+  Firefox `about:debugging#/runtime/this-firefox` → StudyLens → Inspect → Console. Edge:
+  `edge://extensions` → Developer mode → StudyLens → "service worker". Then run
+  `browser.storage.local.set({ 'interventions:enabled': true, 'interventions:block': ['friction'] })`
+  (in Edge use `chrome.` instead of `browser.`). The next session will be a friction session.
+  Turn it back off with `browser.storage.local.set({ 'interventions:enabled': false })`.
+
+Disk space: C: 3.85 GB free, M: 13.57 GB free.
+
+Next piece (from PLAN.md): P10 — Intention intervention.

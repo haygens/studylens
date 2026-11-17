@@ -7,6 +7,7 @@
  * - `sessions:history` — finished sessions, oldest first.
  */
 import { isCheckIn, isSessionCondition } from '@studylens/shared';
+import { frictionCountsOf } from '../interventions/friction';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import type { KeyValueStore } from './activity-store';
 import { STORAGE_KEYS } from './keys';
@@ -44,11 +45,15 @@ function conditionOf(value: unknown) {
   return isSessionCondition(value) ? value : null;
 }
 
-/** Valid sessions only. A missing or malformed check-in counts as not answered yet. */
+/**
+ * Valid sessions only. A missing or malformed check-in counts as not answered yet; missing
+ * friction counts (sessions before P9) count as 0.
+ */
 export function asHistory(value: unknown): FocusSession[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isFocusSession).map((s) => ({
     ...s,
+    ...frictionCountsOf(s),
     condition: conditionOf(s.condition),
     checkIn: isCheckIn(s.checkIn) ? s.checkIn : null,
   }));
@@ -56,7 +61,9 @@ export function asHistory(value: unknown): FocusSession[] {
 
 /** The stored active session, or null. Accepts sessions saved by v0.1 (no condition field). */
 export function asActiveSession(value: unknown): ActiveSession | null {
-  return isActiveSession(value) ? { ...value, condition: conditionOf(value.condition) } : null;
+  return isActiveSession(value)
+    ? { ...value, ...frictionCountsOf(value), condition: conditionOf(value.condition) }
+    : null;
 }
 
 export async function loadActiveSession(store: KeyValueStore): Promise<ActiveSession | null> {

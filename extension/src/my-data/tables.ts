@@ -4,6 +4,7 @@
  */
 import type { CheckIn, SessionCondition, SiteCategory } from '@studylens/shared';
 import type { CategoryRule } from '../categories/rules';
+import type { FrictionCounts } from '../interventions/friction';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import { asSegments } from '../storage/activity-store';
 import { asRules } from '../storage/categories-store';
@@ -131,6 +132,24 @@ export function describeCondition(condition: SessionCondition | null): string {
   return condition ? CONDITION_TEXT[condition] : 'None (research interventions not active)';
 }
 
+/**
+ * Friction counts (P9) in words: "2 shown · 1 continued · 1 turned back". "—" for sessions that
+ * had no friction (any other condition, all counts 0).
+ */
+export function describeFriction(
+  s: FrictionCounts & { condition: SessionCondition | null },
+): string {
+  if (
+    s.condition !== 'friction' &&
+    !s.frictionShown &&
+    !s.frictionContinued &&
+    !s.frictionTurnedBack
+  ) {
+    return '—';
+  }
+  return `${s.frictionShown} shown · ${s.frictionContinued} continued · ${s.frictionTurnedBack} turned back`;
+}
+
 export interface SessionRow {
   id: string;
   date: string;
@@ -141,6 +160,7 @@ export interface SessionRow {
   distractionVisits: number;
   checkIn: string;
   condition: string;
+  friction: string;
 }
 
 /** Finished sessions, newest first. */
@@ -161,6 +181,7 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
       distractionVisits: s.distractionVisits,
       checkIn: describeCheckIn(s.checkIn),
       condition: describeCondition(s.condition),
+      friction: describeFriction(s),
     }))
     .reverse();
 }

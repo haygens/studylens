@@ -17,10 +17,15 @@ export type SessionMessage =
   | { type: 'checkin:answer'; sessionId: string; goalCompleted: unknown; focusRating: unknown }
   | { type: 'checkin:skip'; sessionId: string }
   /** My Data (P6): delete everything, ending any running session without a check-in. */
-  | { type: 'data:delete-all' };
+  | { type: 'data:delete-all' }
+  /**
+   * Friction countdown page (P9): "Continue" / "Back to studying". Only the hostname is sent,
+   * never the full address. The tab comes from the message sender.
+   */
+  | { type: 'friction:continue' | 'friction:back'; sessionId: string; hostname: string };
 
 export type SessionReply =
-  { ok: true } | { ok: false; error: StartError | CheckInError | 'unknown' };
+  { ok: true } | { ok: false; error: StartError | CheckInError | 'invalid-message' | 'unknown' };
 
 const TYPES = new Set([
   'session:start',
@@ -29,6 +34,8 @@ const TYPES = new Set([
   'checkin:answer',
   'checkin:skip',
   'data:delete-all',
+  'friction:continue',
+  'friction:back',
 ]);
 
 export function isSessionMessage(value: unknown): value is SessionMessage {

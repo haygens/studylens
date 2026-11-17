@@ -118,6 +118,9 @@ describe('session controller', () => {
       minutesByCategory: { study: 0, neutral: 5, distraction: 3 },
       distractionVisits: 2,
       condition: null,
+      frictionShown: 0,
+      frictionContinued: 0,
+      frictionTurnedBack: 0,
       checkIn: null,
     });
     expect(await loadSessions(t.store)).toEqual([done]);
@@ -152,6 +155,9 @@ describe('session controller', () => {
       start: T0,
       plannedEnd: T0 + 50 * MIN,
       condition: null,
+      frictionShown: 0,
+      frictionContinued: 0,
+      frictionTurnedBack: 0,
     };
     const t = setup({ [ACTIVE_SESSION_KEY]: active });
     expect(await reconcileSession(t.deps, T0 + 20 * MIN)).toBeNull();

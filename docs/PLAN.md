@@ -33,8 +33,9 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 
 - [x] **P8. Intervention engine** — each session randomly assigned `control` / `friction` / `intention`.
       Log the condition on the session record. Tests for randomization balance.
-- [ ] **P9. Friction intervention** — when a distraction site is opened during a session, show a short
-      countdown page before continuing. Request the needed permission at runtime, only when enabled.
+- [x] **P9. Friction intervention** — when a distraction site is opened during a session, show a short
+      countdown page before continuing. (No permission needed after all: `tabs.update` to the
+      extension's own page.)
 - [ ] **P10. Intention intervention** — "What did you come here for?" prompt before a distraction site;
       answer stays local.
 - [ ] **P11. Local dashboard** — focus trends, best time of day, per-condition comparison (distraction

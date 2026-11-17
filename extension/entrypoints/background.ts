@@ -1,13 +1,21 @@
-import { browser } from 'wxt/browser';
+import { browser, type Browser } from 'wxt/browser';
 import {
   SESSION_END_ALARM,
   SESSION_TICK_ALARM,
+  applyTabAction,
+  frictionPageUrl,
   localStore,
   readActiveHostname,
   readContext,
   sessionEffects,
 } from '@/src/background/browser-adapter';
 import { E2E_BUILD_MARKER, testSecondsFrom } from '@/src/e2e/test-seconds';
+import { cleanHostname } from '@/src/interventions/friction';
+import {
+  checkTab,
+  recordFrictionChoice,
+  type FrictionDeps,
+} from '@/src/interventions/friction-controller';
 import { cryptoRandomInt } from '@/src/interventions/randomize';
 import { deleteEverything } from '@/src/my-data/delete-all';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
@@ -44,8 +52,11 @@ const sessionDeps: SessionDeps = {
   random: cryptoRandomInt,
 };
 
+const frictionDeps: FrictionDeps = { store: localStore, pageUrl: frictionPageUrl() };
+
 /**
- * Activity tracking (P2), focus sessions (P4) and their check-ins (P5). This script can be suspended at any time, so
+ * Activity tracking (P2), focus sessions (P4), their check-ins (P5) and the friction intervention
+ * (P9). This script can be suspended at any time, so
  * nothing lives in memory: every event loads its state from storage, runs pure logic, and saves
  * the result. All work runs one task at a time, in order, through `queue`, so session end-of-time
  * calculations always see the tracker's latest saved state.
@@ -86,7 +97,27 @@ export default defineBackground(() => {
     return enqueue(() => reconcileSession(sessionDeps, Date.now()));
   }
 
-  async function handleSessionMessage(msg: SessionMessage): Promise<SessionReply> {
+  /**
+   * Friction (P9): a tab was entered. Queued *before* the tracker step for the same event, so the
+   * tracker's saved hostname is still the site the user is coming from.
+   */
+  function checkFriction(readTab: () => Promise<Browser.tabs.Tab> | Browser.tabs.Tab): void {
+    const now = Date.now();
+    void enqueue(async () => {
+      const tab = await Promise.resolve(readTab()).catch(() => undefined); // Tab already closed.
+      const tabId = tab?.id;
+      // Privacy rule 4 (private windows) and only the tab the user is looking at.
+      if (!tab || tabId === undefined || tab.incognito || !tab.active) return;
+      const { context } = await loadTrackerState(localStore);
+      const action = await checkTab(frictionDeps, { tabId, url: tab.url }, context.hostname, now);
+      await applyTabAction(tabId, action);
+    }).catch(() => undefined); // Already logged by enqueue (never with the URL).
+  }
+
+  async function handleSessionMessage(
+    msg: SessionMessage,
+    sender: Browser.runtime.MessageSender,
+  ): Promise<SessionReply> {
     switch (msg.type) {
       case 'session:start': {
         // `__STUDYLENS_E2E__` is a build-time literal: normal builds always pass null here.
@@ -120,6 +151,20 @@ export default defineBackground(() => {
         // Queued like everything else, so no tracker write from before can land afterwards.
         await enqueue(() => deleteEverything(localStore, sessionEffects));
         return { ok: true };
+      case 'friction:continue':
+      case 'friction:back': {
+        const hostname = cleanHostname(msg.hostname);
+        const fromOwnPage = sender.url?.startsWith(frictionDeps.pageUrl) === true;
+        if (!hostname || typeof msg.sessionId !== 'string' || !fromOwnPage) {
+          return { ok: false, error: 'invalid-message' };
+        }
+        const choice = msg.type === 'friction:continue' ? 'continue' : 'back';
+        const tabId = sender.tab?.id ?? null;
+        await enqueue(() =>
+          recordFrictionChoice(frictionDeps, choice, msg.sessionId, hostname, tabId, Date.now()),
+        );
+        return { ok: true };
+      }
     }
   }
 
@@ -129,12 +174,15 @@ export default defineBackground(() => {
   // script is woken up for them.
   browser.idle.setDetectionInterval(IDLE_THRESHOLD_SECONDS);
 
-  browser.tabs.onActivated.addListener(() =>
-    dispatch(async () => ({ type: 'tab', hostname: await readActiveHostname() })),
-  );
+  browser.tabs.onActivated.addListener(({ tabId }) => {
+    // Friction first (it needs the tracker's state from before this switch).
+    checkFriction(() => browser.tabs.get(tabId));
+    dispatch(async () => ({ type: 'tab', hostname: await readActiveHostname() }));
+  });
 
   browser.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
     if (!changeInfo.url || !tab.active) return;
+    checkFriction(() => tab);
     // Re-read the active tab of the focused window: a navigation in a background window
     // must not change what we track.
     dispatch(async () => ({ type: 'tab', hostname: await readActiveHostname() }));
@@ -174,9 +222,9 @@ export default defineBackground(() => {
     }
   });
 
-  browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     if (!isSessionMessage(message)) return false;
-    handleSessionMessage(message).then(sendResponse, (err: unknown) => {
+    handleSessionMessage(message, sender).then(sendResponse, (err: unknown) => {
       console.error('[StudyLens] session message error', err);
       sendResponse({ ok: false, error: 'unknown' } satisfies SessionReply);
     });
