@@ -37,6 +37,7 @@ const active: ActiveSession = {
   plannedMinutes: 25,
   start: T0,
   plannedEnd: T0 + 25 * MIN,
+  condition: null,
 };
 
 describe('pendingCheckIn', () => {

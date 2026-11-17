@@ -1,21 +1,24 @@
 /**
- * Options page with two tabs: Site categories (P3) and My Data (P6). The tab lives in the URL
- * hash (`options.html#my-data`), so the popup can link straight to My Data.
+ * Options page with three tabs: Site categories (P3), Settings (pause tracking, research
+ * interventions — P8) and My Data (P6). The tab lives in the URL hash (`options.html#my-data`),
+ * so the popup can link straight to My Data.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '../popup/ErrorBoundary';
-import MyData from './MyData';
+import ResearchCard from '@/src/ui/ResearchCard';
+import MyData, { PauseCard } from './MyData';
 import SiteCategories from './SiteCategories';
 
-type Tab = 'categories' | 'my-data';
+type Tab = 'categories' | 'settings' | 'my-data';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'categories', label: 'Site categories' },
+  { id: 'settings', label: 'Settings' },
   { id: 'my-data', label: 'My Data' },
 ];
 
 function tabFromHash(): Tab {
-  return location.hash === '#my-data' ? 'my-data' : 'categories';
+  return TABS.find((t) => `#${t.id}` === location.hash)?.id ?? 'categories';
 }
 
 const nav: CSSProperties = {
@@ -73,6 +76,16 @@ export default function App() {
         <main style={page}>
           <ErrorBoundary name="My Data">
             <MyData />
+          </ErrorBoundary>
+        </main>
+      ) : tab === 'settings' ? (
+        <main style={page}>
+          <h1 style={{ margin: 0, fontSize: 24 }}>Settings</h1>
+          <ErrorBoundary name="Tracking setting">
+            <PauseCard />
+          </ErrorBoundary>
+          <ErrorBoundary name="Research setting">
+            <ResearchCard />
           </ErrorBoundary>
         </main>
       ) : (

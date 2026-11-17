@@ -8,6 +8,7 @@ import {
   sessionEffects,
 } from '@/src/background/browser-adapter';
 import { E2E_BUILD_MARKER, testSecondsFrom } from '@/src/e2e/test-seconds';
+import { cryptoRandomInt } from '@/src/interventions/randomize';
 import { deleteEverything } from '@/src/my-data/delete-all';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
@@ -40,6 +41,7 @@ const sessionDeps: SessionDeps = {
   store: localStore,
   effects: sessionEffects,
   newId: () => crypto.randomUUID(),
+  random: cryptoRandomInt,
 };
 
 /**

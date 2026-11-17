@@ -30,6 +30,8 @@ describe('session helpers', () => {
       plannedMinutes: 25,
       start: T0,
       plannedEnd: T0 + 25 * MIN,
+      // Assigned by the session controller when the session starts (P8).
+      condition: null,
     });
     expect(createSession('', 25, T0, 'id')).toBe('invalid-goal');
     expect(createSession('Read', 200, T0, 'id')).toBe('invalid-duration');

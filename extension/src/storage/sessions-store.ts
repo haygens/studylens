@@ -6,7 +6,7 @@
  * - `sessions:active`  — the running session, or null. Only one session at a time.
  * - `sessions:history` — finished sessions, oldest first.
  */
-import { isCheckIn } from '@studylens/shared';
+import { isCheckIn, isSessionCondition } from '@studylens/shared';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import type { KeyValueStore } from './activity-store';
 import { STORAGE_KEYS } from './keys';
@@ -39,24 +39,29 @@ function isFocusSession(value: unknown): value is FocusSession {
   );
 }
 
+/** A missing (v0.1) or unknown condition counts as not assigned. */
+function conditionOf(value: unknown) {
+  return isSessionCondition(value) ? value : null;
+}
+
 /** Valid sessions only. A missing or malformed check-in counts as not answered yet. */
 export function asHistory(value: unknown): FocusSession[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter(isFocusSession)
-    .map((s) => ({ ...s, checkIn: isCheckIn(s.checkIn) ? s.checkIn : null }));
+  return value.filter(isFocusSession).map((s) => ({
+    ...s,
+    condition: conditionOf(s.condition),
+    checkIn: isCheckIn(s.checkIn) ? s.checkIn : null,
+  }));
+}
+
+/** The stored active session, or null. Accepts sessions saved by v0.1 (no condition field). */
+export function asActiveSession(value: unknown): ActiveSession | null {
+  return isActiveSession(value) ? { ...value, condition: conditionOf(value.condition) } : null;
 }
 
 export async function loadActiveSession(store: KeyValueStore): Promise<ActiveSession | null> {
   const { [ACTIVE_SESSION_KEY]: saved } = await store.get([ACTIVE_SESSION_KEY]);
-  return isActiveSession(saved) ? saved : null;
-}
-
-export async function saveActiveSession(
-  store: KeyValueStore,
-  session: ActiveSession,
-): Promise<void> {
-  await store.set({ [ACTIVE_SESSION_KEY]: session });
+  return asActiveSession(saved);
 }
 
 export async function loadSessions(store: KeyValueStore): Promise<FocusSession[]> {

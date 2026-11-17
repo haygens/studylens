@@ -18,6 +18,7 @@ import {
 } from '@/src/my-data/tables';
 import { LOAD_TIMEOUT_MS, settle, type LoadState } from '@/src/popup/popup-data';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
+import ResearchCard from '@/src/ui/ResearchCard';
 import { useTrackingPaused } from '@/src/ui/use-tracking-paused';
 import { LoadError, Loading } from '../popup/LoadStatus';
 
@@ -70,7 +71,7 @@ function download(text: string, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-function PauseCard() {
+export function PauseCard() {
   const { state, setPaused, saveError, retry } = useTrackingPaused();
   if (state.status === 'error') {
     return <LoadError what="Tracking setting" message={state.message} onRetry={retry} />;
@@ -143,9 +144,10 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
     <section style={{ ...card, borderColor: '#cf222e' }}>
       <h2 style={{ margin: 0, fontSize: 18 }}>Delete everything</h2>
       <p style={muted}>
-        This permanently deletes all your activity records, focus sessions, check-in answers and
-        site labels from this browser, and stops a running session. It can't be undone. Export first
-        if you want a copy. (If tracking is paused, it stays paused.)
+        This permanently deletes all your activity records, focus sessions, check-in answers, site
+        labels and research settings from this browser, and stops a running session. It can't be
+        undone. Export first if you want a copy. (If tracking is paused, it stays paused; if
+        research interventions are off, they stay off.)
       </p>
       <form
         onSubmit={(e) => void onSubmit(e)}
@@ -316,10 +318,12 @@ export default function MyData() {
       <h1 style={{ margin: 0, fontSize: 24 }}>My Data</h1>
       <p style={muted}>
         This is everything StudyLens has stored about your browsing, exactly as it is saved in this
-        browser. You can download it, delete it, or pause tracking at any time.
+        browser. You can download it, delete it, pause tracking, or turn research interventions off
+        at any time.
       </p>
 
       <PauseCard />
+      <ResearchCard />
       <NeverCollected />
 
       <section style={card}>

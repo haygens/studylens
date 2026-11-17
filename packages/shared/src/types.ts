@@ -12,12 +12,25 @@ export function isInterventionId(value: unknown): value is InterventionId {
 }
 
 /**
+ * Recorded on a session when the user turned research interventions off. Never randomized:
+ * analysis excludes these sessions.
+ */
+export const OPTED_OUT = 'opted-out' as const;
+
+/** What a session's `condition` field can hold (besides null = not assigned). */
+export type SessionCondition = InterventionId | typeof OPTED_OUT;
+
+export function isSessionCondition(value: unknown): value is SessionCondition {
+  return value === OPTED_OUT || isInterventionId(value);
+}
+
+/**
  * Aggregate summary of one focus session. Contains NO domains or site names —
  * this is the only shape that may ever leave the device (and only with consent).
  */
 export interface SessionSummary {
   id: string;
-  condition: InterventionId;
+  condition: SessionCondition;
   /** Epoch milliseconds. */
   startedAt: number;
   /** Epoch milliseconds. */

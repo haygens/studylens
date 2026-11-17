@@ -9,11 +9,13 @@ import {
   type KeyValueStore,
 } from '../storage/activity-store';
 import { loadRules } from '../storage/categories-store';
+import { assignCondition, type RandomInt } from '../interventions/randomize';
+import { BLOCK_KEY, loadBlock, loadInterventionSettings } from '../storage/interventions-store';
 import {
   finishSession,
   loadActiveSession,
   loadSessions,
-  saveActiveSession,
+  ACTIVE_SESSION_KEY,
   saveSessions,
 } from '../storage/sessions-store';
 import type { Segment } from '../tracker/tracker';
@@ -48,6 +50,8 @@ export interface SessionDeps {
   store: KeyValueStore;
   effects: SessionEffects;
   newId: () => string;
+  /** Random source for condition assignment (P8): cryptoRandomInt in the extension. */
+  random: RandomInt;
 }
 
 export type StartResult = { ok: true; session: ActiveSession } | { ok: false; error: StartError };
@@ -61,12 +65,23 @@ export async function startSession(
   testSeconds: number | null = null,
 ): Promise<StartResult> {
   if (await loadActiveSession(deps.store)) return { ok: false, error: 'already-running' };
-  const session = createSession(goal, minutes, now, deps.newId(), testSeconds);
-  if (typeof session === 'string') return { ok: false, error: session };
+  const created = createSession(goal, minutes, now, deps.newId(), testSeconds);
+  if (typeof created === 'string') return { ok: false, error: created };
   // A check-in still waiting is skipped: only the latest session is ever asked about.
   const skipped = applyAutoSkips(await loadSessions(deps.store), now, true);
   if (skipped) await saveSessions(deps.store, skipped);
-  await saveActiveSession(deps.store, session);
+  // Research condition (P8). The session and the shortened block are saved in one write, so a
+  // condition is used up exactly when a session really starts.
+  const [settings, block] = await Promise.all([
+    loadInterventionSettings(deps.store),
+    loadBlock(deps.store),
+  ]);
+  const assignment = assignCondition(settings, block, deps.random);
+  const session: ActiveSession = { ...created, condition: assignment.condition };
+  await deps.store.set({
+    [ACTIVE_SESSION_KEY]: session,
+    ...(assignment.block && { [BLOCK_KEY]: assignment.block }),
+  });
   await deps.effects.scheduleAlarms(session);
   await deps.effects.setBadge(badgeText(session, now));
   return { ok: true, session };
@@ -101,7 +116,7 @@ async function endAt(
     actualEnd: end,
     endedEarly,
     ...computeSessionStats(segments, session.start, end, rules),
-    condition: null,
+    // `condition` comes from the session as it was started (kept when ended early).
     checkIn: null,
   };
   await finishSession(deps.store, finished);

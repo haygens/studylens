@@ -457,3 +457,57 @@ Next piece (from PLAN.md): P7 finish — upload to AMO after the manual Firefox 
 Intervention engine.
 
 2026-11-16: Final manual Firefox check passed (popup, Today section, icon, new ID, idle test: +0.9 min over 2 min untouched). Submitted v0.1.0 to addons.mozilla.org as a listed add-on (Firefox desktop only, experimental, MIT, categories Tabs + Alerts & Updates) with the sources zip. Validator: 0 errors, 2 warnings (React innerHTML). Added the icon, 4 screenshots, and version notes to the listing. Status: Awaiting Review.
+
+## Handoff — 2026-11-16 (P8 intervention engine)
+
+Done:
+
+- AMO listing (`docs/store/amo-listing.md`): "This add-on is experimental" changed to Yes (ticked
+  for the v0.1 testing stage; untick after friends have tested). Separate commit.
+- Block randomization per user (`extension/src/interventions/randomize.ts`, browser-free): a
+  shuffled block of control / friction / intention in storage (`interventions:block`); each new
+  session takes the next one; a used-up block is reshuffled. Shuffle uses `crypto.getRandomValues`
+  with rejection sampling (no Math.random); random source is injectable (seeded one for tests).
+- Condition is assigned when a session starts and saved on the active session in the same write
+  as the shortened block, so a refused start uses up nothing. Sessions ended early keep it. Older
+  v0.1 sessions without the field read as `null`.
+- Feature flag `interventions:enabled`, default OFF (`INTERVENTIONS_DEFAULT_ENABLED = false` in
+  `src/storage/interventions-store.ts`). Off → condition `null`, no block consumed. E2E tests turn
+  it on by writing the storage key.
+- Opt-out: "Research interventions" card (plain explanation of each condition) on My Data and on a
+  new Settings tab of the options page (pause tracking + research). Opted out → condition
+  `"opted-out"` (added to the shared `SessionCondition` type) and no block consumed.
+- One-time popup notice ("Keep on" / "Turn off"), behind the same flag. Shown only if the flag is
+  on, not seen and not already opted out. It counts as seen as soon as it is shown.
+- The condition is never shown when starting/running a session; My Data shows it per session in
+  words.
+- New keys in the single key list: `interventions:enabled`, `interventions:opted-out`,
+  `interventions:block`, `interventions:notice-seen`. "Delete everything" removes them all, except
+  it keeps `interventions:opted-out` while it is `true` (like the pause setting).
+- PRIVACY.md: new "Research interventions (version 0.2.0 and later)" section; My Data wording
+  updated. No new permissions (still storage, tabs, idle, alarms); incognito stays `not_allowed`.
+- v0.1.0 zips untouched (SHA-256 checked before and after the builds); tag untouched.
+
+Changed files: `packages/shared/src/types{,.test}.ts`, `extension/src/interventions/` (new:
+`randomize{,.test}.ts`, `assignment.test.ts`), `extension/src/storage/interventions-store.ts`
+(new), `extension/src/storage/{keys,keys.test,sessions-store}.ts`,
+`extension/src/sessions/{session,session-controller}.ts` + tests, `extension/src/my-data/tables{,.test}.ts`,
+`extension/src/popup/popup-data.test.ts`, `extension/src/ui/{use-interventions.ts,ResearchCard.tsx}`
+(new), `extension/entrypoints/popup/{App,InterventionsNotice}.tsx`,
+`extension/entrypoints/options/{App,MyData}.tsx`, `extension/entrypoints/background.ts`,
+`extension/e2e/{fixtures,interventions.e2e}.ts`, PRIVACY.md, docs/PLAN.md, docs/LOG.md,
+`docs/store/amo-listing.md`.
+
+Tests: unit pass — 165 tests in 20 files. E2E pass — 14 tests in local Edge (4 new). Lint,
+format check, typecheck, Firefox + Edge builds, `check:builds` clean.
+
+Problems / open questions:
+
+- C: has only about 0.4 GB free (was 1.54 GB after P7). Builds and E2E runs may start failing
+  soon. `npm cache clean --force` and emptying `extension/test-results` would help.
+- The notice counts as seen when it is shown, even if the popup is closed without pressing a
+  button (interventions then stay on, the default). Change if you'd rather it wait for a click.
+- When P10 is done: set `INTERVENTIONS_DEFAULT_ENABLED = true` and bump the version to 0.2.0.
+  The extension version is still 0.1.0 in `extension/package.json`.
+
+Next piece (from PLAN.md): P9 — Friction intervention.

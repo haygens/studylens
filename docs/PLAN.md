@@ -31,7 +31,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 
 ## Week 2 (Nov 22–28): Research layer + dashboard + Edge
 
-- [ ] **P8. Intervention engine** — each session randomly assigned `control` / `friction` / `intention`.
+- [x] **P8. Intervention engine** — each session randomly assigned `control` / `friction` / `intention`.
       Log the condition on the session record. Tests for randomization balance.
 - [ ] **P9. Friction intervention** — when a distraction site is opened during a session, show a short
       countdown page before continuing. Request the needed permission at runtime, only when enabled.

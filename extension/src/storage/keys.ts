@@ -16,6 +16,17 @@ export const STORAGE_KEYS = {
   activeSession: 'sessions:active',
   /** Finished focus sessions, oldest first. */
   sessionHistory: 'sessions:history',
+  /** Feature flag for research interventions (P8). A setting; reset to default by "Delete everything". */
+  interventionsEnabled: 'interventions:enabled',
+  /**
+   * `true` if the user turned research interventions off. A setting, not data: kept by "Delete
+   * everything" while it is `true`, so deleting your data never silently turns them back on.
+   */
+  interventionsOptedOut: 'interventions:opted-out',
+  /** Research conditions left in the current shuffled block (P8). */
+  interventionBlock: 'interventions:block',
+  /** `true` once the popup has shown the one-time research interventions notice. */
+  interventionsNoticeSeen: 'interventions:notice-seen',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */
@@ -39,13 +50,17 @@ export function dayOfKey(key: string): string | null {
   return classifyKey(key) === 'activityDay' ? key.slice(ACTIVITY_DAY_PREFIX.length) : null;
 }
 
+/** Settings kept by "Delete everything" while they are `true` (see keysToDelete). */
+const KEPT_WHEN_TRUE = new Set<string>([
+  STORAGE_KEYS.trackingPaused,
+  STORAGE_KEYS.interventionsOptedOut,
+]);
+
 /**
  * The keys "Delete everything" removes: every key in storage — including any unknown key, so
- * nothing can be missed — except the pause setting while tracking is paused (so deleting your
- * data never silently turns tracking back on).
+ * nothing can be missed — except the pause setting while tracking is paused and the research
+ * opt-out while opted out (so deleting your data never silently turns either back on).
  */
 export function keysToDelete(stored: Record<string, unknown>): string[] {
-  return Object.keys(stored).filter(
-    (key) => !(key === STORAGE_KEYS.trackingPaused && stored[key] === true),
-  );
+  return Object.keys(stored).filter((key) => !(KEPT_WHEN_TRUE.has(key) && stored[key] === true));
 }

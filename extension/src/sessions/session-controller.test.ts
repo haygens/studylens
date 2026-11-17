@@ -29,6 +29,7 @@ function setup(initial: Record<string, unknown> = {}) {
   const deps: SessionDeps = {
     store,
     newId: () => `s${++n}`,
+    random: () => 0,
     effects: {
       async scheduleAlarms(s: ActiveSession) {
         calls.push(`schedule:${s.plannedEnd}`);
@@ -150,6 +151,7 @@ describe('session controller', () => {
       plannedMinutes: 50,
       start: T0,
       plannedEnd: T0 + 50 * MIN,
+      condition: null,
     };
     const t = setup({ [ACTIVE_SESSION_KEY]: active });
     expect(await reconcileSession(t.deps, T0 + 20 * MIN)).toBeNull();

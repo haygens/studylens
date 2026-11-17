@@ -17,12 +17,33 @@ anything anywhere.**
   The check-in is shown in the extension's own popup; StudyLens does not use browser notifications.
 - The site categories you choose (study / neutral / distraction).
 - Your "pause tracking" setting.
+- **From version 0.2.0 (research interventions):** which research condition each focus session was
+  given (`control`, `friction`, `intention`, or `opted-out`), the list of conditions left in the
+  current random order, your "Research interventions" on/off setting, and whether you have seen the
+  one-time notice about it. See "Research interventions" below.
 
 ## What StudyLens never records
 
 - Full web addresses (paths or query strings), search terms, page titles, or page content
 - Keystrokes, form entries, passwords, or screenshots
 - Anything in private/incognito windows (the extension does not run there)
+
+## Research interventions (version 0.2.0 and later)
+
+StudyLens is testing which focus helpers actually help. When this feature is on, each focus
+session is given one of three conditions at random: **control** (nothing changes), **friction** (a
+short countdown before a site you labeled Distraction loads), or **intention** (a "What did you come
+here for?" prompt before a site you labeled Distraction; your answer stays on your device). You are
+not told the condition when you start a session; the My Data page shows it for each session.
+
+- The condition is stored with the session, **only on your device**. Nothing is sent anywhere.
+- You can turn research interventions off at any time on the My Data page (or the Settings tab).
+  Sessions after that are marked `opted-out` and get no helper.
+- The first time the popup opens after this feature is switched on, it shows a one-time notice
+  with "Keep on" and "Turn off" buttons.
+- No new browser permissions are needed for assigning conditions.
+- The feature is **switched off in version 0.1.0**, and stays off until the friction and intention
+  helpers are finished.
 
 ## Where your data lives
 
@@ -45,7 +66,10 @@ requests: nothing is uploaded, synced, or shared, and the developer cannot see y
 - The **My Data** page (linked from the popup) shows exactly what is stored, in plain tables.
 - **Export** everything as one JSON file.
 - **Delete everything** (you type DELETE to confirm). This also stops a running session without a
-  check-in. If tracking was paused, it stays paused.
+  check-in. If tracking was paused, it stays paused; if research interventions were turned off,
+  they stay off.
+- **Turn research interventions off** (version 0.2.0 and later), on the My Data page or the
+  Settings tab.
 
 ## No third parties
 

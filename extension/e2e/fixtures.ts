@@ -49,7 +49,12 @@ interface Chrome {
   chrome: {
     action: { getBadgeText(details: object): Promise<string> };
     alarms: { getAll(): Promise<{ name: string }[]> };
-    storage: { local: { get(keys: null): Promise<Record<string, unknown>> } };
+    storage: {
+      local: {
+        get(keys: null): Promise<Record<string, unknown>>;
+        set(items: Record<string, unknown>): Promise<void>;
+      };
+    };
   };
 }
 
@@ -96,6 +101,13 @@ export class Background {
 
   async get<T>(key: string): Promise<T> {
     return (await this.storage())[key] as T;
+  }
+
+  /** Writes storage keys, e.g. to turn on a feature flag for a test. */
+  set(items: Record<string, unknown>): Promise<void> {
+    return this.run((sw) =>
+      sw.evaluate((i) => (globalThis as unknown as Chrome).chrome.storage.local.set(i), items),
+    );
   }
 }
 
@@ -180,6 +192,11 @@ export async function labelSites(openOptions: () => Promise<Page>): Promise<void
     await expect(options.getByLabel(`Category for ${domain}`)).toHaveValue(category);
   }
   await options.close();
+}
+
+/** Turns on research interventions (P8), which are off by default until P10 ships. */
+export async function enableInterventions(background: Background): Promise<void> {
+  await background.set({ 'interventions:enabled': true });
 }
 
 /** Fills the Start form with a test length in seconds (E2E build only) and starts. */

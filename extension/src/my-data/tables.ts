@@ -2,13 +2,13 @@
  * Turns raw storage into readable table rows for the My Data page (P6). Pure: no browser APIs.
  * Times are shown in the user's local time zone.
  */
-import type { CheckIn, SiteCategory } from '@studylens/shared';
+import type { CheckIn, SessionCondition, SiteCategory } from '@studylens/shared';
 import type { CategoryRule } from '../categories/rules';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import { asSegments } from '../storage/activity-store';
 import { asRules } from '../storage/categories-store';
 import { STORAGE_KEYS, dayOfKey } from '../storage/keys';
-import { asHistory, isActiveSession } from '../storage/sessions-store';
+import { asActiveSession, asHistory } from '../storage/sessions-store';
 
 /** "9:05:03 AM" in local time (fixed format so it doesn't depend on browser locale). */
 export function formatClock(time: number): string {
@@ -119,6 +119,18 @@ export function describeCheckIn(checkIn: CheckIn | null): string {
   return `Goal finished: ${checkIn.goalCompleted} · Focus ${checkIn.focusRating}/5`;
 }
 
+const CONDITION_TEXT: Record<SessionCondition, string> = {
+  control: 'Control (no intervention)',
+  friction: 'Friction (short countdown)',
+  intention: 'Intention ("What did you come here for?")',
+  'opted-out': 'Opted out (research interventions off)',
+};
+
+/** The session's research condition in words. */
+export function describeCondition(condition: SessionCondition | null): string {
+  return condition ? CONDITION_TEXT[condition] : 'None (research interventions not active)';
+}
+
 export interface SessionRow {
   id: string;
   date: string;
@@ -148,14 +160,13 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
       },
       distractionVisits: s.distractionVisits,
       checkIn: describeCheckIn(s.checkIn),
-      condition: s.condition ?? 'none (assigned from a later version)',
+      condition: describeCondition(s.condition),
     }))
     .reverse();
 }
 
 export function activeSession(stored: Record<string, unknown>): ActiveSession | null {
-  const value = stored[STORAGE_KEYS.activeSession];
-  return isActiveSession(value) ? value : null;
+  return asActiveSession(stored[STORAGE_KEYS.activeSession]);
 }
 
 export function siteLabels(stored: Record<string, unknown>): CategoryRule[] {

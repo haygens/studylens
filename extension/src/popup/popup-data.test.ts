@@ -78,6 +78,7 @@ describe('popup after a session ended with the popup closed', () => {
     const deps: SessionDeps = {
       store,
       newId: () => 's1',
+      random: () => 0,
       effects: {
         scheduleAlarms: () => Promise.resolve(),
         clearAlarms: () => Promise.resolve(),
@@ -110,6 +111,7 @@ describe('popup after a session ended with the popup closed', () => {
     const deps: SessionDeps = {
       store,
       newId: () => 's1',
+      random: () => 0,
       effects: {
         scheduleAlarms: () => Promise.resolve(),
         clearAlarms: () => Promise.resolve(),

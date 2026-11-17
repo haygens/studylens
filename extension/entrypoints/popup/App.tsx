@@ -1,6 +1,7 @@
 import { appTitle } from '@/src/title';
 import ErrorBoundary from './ErrorBoundary';
 import FocusSession from './FocusSession';
+import InterventionsNotice from './InterventionsNotice';
 import TodayActivity from './TodayActivity';
 import TrackingStatus from './TrackingStatus';
 
@@ -10,6 +11,9 @@ export default function App() {
       <h1 style={{ margin: 0, fontSize: 20 }}>{appTitle()}</h1>
       <ErrorBoundary name="Tracking">
         <TrackingStatus />
+      </ErrorBoundary>
+      <ErrorBoundary name="Research notice">
+        <InterventionsNotice />
       </ErrorBoundary>
       <ErrorBoundary name="Focus session">
         <FocusSession />

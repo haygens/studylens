@@ -5,6 +5,7 @@ import {
   isFocusRating,
   isGoalCompleted,
   isInterventionId,
+  isSessionCondition,
   isSiteCategory,
 } from './types';
 
@@ -17,6 +18,14 @@ describe('InterventionId', () => {
     expect(isInterventionId('friction')).toBe(true);
     expect(isInterventionId('blocking')).toBe(false);
     expect(isInterventionId(42)).toBe(false);
+    expect(isInterventionId('opted-out')).toBe(false);
+  });
+
+  it('isSessionCondition also accepts opted-out', () => {
+    expect(isSessionCondition('opted-out')).toBe(true);
+    expect(isSessionCondition('intention')).toBe(true);
+    expect(isSessionCondition(null)).toBe(false);
+    expect(isSessionCondition('blocking')).toBe(false);
   });
 });
 

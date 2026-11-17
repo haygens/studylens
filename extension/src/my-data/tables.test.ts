@@ -93,6 +93,25 @@ const finished = (over: Partial<FocusSession>): FocusSession => ({
 });
 
 describe('sessionRows', () => {
+  it('names each research condition, including opted out', () => {
+    const rows = sessionRows({
+      'sessions:history': [
+        finished({ id: 'a', condition: 'control' }),
+        finished({ id: 'b', condition: 'friction' }),
+        finished({ id: 'c', condition: 'intention' }),
+        finished({ id: 'd', condition: 'opted-out' }),
+        finished({ id: 'e', condition: 'bogus' as never }),
+      ],
+    });
+    expect(rows.map((r) => r.condition)).toEqual([
+      'None (research interventions not active)',
+      'Opted out (research interventions off)',
+      'Intention ("What did you come here for?")',
+      'Friction (short countdown)',
+      'Control (no intervention)',
+    ]);
+  });
+
   it('shows every field in words, newest first', () => {
     const rows = sessionRows({
       'sessions:history': [
@@ -116,7 +135,7 @@ describe('sessionRows', () => {
       minutes: { study: '20 min', neutral: '3.5 min', distraction: '1.5 min' },
       distractionVisits: 2,
       checkIn: 'Goal finished: partly · Focus 4/5',
-      condition: 'none (assigned from a later version)',
+      condition: 'None (research interventions not active)',
     });
     expect(rows[0]).toMatchObject({
       actual: '10 min (ended early)',

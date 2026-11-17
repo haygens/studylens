@@ -21,6 +21,7 @@ import {
   type FullStore,
 } from './activity-store';
 import { saveRules } from './categories-store';
+import { markNoticeSeen, setInterventionsEnabled, setOptedOut } from './interventions-store';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
@@ -33,6 +34,7 @@ function deps(store: FullStore) {
   const d: SessionDeps = {
     store,
     newId: () => `s${++n}`,
+    random: () => 0,
     effects: {
       scheduleAlarms: async () => void log.push('schedule'),
       clearAlarms: async () => void log.push('clear'),
@@ -72,6 +74,10 @@ async function useEverything(store: FullStore) {
   await setTrackingPaused(store, false);
   // Labels (P3).
   await saveRules(store, [{ domain: 'youtube.com', category: 'distraction' }]);
+  // Research interventions (P8): flag, notice, opt-out setting; sessions use up the block.
+  await setInterventionsEnabled(store, true);
+  await markNoticeSeen(store);
+  await setOptedOut(store, false);
   // Sessions and check-ins (P4, P5): one answered, one ended early, one running.
   await startSession(d, 'First', 25, T0);
   await reconcileSession(d, T0 + 25 * MIN);
@@ -113,6 +119,10 @@ describe('storage key list', () => {
     expect(keysToDelete({ 'tracker:state': 1, 'tracking:paused': true })).toEqual([
       'tracker:state',
     ]);
+    expect(
+      keysToDelete({ 'interventions:opted-out': true, 'interventions:block': ['control'] }),
+    ).toEqual(['interventions:block']);
+    expect(keysToDelete({ 'interventions:opted-out': false })).toEqual(['interventions:opted-out']);
   });
 });
 
@@ -136,5 +146,13 @@ describe('deleteEverything', () => {
     await setTrackingPaused(store, true);
     await deleteEverything(store, deps(store).d.effects);
     expect(store.data).toEqual({ 'tracking:paused': true });
+  });
+
+  it('keeps research interventions off if they were turned off', async () => {
+    const store = memoryStore();
+    await useEverything(store);
+    await setOptedOut(store, true);
+    await deleteEverything(store, deps(store).d.effects);
+    expect(store.data).toEqual({ 'interventions:opted-out': true });
   });
 });
