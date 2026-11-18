@@ -1,18 +1,20 @@
 /**
- * Options page with three tabs: Site categories (P3), Settings (pause tracking, research
- * interventions — P8) and My Data (P6). The tab lives in the URL hash (`options.html#my-data`),
- * so the popup can link straight to My Data.
+ * Options page with four tabs: Site categories (P3), Insights (local dashboard, P11), Settings
+ * (pause tracking, research interventions — P8) and My Data (P6). The tab lives in the URL hash
+ * (`options.html#my-data`), so the popup can link straight to My Data.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '../popup/ErrorBoundary';
 import ResearchCard from '@/src/ui/ResearchCard';
+import Insights from './Insights';
 import MyData, { PauseCard } from './MyData';
 import SiteCategories from './SiteCategories';
 
-type Tab = 'categories' | 'settings' | 'my-data';
+type Tab = 'categories' | 'insights' | 'settings' | 'my-data';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'categories', label: 'Site categories' },
+  { id: 'insights', label: 'Insights' },
   { id: 'settings', label: 'Settings' },
   { id: 'my-data', label: 'My Data' },
 ];
@@ -72,7 +74,13 @@ export default function App() {
           </a>
         ))}
       </nav>
-      {tab === 'my-data' ? (
+      {tab === 'insights' ? (
+        <main style={page}>
+          <ErrorBoundary name="Insights">
+            <Insights />
+          </ErrorBoundary>
+        </main>
+      ) : tab === 'my-data' ? (
         <main style={page}>
           <ErrorBoundary name="My Data">
             <MyData />

@@ -39,7 +39,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 - [x] **P10. Intention intervention** — "What did you come here for?" prompt before a distraction site;
       the typed answer is never stored. Shares one interstitial page/controller with friction.
       Interventions on by default from v0.2.0 (behind the one-time notice).
-- [ ] **P11. Local dashboard** — focus trends, best time of day, per-condition comparison (distraction
+- [x] **P11. Local dashboard** — focus trends, best time of day, per-condition comparison (distraction
       visits, focus rating, goal completion).
 - [ ] **P12. Retention job** — `alarms` daily: roll raw records >30 days into weekly totals, delete raw.
 - [ ] **P13. Edge build + submit** — verify on Edge, submit to Edge Add-ons (free, GitHub sign-in).

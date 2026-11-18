@@ -706,3 +706,71 @@ apart are merged for the calculation only (stored records unchanged). **Sessions
 this commit keep their stored `distractionVisits` from definition 1 (every return after a gap
 counted), so those numbers may be too high.** They are not recalculated. Only hs's own test
 sessions exist with v0.2.0 (it was never uploaded). See README "How measures are defined".
+
+## Handoff — 2026-11-18
+
+Done:
+
+- Logged hs's 2026-11-18 Firefox manual test of v0.2.0, including the over-counting finding
+  (own commit `e56ecac`).
+- **Distraction visits, definition 2** (own commit `f3adc2c`, before P11). A visit counts only
+  when the active site changes into a Distraction site from a different site. Returning to the
+  same site after another window, idle, the friction/intention page, or Back/Forward does not
+  count. Same-site records less than 60 s apart are merged for the calculation only. The new
+  `siteRuns` / `countDistractionVisits` live in `src/sessions/session-stats.ts`. The manual-test
+  sequences are unit tests (5 → 1 and 3 → 1). There is also a tracker test showing the
+  interstitial URL is never a site. README has a new "How measures are defined" section, and the
+  "Known limitations" note is fixed. Stored sessions are not recalculated (see the note above).
+- v0.2.0 zips rebuilt from `f3adc2c` (still **not uploaded**):
+  - `extension/.output/studylens-0.2.0-firefox.zip` (SHA-256 `eee854f0…cdd8`)
+  - `extension/.output/studylens-0.2.0-sources.zip` (SHA-256 `9d8d2331…cd3f`)
+  - Unzipped the sources into a clean `M:\temp\studylens-verify-0.2.0`, then ran `npm ci` and
+    `build:firefox`: all 15 files had the same SHA-256 as the zip. Folder deleted afterwards.
+  - These zips do **not** include P11 (built before it). The later P11 builds did not change them
+    (hashes re-checked).
+- **P11 Local dashboard**: new **Insights** tab on the options page (`options.html#insights`).
+  - Focus trends for the last 14 days: focus-session minutes per day, plus study vs distraction
+    minutes per day (all tracked time on labeled sites).
+  - Best time of day: average focus rating by start-time band (morning 5–12, afternoon 12–17,
+    evening 17–22, night 22–5), answered check-ins only.
+  - Per-condition table for control / friction / intention: sessions, average visits, average
+    distraction minutes, average rating (with number answered), and goal yes/partly/no %. Opted-out
+    and no-condition sessions are excluded (their counts are shown below the table). With fewer
+    than 3 sessions a condition shows "Not enough data yet: n of 3 sessions needed." There is an
+    "Early results, small sample" banner and no significance tests.
+  - Sessions and activity records are split at local midnight (DST-safe). This fixes the P2
+    midnight note for these charts. All activity day buckets are read, so a record that started
+    the day before the window still counts for its part inside it.
+  - Charts are HTML tables with CSS bars, and each bar has its number written next to it. Study is
+    blue and distraction is red with stripes: the usual green/red failed the colorblind check
+    (ΔE 5.5); blue/red passes (ΔE 26.8). No chart library, and no new permissions.
+  - Pure logic in `src/insights/insights.ts` (15 unit tests, also passing with TZ set to
+    Auckland, Kolkata, and UTC). `e2e/insights.e2e.ts` covers all three conditions with seeded
+    data, the sparse "not enough data" case, and the empty state.
+
+Changed files: `docs/LOG.md`, `docs/PLAN.md`, `README.md`,
+`extension/src/sessions/session-stats{,.test}.ts`, `extension/src/sessions/session-controller.test.ts`,
+`extension/src/tracker/tracker.test.ts`, `extension/src/insights/insights{,.test}.ts` (new),
+`extension/entrypoints/options/{App,Insights,MyData}.tsx` (Insights new; MyData exports
+`useAllData`), `extension/e2e/insights.e2e.ts` (new).
+
+Tests: unit pass, 257 tests in 23 files. E2E pass, 29/29 in local Edge. Lint, format check,
+typecheck, Firefox and Edge builds, and `check:builds` are clean.
+
+Problems / open questions:
+
+- Old sessions (before `f3adc2c`) keep their definition-1 visit counts, and the Insights table
+  averages them together with new ones. Only hs's own test sessions exist, so this is fine. If it
+  matters later, delete those test sessions (My Data → Delete everything) before collecting real
+  data.
+- The v0.2.0 zips are from `f3adc2c` and have no Insights tab. Options: upload them as v0.2.0
+  (then tag `f3adc2c` as `v0.2.0` so the sources match), or bump to 0.2.1/0.3.0 with Insights and
+  rebuild. PRIVACY.md is unchanged: Insights only reads local data and stores or sends nothing.
+- The Best-time-of-day chart includes opted-out sessions (it isn't about conditions).
+- Firefox check for Insights by hand: open the options page → Insights. Then check visit counts:
+  run one session with a single YouTube visit, switch to DevTools and back a few times, and use
+  Back/Forward through the interstitial. My Data should show 1 visit.
+
+Disk space: C: 3.77 GB free, M: 14.25 GB free.
+
+Next piece (from PLAN.md): P12 — Retention job.

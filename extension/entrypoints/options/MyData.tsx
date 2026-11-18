@@ -40,7 +40,7 @@ const cell: CSSProperties = {
 const head: CSSProperties = { ...cell, borderTop: 'none', color: '#57606a', fontWeight: 600 };
 const tableWrap: CSSProperties = { overflowX: 'auto' };
 
-function useAllData() {
+export function useAllData() {
   const [state, setState] = useState<LoadState<Record<string, unknown>>>({ status: 'loading' });
   const reload = useCallback(() => {
     void settle(localStore.getAll(), LOAD_TIMEOUT_MS).then(setState);

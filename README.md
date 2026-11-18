@@ -64,6 +64,22 @@ are both `youtube.com`), or a subdomain you labeled separately (such as `docs.go
 - **Focus rating** (1–5) and **goal finished** (yes / partly / no) are your own answers to the
   end-of-session check-in. Skipped check-ins have neither.
 
+The **Insights** tab (options page) calculates these in the browser; nothing is stored or sent:
+
+- **Focus trends (last 14 days):** focus-session minutes per day are the time from each finished
+  session's start to its end. Study and distraction minutes per day are all tracked time on sites
+  labeled Study or Distraction, in or out of a session. Sessions and records that cross local
+  midnight are split at midnight, so each part counts on its own day.
+- **Best time of day:** the average focus rating of answered check-ins, grouped by the local hour
+  the session started: morning (5 am–noon), afternoon (noon–5 pm), evening (5–10 pm), night
+  (10 pm–5 am).
+- **Focus helpers compared:** for control, friction, and intention sessions: number of sessions,
+  average distraction visits, average distraction minutes, average focus rating, and goal
+  finished (yes / partly / no, as a percentage of answered check-ins). Opted-out sessions and
+  sessions without a condition are left out. A condition with fewer than 3 sessions shows "Not
+  enough data yet" instead of averages. These are plain descriptive averages, with no
+  significance test.
+
 ## Build from source (for add-on reviewers)
 
 The Firefox add-on is built from this repository with no manual steps. The build is reproducible:
@@ -101,7 +117,8 @@ the extension; only its `package.json` is needed so that `npm ci` matches the lo
 
 ```
 extension/         the browser extension (WXT + React + TypeScript)
-  entrypoints/     background script, popup, options page (site categories + My Data)
+  entrypoints/     background script, popup, options page (site categories, Insights,
+                   Settings, My Data), friction/intention page
   src/             logic (tracking, sessions, storage), mostly pure and unit-tested
   public/icon/     icons (made from assets/icon.svg by `npm run icons -w extension`)
 packages/shared/   shared TypeScript types
