@@ -124,6 +124,9 @@ describe('tracker step', () => {
       'chrome://extensions',
       'moz-extension://abc/popup.html',
       'chrome-extension://abc/popup.html',
+      // The friction/intention page is never a site (session-stats relies on this).
+      'moz-extension://abc/interstitial.html?url=https%3A%2F%2Fwww.youtube.com%2F',
+      'chrome-extension://abc/interstitial.html?url=https%3A%2F%2Fwww.youtube.com%2F',
       'file:///C:/Users/me/notes.txt',
       'data:text/html,hi',
       'https://ntp.msn.com/edge/ntp?locale=en',

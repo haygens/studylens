@@ -697,3 +697,12 @@ until 3 characters, Back/Forward never re-shows a filled-in box; typed text not 
 correctly. FINDING: distractionVisits over-counted (5 and 3 for sessions with one real YouTube
 visit each), because switching to another window (DevTools) and back, and the interstitial
 Back/Forward, each counted as a new visit.
+
+2026-11-18 Fix: distraction-visit definition 2 (before P11, separate commit). A visit counts only
+when the active site changes into a Distraction site from a different site (or a Distraction site
+is the first site after the session starts). Returning to the same site after another window,
+idle, the friction/intention page, or Back/Forward no longer counts. Same-site records under 60 s
+apart are merged for the calculation only (stored records unchanged). **Sessions that ended before
+this commit keep their stored `distractionVisits` from definition 1 (every return after a gap
+counted), so those numbers may be too high.** They are not recalculated. Only hs's own test
+sessions exist with v0.2.0 (it was never uploaded). See README "How measures are defined".

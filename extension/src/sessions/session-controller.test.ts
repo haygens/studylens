@@ -119,7 +119,8 @@ describe('session controller', () => {
       actualEnd: T0 + 10 * MIN,
       endedEarly: true,
       minutesByCategory: { study: 0, neutral: 5, distraction: 3 },
-      distractionVisits: 2,
+      // YouTube, a gap, then YouTube again (the open segment): one visit (definition v2).
+      distractionVisits: 1,
       condition: null,
       frictionShown: 0,
       frictionContinued: 0,

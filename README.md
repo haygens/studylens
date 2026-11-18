@@ -31,9 +31,38 @@ Full policy: [PRIVACY.md](PRIVACY.md).
 
 - The friction countdown and the intention question appear when you **navigate** to a site you
   labeled Distraction, or **switch tabs** to one, during a session. They do **not** appear when you
-  come back to the browser from another app while a Distraction tab is already showing, even
-  though that return still counts as a distraction visit in the session's numbers.
+  come back to the browser from another app while a Distraction tab is already showing. That
+  return is not a new distraction visit either (see "How measures are defined").
 - Tested automatically in Edge/Chromium; Firefox is tested by hand.
+
+## How measures are defined
+
+Every number is calculated on your device from the stored activity records (domain + start/end
+time) and your site labels. A "site" is a registrable domain (`m.youtube.com` and `youtube.com`
+are both `youtube.com`), or a subdomain you labeled separately (such as `docs.google.com`).
+
+- **Active time** counts only while the browser window is focused, the computer has had input in
+  the last 60 seconds, and tracking is not paused. StudyLens's own pages (popup, options, the
+  friction/intention page) are never recorded as a site.
+- **Minutes per category** (study / neutral / distraction): the active time inside the session,
+  added up by each site's label. Unlabeled sites are neutral.
+- **Distraction visits** (definition 2, from 2026-11-18): a visit counts when the active site
+  changes **into** a Distraction site **from a different site**, or when a Distraction site is the
+  first site you open after the session starts.
+  - Returning to the **same** Distraction site never counts again, whatever happened in between:
+    another window (such as DevTools) or app, being idle, the friction/intention page, or the
+    browser's Back/Forward buttons.
+  - Going to a different site (study, neutral, or another distraction site) and then back does
+    count again. Moving between two different Distraction sites counts.
+  - A Distraction site that was already open when the session started (or less than a minute
+    before) is not a visit until you leave it for a different site and come back.
+  - To work this out, records for the same site that are less than 60 seconds apart are treated
+    as one stretch. This happens only in the calculation; stored records are never changed.
+  - Sessions that ended before this definition (v0.2.0 test builds before 2026-11-18) keep the
+    numbers they were saved with. Under definition 1, every return to a Distraction site after
+    any gap counted as a new visit, so those numbers can be too high.
+- **Focus rating** (1–5) and **goal finished** (yes / partly / no) are your own answers to the
+  end-of-session check-in. Skipped check-ins have neither.
 
 ## Build from source (for add-on reviewers)
 
