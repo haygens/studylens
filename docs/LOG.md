@@ -687,3 +687,13 @@ wikipedia.org.
 Disk space: C: 3.42 GB free, M: 14.26 GB free.
 
 Next piece (from PLAN.md): P11 — Local dashboard.
+
+---
+
+2026-11-18 Firefox manual test of v0.2.0 build: research notice blocks Start until answered;
+friction countdown, Continue, and 5-min grace period work; intention page works, Continue locked
+until 3 characters, Back/Forward never re-shows a filled-in box; typed text not in storage
+(checked from the background console: false); My Data shows condition and intervention counts
+correctly. FINDING: distractionVisits over-counted (5 and 3 for sessions with one real YouTube
+visit each), because switching to another window (DevTools) and back, and the interstitial
+Back/Forward, each counted as a new visit.
