@@ -91,7 +91,8 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - Web dev: `npm run dev -w web` (http://localhost:3000, health check at `/api/health`)
 - Web build: `npm run build -w web`
 - Tests (all workspaces): `npm test` — watch mode: `npm run test:watch`
-- E2E tests (builds the E2E version, runs Playwright in installed Edge): `npm run test:e2e`
+- E2E tests (builds the E2E version and the normal Edge build, runs Playwright in installed Edge):
+  `npm run test:e2e`
   — watch in a visible browser: `npm run test:e2e -- --headed`. Never install extra browsers locally.
 - Prove normal builds have no E2E-only code (after both builds): `npm run check:builds -w extension`
 - Icons (after editing `extension/assets/icon.svg`): `npm run icons -w extension`

@@ -43,12 +43,13 @@ export default function ResearchCard() {
           <strong>Control:</strong> nothing changes.
         </li>
         <li>
-          <strong>Friction:</strong> opening a site you labeled Distraction shows a short countdown
-          before the site loads.
+          <strong>Friction:</strong> opening a site you labeled Distraction shows a 10-second
+          countdown before the site loads.
         </li>
         <li>
           <strong>Intention:</strong> opening a site you labeled Distraction first asks “What did
-          you come here for?” Your answer stays on this device.
+          you come here for?” StudyLens never saves, logs or sends what you type: only how many
+          times the question was shown and which button you pressed are counted.
         </li>
       </ul>
       <p style={{ ...muted, marginBottom: 0 }}>
@@ -58,8 +59,8 @@ export default function ResearchCard() {
       </p>
       {ready && !ready.enabled && (
         <p style={{ ...muted, marginBottom: 0 }} role="note">
-          <strong>Not active yet:</strong> the friction and intention helpers are still being built,
-          so for now sessions get no helper, whatever this setting says.
+          <strong>Switched off:</strong> research interventions are switched off in this browser, so
+          sessions get no helper, whatever this setting says.
         </p>
       )}
       {saveError && <p style={{ color: '#cf222e', fontSize: 13 }}>{saveError}</p>}

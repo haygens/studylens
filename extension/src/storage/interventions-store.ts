@@ -13,11 +13,12 @@ import type { KeyValueStore } from './activity-store';
 import { STORAGE_KEYS } from './keys';
 
 /**
- * OFF until the friction (P9) and intention (P10) interventions exist, so no real session gets a
- * condition whose intervention isn't built yet. Flip to true when P10 ships. (E2E tests turn the
- * flag on by writing the storage key.)
+ * ON from v0.2.0, now that friction (P9) and intention (P10) both exist. Users still see the
+ * one-time notice (Keep on / Turn off) before their first session, and no session starts until
+ * they answer it (see startSession). A stored `interventions:enabled` overrides this; most E2E
+ * tests set it to false so they run without random conditions.
  */
-export const INTERVENTIONS_DEFAULT_ENABLED = false;
+export const INTERVENTIONS_DEFAULT_ENABLED = true;
 
 export const ENABLED_KEY = STORAGE_KEYS.interventionsEnabled;
 export const OPTED_OUT_KEY = STORAGE_KEYS.interventionsOptedOut;

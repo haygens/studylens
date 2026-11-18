@@ -1,7 +1,8 @@
 /**
- * One-time notice about research interventions (P8), shown when the popup opens while the feature
- * is on. It keeps showing every time the popup opens until the user presses "Keep on" or "Turn
- * off": closing the popup without choosing doesn't count as seen.
+ * One-time notice about research interventions (P8, on by default from v0.2.0), shown when the
+ * popup opens while the feature is on. It keeps showing every time the popup opens until the user
+ * presses "Keep on" or "Turn off": closing the popup without choosing doesn't count as seen, and no
+ * focus session can start until then (the Start button waits, and the background refuses too).
  */
 import { useState } from 'react';
 import { shouldShowNotice } from '@/src/storage/interventions-store';
@@ -41,9 +42,25 @@ export default function InterventionsNotice() {
     >
       <strong style={{ fontSize: 13 }}>New: research interventions</strong>
       <span>
-        To learn which focus helpers work, each session now gets one at random: nothing, a short
-        countdown before distraction sites, or a “What did you come here for?” prompt. It all stays
-        on this device, and you can turn it off anytime on the My Data page.
+        StudyLens is testing which focus helpers work. Each focus session now gets one of these at
+        random, and you won’t know which in advance:
+      </span>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <li>
+          <strong>Nothing changes</strong> (the comparison group).
+        </li>
+        <li>
+          <strong>A short wait:</strong> opening a site you labeled Distraction shows a 10-second
+          countdown first.
+        </li>
+        <li>
+          <strong>A question:</strong> opening a site you labeled Distraction first asks “What did
+          you come here for?” StudyLens never saves what you type.
+        </li>
+      </ul>
+      <span>
+        Only the helper’s name and a few counts are saved, on this device only. Nothing is sent
+        anywhere. You can turn this off anytime on the My Data page. Choose one to start a session:
       </span>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" onClick={() => choose(true)}>

@@ -23,6 +23,8 @@ import { loadSessionView, type LoadState, type SessionView } from '@/src/popup/p
 import { ACTIVE_SESSION_KEY, SESSION_HISTORY_KEY } from '@/src/storage/sessions-store';
 import { E2E_BUILD_MARKER, MAX_TEST_SECONDS } from '@/src/e2e/test-seconds';
 import { formatCheckIn } from '@/src/sessions/check-in';
+import { shouldShowNotice } from '@/src/storage/interventions-store';
+import { useInterventions } from '@/src/ui/use-interventions';
 import CheckIn from './CheckIn';
 import { LoadError, Loading } from './LoadStatus';
 
@@ -32,6 +34,7 @@ const ERROR_TEXT: Record<string, string> = {
   'invalid-duration': `Pick ${MIN_CUSTOM_MINUTES}–${MAX_CUSTOM_MINUTES} minutes.`,
   'not-pending': 'That check-in is no longer open.',
   'invalid-answer': 'Pick an answer for both questions.',
+  'notice-unanswered': 'First choose “Keep on” or “Turn off” in the research notice above.',
   unknown: 'Something went wrong. Try again.',
 };
 
@@ -80,7 +83,19 @@ function useNow(): number {
   return now;
 }
 
+/**
+ * True while the one-time research notice is waiting for an answer (or still loading): no
+ * session can start until then. The background checks this too.
+ */
+function useNoticeGate(): 'loading' | 'blocked' | 'open' {
+  const { state } = useInterventions();
+  if (state.status === 'loading') return 'loading';
+  return state.status === 'ready' && shouldShowNotice(state.data) ? 'blocked' : 'open';
+}
+
 function StartForm() {
+  const gate = useNoticeGate();
+  const noticeBlocks = gate !== 'open';
   const [goal, setGoal] = useState('');
   const [choice, setChoice] = useState<number | 'custom'>(25);
   const [custom, setCustom] = useState('30');
@@ -93,7 +108,10 @@ function StartForm() {
 
   const minutes = choice === 'custom' ? Number(custom) : choice;
   const canStart =
-    normalizeGoal(goal) !== null && (seconds !== null || isValidDuration(minutes)) && !busy;
+    normalizeGoal(goal) !== null &&
+    (seconds !== null || isValidDuration(minutes)) &&
+    !busy &&
+    !noticeBlocks;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -181,6 +199,11 @@ function StartForm() {
       <button type="submit" disabled={!canStart}>
         Start focus session
       </button>
+      {gate === 'blocked' && (
+        <div role="note" style={{ fontSize: 12, color: '#57606a' }}>
+          {ERROR_TEXT['notice-unanswered']}
+        </div>
+      )}
       {error && <div style={{ color: '#cf222e', fontSize: 12 }}>{error}</div>}
     </form>
   );

@@ -6,7 +6,7 @@
  * and no domains.
  */
 import type { CheckIn, SessionCondition, SiteCategory } from '@studylens/shared';
-import { NO_FRICTION, type FrictionCounts } from '../interventions/friction';
+import { NO_COUNTS, type InterventionCounts } from '../interventions/interstitial';
 
 export const PRESET_MINUTES = [25, 50] as const;
 export const MIN_CUSTOM_MINUTES = 5;
@@ -16,10 +16,11 @@ export const MAX_GOAL_LENGTH = 200;
 const MINUTE_MS = 60_000;
 
 /**
- * The session that is running right now. At most one exists. The friction counts (P9) are
- * updated while it runs and stay on the finished session (0 unless the condition is `friction`).
+ * The session that is running right now. At most one exists. The friction (P9) and intention
+ * (P10) counts are updated while it runs and stay on the finished session (0 unless the condition
+ * matches).
  */
-export interface ActiveSession extends FrictionCounts {
+export interface ActiveSession extends InterventionCounts {
   id: string;
   goal: string;
   plannedMinutes: number;
@@ -59,7 +60,12 @@ export function isValidDuration(minutes: number): boolean {
   );
 }
 
-export type StartError = 'already-running' | 'invalid-goal' | 'invalid-duration';
+/**
+ * `notice-unanswered`: research interventions are on and the one-time notice (Keep on / Turn off)
+ * hasn't been answered yet. No session starts until it is.
+ */
+export type StartError =
+  'already-running' | 'invalid-goal' | 'invalid-duration' | 'notice-unanswered';
 
 /**
  * `testSeconds` (E2E test build only, see src/e2e/test-seconds.ts) replaces `minutes` with a
@@ -82,7 +88,7 @@ export function createSession(
       start: now,
       plannedEnd: now + testSeconds * 1000,
       condition: null,
-      ...NO_FRICTION,
+      ...NO_COUNTS,
     };
   }
   if (!isValidDuration(minutes)) return 'invalid-duration';
@@ -93,7 +99,7 @@ export function createSession(
     start: now,
     plannedEnd: now + minutes * MINUTE_MS,
     condition: null,
-    ...NO_FRICTION,
+    ...NO_COUNTS,
   };
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STATE_KEY, dayKey, memoryStore } from '../storage/activity-store';
 import { RULES_KEY } from '../storage/categories-store';
+import { ENABLED_KEY } from '../storage/interventions-store';
 import { ACTIVE_SESSION_KEY, loadActiveSession, loadSessions } from '../storage/sessions-store';
 import { initialState, type Segment, type TrackerState } from '../tracker/tracker';
 import { CHECK_IN_EXPIRY_MS } from './check-in';
@@ -21,6 +22,8 @@ const MIN = 60_000;
 function setup(initial: Record<string, unknown> = {}) {
   const store = memoryStore({
     [RULES_KEY]: [{ domain: 'youtube.com', category: 'distraction' }],
+    // Session mechanics only: research interventions (and their notice) are tested elsewhere.
+    [ENABLED_KEY]: false,
     ...initial,
   });
   const calls: string[] = [];
@@ -121,6 +124,9 @@ describe('session controller', () => {
       frictionShown: 0,
       frictionContinued: 0,
       frictionTurnedBack: 0,
+      intentionShown: 0,
+      intentionContinued: 0,
+      intentionTurnedBack: 0,
       checkIn: null,
     });
     expect(await loadSessions(t.store)).toEqual([done]);
@@ -158,6 +164,9 @@ describe('session controller', () => {
       frictionShown: 0,
       frictionContinued: 0,
       frictionTurnedBack: 0,
+      intentionShown: 0,
+      intentionContinued: 0,
+      intentionTurnedBack: 0,
     };
     const t = setup({ [ACTIVE_SESSION_KEY]: active });
     expect(await reconcileSession(t.deps, T0 + 20 * MIN)).toBeNull();

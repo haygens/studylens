@@ -5,7 +5,7 @@
 import { browser, type Browser } from 'wxt/browser';
 import type { FullStore } from '../storage/activity-store';
 import { trackableHostname } from '../tracker/hostname';
-import type { TabAction } from '../interventions/friction-controller';
+import type { TabAction } from '../interventions/interstitial-controller';
 import type { SessionEffects } from '../sessions/session-controller';
 import type { IdleState, TrackerContext } from '../tracker/tracker';
 
@@ -56,13 +56,13 @@ export async function readContext(
   return { hostname, windowFocused, idle, paused };
 }
 
-/** The friction countdown page (P9). */
-export function frictionPageUrl(): string {
-  return browser.runtime.getURL('/friction.html');
+/** The interstitial page shared by friction (P9) and intention (P10). */
+export function interstitialPageUrl(): string {
+  return browser.runtime.getURL('/interstitial.html');
 }
 
 /**
- * Carries out a friction decision on a tab. Only the browser does anything with the URL here;
+ * Carries out an interstitial decision on a tab. Only the browser does anything with the URL here;
  * it is never logged or stored.
  */
 export async function applyTabAction(tabId: number, action: TabAction): Promise<void> {

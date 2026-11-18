@@ -29,6 +29,22 @@ describe('export', () => {
     });
   });
 
+  it('includes the friction and intention counts saved on each session', () => {
+    const counts = {
+      frictionShown: 0,
+      frictionContinued: 0,
+      frictionTurnedBack: 0,
+      intentionShown: 2,
+      intentionContinued: 1,
+      intentionTurnedBack: 1,
+    };
+    const json = exportJson(
+      { 'sessions:history': [{ id: 's1', condition: 'intention', ...counts }] },
+      0,
+    );
+    expect(JSON.parse(json).storage['sessions:history'][0]).toMatchObject(counts);
+  });
+
   it('is valid JSON that round-trips', () => {
     const parsed = JSON.parse(exportJson(stored, 0)) as { storage: unknown };
     expect(parsed.storage).toEqual(stored);

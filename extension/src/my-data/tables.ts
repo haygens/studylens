@@ -4,7 +4,8 @@
  */
 import type { CheckIn, SessionCondition, SiteCategory } from '@studylens/shared';
 import type { CategoryRule } from '../categories/rules';
-import type { FrictionCounts } from '../interventions/friction';
+import type { InterstitialMode, InterventionCounts } from '../interventions/interstitial';
+import { countName } from '../interventions/interstitial';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import { asSegments } from '../storage/activity-store';
 import { asRules } from '../storage/categories-store';
@@ -132,23 +133,24 @@ export function describeCondition(condition: SessionCondition | null): string {
   return condition ? CONDITION_TEXT[condition] : 'None (research interventions not active)';
 }
 
+type Counted = InterventionCounts & { condition: SessionCondition | null };
+
 /**
- * Friction counts (P9) in words: "2 shown · 1 continued · 1 turned back". "—" for sessions that
- * had no friction (any other condition, all counts 0).
+ * One mode's counts in words: "2 shown · 1 continued · 1 turned back". "—" for sessions that had
+ * no such page (any other condition, all counts 0).
  */
-export function describeFriction(
-  s: FrictionCounts & { condition: SessionCondition | null },
-): string {
-  if (
-    s.condition !== 'friction' &&
-    !s.frictionShown &&
-    !s.frictionContinued &&
-    !s.frictionTurnedBack
-  ) {
-    return '—';
-  }
-  return `${s.frictionShown} shown · ${s.frictionContinued} continued · ${s.frictionTurnedBack} turned back`;
+export function describeCounts(s: Counted, mode: InterstitialMode): string {
+  const shown = s[countName(mode, 'shown')];
+  const continued = s[countName(mode, 'continue')];
+  const back = s[countName(mode, 'back')];
+  if (s.condition !== mode && !shown && !continued && !back) return '—';
+  return `${shown} shown · ${continued} continued · ${back} turned back`;
 }
+
+/** Friction counts (P9) in words. */
+export const describeFriction = (s: Counted) => describeCounts(s, 'friction');
+/** Intention counts (P10) in words. Only counts: what the user typed is never stored. */
+export const describeIntention = (s: Counted) => describeCounts(s, 'intention');
 
 export interface SessionRow {
   id: string;
@@ -161,6 +163,7 @@ export interface SessionRow {
   checkIn: string;
   condition: string;
   friction: string;
+  intention: string;
 }
 
 /** Finished sessions, newest first. */
@@ -182,6 +185,7 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
       checkIn: describeCheckIn(s.checkIn),
       condition: describeCondition(s.condition),
       friction: describeFriction(s),
+      intention: describeIntention(s),
     }))
     .reverse();
 }

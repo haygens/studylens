@@ -28,6 +28,7 @@ import { cryptoRandomInt, seededRandomInt, type RandomInt } from './randomize';
 
 const T0 = Date.UTC(2026, 10, 23, 15, 0);
 const MIN = 60_000;
+const DAY = 24 * 60 * MIN;
 let ids = 0;
 
 /** A fresh background script: new deps (and random source) over the same storage. */
@@ -54,10 +55,66 @@ async function runSession(deps: SessionDeps, at: number) {
   return { started: started.session.condition, finished: done.condition };
 }
 
-describe('intervention engine in session starts', () => {
-  it('is off by default in normal builds: condition null, no block written', async () => {
-    expect(INTERVENTIONS_DEFAULT_ENABLED).toBe(false);
+/** Feature on and the one-time notice answered with "Keep on". */
+const ON = { [ENABLED_KEY]: true, [NOTICE_SEEN_KEY]: true };
+
+describe('on by default from v0.2.0, behind the one-time notice', () => {
+  it('a default install has the feature on but must answer the notice first', async () => {
+    expect(INTERVENTIONS_DEFAULT_ENABLED).toBe(true);
     const store = memoryStore();
+    expect(await loadInterventionSettings(store)).toEqual({ enabled: true, optedOut: false });
+    expect(shouldShowNotice(await loadNoticeState(store))).toBe(true);
+    const deps = background(store);
+    // No session can start before the notice is answered, and nothing is written.
+    expect(await startSession(deps, 'Essay', 25, T0)).toEqual({
+      ok: false,
+      error: 'notice-unanswered',
+    });
+    expect(store.data).toEqual({});
+  });
+
+  it('"Keep on": the next session gets a random condition', async () => {
+    const store = memoryStore();
+    await answerNotice(store, true);
+    const r = await runSession(background(store), T0);
+    expect(INTERVENTION_IDS).toContain(r.started);
+    expect(store.data[BLOCK_KEY]).toHaveLength(2);
+  });
+
+  it('"Turn off": the next session is opted out and the block is never shuffled', async () => {
+    const store = memoryStore();
+    await answerNotice(store, false);
+    expect(await runSession(background(store), T0)).toEqual({
+      started: 'opted-out',
+      finished: 'opted-out',
+    });
+    expect(store.data[BLOCK_KEY]).toBeUndefined();
+  });
+
+  it('an existing v0.1 user (sessions saved, notice never shown) sees the notice before the next session', async () => {
+    const store = memoryStore({ [ENABLED_KEY]: false });
+    await runSession(background(store), T0); // A v0.1-style session: condition null.
+    delete store.data[ENABLED_KEY]; // Updating to v0.2.0: the flag now comes from the default.
+    expect(shouldShowNotice(await loadNoticeState(store))).toBe(true);
+    expect(await startSession(background(store), 'Next', 25, T0 + DAY)).toMatchObject({
+      ok: false,
+      error: 'notice-unanswered',
+    });
+    await answerNotice(store, true);
+    const started = await startSession(background(store), 'Next', 25, T0 + DAY);
+    expect(started.ok && INTERVENTION_IDS.includes(started.session.condition as never)).toBe(true);
+  });
+
+  it('turning research off on My Data before answering also lets sessions start', async () => {
+    const store = memoryStore({ [OPTED_OUT_KEY]: true });
+    expect(shouldShowNotice(await loadNoticeState(store))).toBe(false);
+    expect((await runSession(background(store), T0)).started).toBe('opted-out');
+  });
+});
+
+describe('intervention engine in session starts', () => {
+  it('flag off (stored false): condition null, no block written, no notice needed', async () => {
+    const store = memoryStore({ [ENABLED_KEY]: false });
     expect(await loadInterventionSettings(store)).toEqual({ enabled: false, optedOut: false });
     const r = await runSession(background(store), T0);
     expect(r).toEqual({ started: null, finished: null });
@@ -71,7 +128,7 @@ describe('intervention engine in session starts', () => {
   });
 
   it('assigns the condition at start, stores it, and keeps it when ended early', async () => {
-    const store = memoryStore({ [ENABLED_KEY]: true, [BLOCK_KEY]: ['intention', 'control'] });
+    const store = memoryStore({ ...ON, [BLOCK_KEY]: ['intention', 'control'] });
     const deps = background(store);
     const started = await startSession(deps, 'Essay', 25, T0);
     expect(started.ok && started.session.condition).toBe('intention');
@@ -84,7 +141,7 @@ describe('intervention engine in session starts', () => {
   });
 
   it('a refused start uses up nothing', async () => {
-    const store = memoryStore({ [ENABLED_KEY]: true, [BLOCK_KEY]: ['friction', 'control'] });
+    const store = memoryStore({ ...ON, [BLOCK_KEY]: ['friction', 'control'] });
     const deps = background(store);
     await startSession(deps, 'First', 25, T0);
     expect(await startSession(deps, 'Second', 25, T0 + MIN)).toEqual({
@@ -96,7 +153,7 @@ describe('intervention engine in session starts', () => {
   });
 
   it('a block in progress survives a background restart', async () => {
-    const store = memoryStore({ [ENABLED_KEY]: true });
+    const store = memoryStore(ON);
     const first = await runSession(background(store, seededRandomInt(9)), T0);
     const left = store.data[BLOCK_KEY] as InterventionId[];
     expect(left).toHaveLength(2);
@@ -112,7 +169,7 @@ describe('intervention engine in session starts', () => {
   });
 
   it('300 real session starts are exactly balanced', async () => {
-    const store = memoryStore({ [ENABLED_KEY]: true });
+    const store = memoryStore(ON);
     const counts: Record<string, number> = {};
     for (let i = 0; i < 300; i++) {
       // A new background each time, as if the browser restarted between sessions.
@@ -153,7 +210,10 @@ describe('intervention engine in session starts', () => {
 
 describe('one-time notice', () => {
   it('shows only while the feature is on, not seen yet and not opted out', async () => {
-    expect(shouldShowNotice(await loadNoticeState(memoryStore()))).toBe(false);
+    expect(shouldShowNotice(await loadNoticeState(memoryStore()))).toBe(true); // Default on.
+    expect(shouldShowNotice(await loadNoticeState(memoryStore({ [ENABLED_KEY]: false })))).toBe(
+      false,
+    );
     expect(shouldShowNotice(await loadNoticeState(memoryStore({ [ENABLED_KEY]: true })))).toBe(
       true,
     );

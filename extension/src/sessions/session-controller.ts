@@ -10,7 +10,13 @@ import {
 } from '../storage/activity-store';
 import { loadRules } from '../storage/categories-store';
 import { assignCondition, type RandomInt } from '../interventions/randomize';
-import { BLOCK_KEY, loadBlock, loadInterventionSettings } from '../storage/interventions-store';
+import {
+  BLOCK_KEY,
+  loadBlock,
+  loadInterventionSettings,
+  loadNoticeState,
+  shouldShowNotice,
+} from '../storage/interventions-store';
 import {
   finishSession,
   loadActiveSession,
@@ -65,6 +71,10 @@ export async function startSession(
   testSeconds: number | null = null,
 ): Promise<StartResult> {
   if (await loadActiveSession(deps.store)) return { ok: false, error: 'already-running' };
+  // The user must answer the research notice first, so nobody gets a condition unannounced.
+  if (shouldShowNotice(await loadNoticeState(deps.store))) {
+    return { ok: false, error: 'notice-unanswered' };
+  }
   const created = createSession(goal, minutes, now, deps.newId(), testSeconds);
   if (typeof created === 'string') return { ok: false, error: created };
   // A check-in still waiting is skipped: only the latest session is ever asked about.

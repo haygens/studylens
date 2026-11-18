@@ -1,5 +1,7 @@
 /**
- * Playwright fixtures that launch a browser with the E2E build of the extension loaded.
+ * Playwright fixtures that launch a browser with the E2E build of the extension loaded (or, with
+ * `test.use({ build: 'normal' })`, the normal Edge build — run `npm run build:edge` first;
+ * `npm run test:e2e` does).
  *
  * - Locally (Windows): the installed Microsoft Edge (`channel: 'msedge'`), so no browser download.
  * - In CI (`CI` env var set): Playwright's Chromium (`npx playwright install chromium`).
@@ -7,6 +9,11 @@
  *
  * Every test gets a fresh, empty browser profile. All http(s) requests are answered by tiny stub
  * pages or blocked, so tests never touch the real internet.
+ *
+ * Research interventions are on by default from v0.2.0. So that tests about other features don't
+ * get random friction/intention pages, each test starts with `interventions:enabled = false`
+ * written to storage (the `seed` option). Tests about a real default install use
+ * `test.use({ seed: {} })`.
  */
 import {
   test as base,
@@ -16,12 +23,15 @@ import {
   type Page,
   type Worker,
 } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const EXTENSION_DIR = fileURLToPath(new URL('../.output/edge-mv3-e2e', import.meta.url));
+const EXTENSION_DIRS = {
+  e2e: fileURLToPath(new URL('../.output/edge-mv3-e2e', import.meta.url)),
+  normal: fileURLToPath(new URL('../.output/edge-mv3', import.meta.url)),
+} as const;
 
 export const STUB_SITES: Record<string, string> = {
   'en.wikipedia.org': 'Wikipedia (fake)',
@@ -111,6 +121,13 @@ export class Background {
   }
 }
 
+interface Options {
+  /** Which build to load: the E2E test build (default) or the normal Edge build. */
+  build: keyof typeof EXTENSION_DIRS;
+  /** Storage written right after the extension loads, before any page opens. */
+  seed: Record<string, unknown>;
+}
+
 interface Fixtures {
   context: BrowserContext;
   extensionId: string;
@@ -121,8 +138,15 @@ interface Fixtures {
   openMyData: () => Promise<Page>;
 }
 
-export const test = base.extend<Fixtures>({
-  context: async ({ headless }, use) => {
+export const test = base.extend<Fixtures & Options>({
+  build: ['e2e', { option: true }],
+  seed: [{ 'interventions:enabled': false }, { option: true }],
+
+  context: async ({ headless, build }, use) => {
+    const EXTENSION_DIR = EXTENSION_DIRS[build];
+    if (!existsSync(path.join(EXTENSION_DIR, 'manifest.json'))) {
+      throw new Error(`Build missing: ${EXTENSION_DIR}. Run \`npm run test:e2e\`.`);
+    }
     const profile = mkdtempSync(path.join(os.tmpdir(), 'studylens-e2e-'));
     const context = await chromium.launchPersistentContext(profile, {
       channel: channel(),
@@ -140,12 +164,14 @@ export const test = base.extend<Fixtures>({
     rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
   },
 
-  extensionId: async ({ context }, use) => {
+  extensionId: async ({ context, seed }, use) => {
     const sw = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    if (Object.keys(seed).length > 0) await new Background(context).set(seed);
     await use(new URL(sw.url()).host);
   },
 
-  background: async ({ context }, use) => {
+  background: async ({ context, extensionId }, use) => {
+    void extensionId; // Make sure the seed is written first.
     await use(new Background(context));
   },
 
@@ -194,7 +220,7 @@ export async function labelSites(openOptions: () => Promise<Page>): Promise<void
   await options.close();
 }
 
-/** Turns on research interventions (P8), which are off by default until P10 ships. */
+/** Turns research interventions back on (the fixtures' `seed` turns them off for each test). */
 export async function enableInterventions(background: Background): Promise<void> {
   await background.set({ 'interventions:enabled': true });
 }

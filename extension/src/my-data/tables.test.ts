@@ -91,6 +91,9 @@ const finished = (over: Partial<FocusSession>): FocusSession => ({
   frictionShown: 0,
   frictionContinued: 0,
   frictionTurnedBack: 0,
+  intentionShown: 0,
+  intentionContinued: 0,
+  intentionTurnedBack: 0,
   checkIn: null,
   ...over,
 });
@@ -113,6 +116,25 @@ describe('sessionRows', () => {
       'Friction (short countdown)',
       'Control (no intervention)',
     ]);
+  });
+
+  it('shows the intention counts (and never any typed text)', () => {
+    const [row] = sessionRows({
+      'sessions:history': [
+        finished({
+          condition: 'intention',
+          intentionShown: 3,
+          intentionContinued: 2,
+          intentionTurnedBack: 1,
+        }),
+      ],
+    });
+    expect(row).toMatchObject({
+      intention: '3 shown · 2 continued · 1 turned back',
+      friction: '—',
+    });
+    const [none] = sessionRows({ 'sessions:history': [finished({ condition: 'intention' })] });
+    expect(none?.intention).toBe('0 shown · 0 continued · 0 turned back');
   });
 
   it('shows every field in words, newest first', () => {
@@ -140,6 +162,7 @@ describe('sessionRows', () => {
       checkIn: 'Goal finished: partly · Focus 4/5',
       condition: 'None (research interventions not active)',
       friction: '—',
+      intention: '—',
     });
     expect(rows[0]).toMatchObject({
       actual: '10 min (ended early)',

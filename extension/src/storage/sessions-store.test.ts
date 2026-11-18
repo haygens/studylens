@@ -23,6 +23,9 @@ const done: FocusSession = {
   frictionShown: 0,
   frictionContinued: 0,
   frictionTurnedBack: 0,
+  intentionShown: 0,
+  intentionContinued: 0,
+  intentionTurnedBack: 0,
   checkIn: null,
 };
 

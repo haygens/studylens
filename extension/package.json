@@ -1,6 +1,6 @@
 {
   "name": "@studylens/extension",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "check:builds": "node scripts/check-builds.mjs",
     "icons": "node scripts/make-icons.mjs",
     "screenshots": "npm run build:e2e && node scripts/screenshots.mjs",
-    "test:e2e": "npm run build:e2e && playwright test",
+    "test:e2e": "npm run build:e2e && npm run build:edge && playwright test",
     "typecheck": "tsc --noEmit",
     "postinstall": "wxt prepare"
   },

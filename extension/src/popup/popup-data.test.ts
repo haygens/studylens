@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { STATE_KEY, dayKey, memoryStore, type KeyValueStore } from '../storage/activity-store';
 import { RULES_KEY } from '../storage/categories-store';
+import { ENABLED_KEY } from '../storage/interventions-store';
 import { reconcileSession, startSession, type SessionDeps } from '../sessions/session-controller';
 import { initialState, type TrackerState } from '../tracker/tracker';
 import { LOAD_TIMEOUT_MS, loadTodaySnapshot, loadSessionView, settle } from './popup-data';
@@ -74,6 +75,7 @@ describe('popup after a session ended with the popup closed', () => {
         { domain: 'wikipedia.org', category: 'study' },
         { domain: 'youtube.com', category: 'distraction' },
       ],
+      [ENABLED_KEY]: false,
     });
     const deps: SessionDeps = {
       store,

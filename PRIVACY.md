@@ -1,10 +1,12 @@
 # StudyLens Privacy Policy
 
-_Effective: November 16, 2026 · Applies to StudyLens version 0.1.0 for Firefox_
+_Effective: November 16, 2026 · Applies to StudyLens version 0.2.0 for Firefox (and earlier)_
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
 browsing stays yours: **everything it records stays on your device, and this version never sends
-anything anywhere.**
+anything anywhere. StudyLens never stores what you type** — on websites, or in its own "What did
+you come here for?" box. The only text it keeps is what you enter as a session goal or a site
+label.
 
 ## What StudyLens records
 
@@ -20,15 +22,17 @@ anything anywhere.**
 - **From version 0.2.0 (research interventions):** which research condition each focus session was
   given (`control`, `friction`, `intention`, or `opted-out`), the list of conditions left in the
   current random order, your "Research interventions" on/off setting, and whether you have answered
-  the one-time notice about it. For sessions with the friction helper: how many times the countdown
-  was shown, how many times you pressed "Continue", and how many times "Back to studying", plus
-  which sites (domain names only) are in their 5-minute "no countdown again" period. See "Research
-  interventions" below.
+  the one-time notice about it. For sessions with the friction or intention helper: how many times
+  its page was shown, how many times you pressed "Continue", and how many times "Back to studying"
+  (just these numbers), plus which sites (domain names only) are in their 5-minute "not again"
+  period. See "Research interventions" below.
 
 ## What StudyLens never records
 
 - Full web addresses (paths or query strings), search terms, page titles, or page content
 - Keystrokes, form entries, passwords, or screenshots
+- **What you type in the "What did you come here for?" box.** It is never stored, logged, or sent
+  anywhere (see below)
 - Anything in private/incognito windows (the extension does not run there)
 
 ## Research interventions (version 0.2.0 and later)
@@ -36,32 +40,39 @@ anything anywhere.**
 StudyLens is testing which focus helpers actually help. When this feature is on, each focus
 session is given one of three conditions at random: **control** (nothing changes), **friction** (a
 short countdown before a site you labeled Distraction loads), or **intention** (a "What did you come
-here for?" prompt before a site you labeled Distraction; your answer stays on your device). You are
-not told the condition when you start a session; the My Data page shows it for each session.
+here for?" prompt before a site you labeled Distraction; StudyLens never stores your answer). You
+are not told the condition when you start a session; the My Data page shows it for each session.
 
 - The condition is stored with the session, **only on your device**. Nothing is sent anywhere.
 - You can turn research interventions off at any time on the My Data page (or the Settings tab).
   Sessions after that are marked `opted-out` and get no helper.
-- When this feature is switched on, the popup shows a notice with "Keep on" and "Turn off"
-  buttons. It keeps showing each time the popup opens until you press one of them.
-- **How the friction countdown works:** when you open a site you labeled Distraction during a
-  friction session (or switch to a tab that is already on one), StudyLens sends that tab to its own
-  countdown page, which shows the site's domain and your session goal. After 10 seconds you can
-  press "Continue to <site>"; "Back to studying" works right away. After "Continue", that site gets
-  no countdown again for 5 minutes in that session. It never happens in private windows, on browser
-  or extension pages, or while tracking is paused.
+- The feature is **on by default from version 0.2.0**. Before your first focus session (or your
+  next one, if you used version 0.1.0), the popup shows a notice that explains the three conditions,
+  with "Keep on" and "Turn off" buttons. It keeps showing each time the popup opens until you press
+  one of them, and no focus session can start until you do.
+- **When the helpers appear:** when you open a site you labeled Distraction during a friction or
+  intention session (or switch to a tab that is already on one), StudyLens sends that tab to its
+  own page first, which shows the site's domain and your session goal. "Back to studying" works
+  right away. After "Continue", that site gets no helper page again for 5 minutes in that session.
+  It never happens in private windows, on browser or extension pages, or while tracking is paused.
+  It also does not happen when you come back to the browser from another app.
+- **Friction:** the page shows a 10-second countdown, then "Continue to <site>".
+- **Intention:** the page asks "What did you come here for?" "Continue to <site>" becomes available
+  once you type at least 3 characters. **StudyLens never stores what you type:** your answer exists
+  only on that page while it is open. It is not saved, logged, or sent anywhere, the browser's
+  form autofill is turned off for that box, and the box is emptied before the page closes. Only
+  the counts above (shown / "Continue" / "Back to studying") are kept.
 - **The full web address stays out of storage.** To let "Continue" take you back to the exact page
-  you opened, the countdown page receives that page's address in its own address. StudyLens never
-  saves it, logs it, or sends it anywhere; only the domain and the three counts above are stored.
-- No new browser permissions are needed: the countdown uses the `tabs` permission StudyLens already
-  has to open its own page in the tab.
-- The feature is **switched off in version 0.1.0**, and stays off until the friction and intention
-  helpers are finished.
+  you opened, the helper page receives that page's address in its own address. StudyLens never
+  saves it, logs it, or sends it anywhere; only the domain and the counts above are stored.
+- No new browser permissions are needed: the helper pages use the `tabs` permission StudyLens
+  already has to open its own page in the tab.
+- The feature was **switched off in version 0.1.0**.
 
 ## Where your data lives
 
 All of the above is stored **only on your device**, in the extension's local storage
-(`browser.storage.local`). StudyLens version 0.1.0 has no server, no account, and makes no network
+(`browser.storage.local`). StudyLens version 0.2.0 has no server, no account, and makes no network
 requests: nothing is uploaded, synced, or shared, and the developer cannot see your data.
 
 ## Retention
@@ -70,7 +81,7 @@ requests: nothing is uploaded, synced, or shared, and the developer cannot see y
   extension (which removes its storage).
 - **Planned for a later version:** detailed activity records older than 30 days will be combined
   into weekly totals and the details deleted automatically. This automatic cleanup is **not**
-  in version 0.1.0.
+  in version 0.2.0.
 
 ## Your controls
 
@@ -92,7 +103,7 @@ StudyLens contains no ads, analytics, or third-party trackers, and never sells o
 
 Later versions may add **optional, off-by-default** features: study groups (members would see only
 daily focus totals such as "focused 2h 15m", never sites) and research participation (anonymous
-session summaries, never domains). None of these exist in version 0.1.0. Before any of them ships,
+session summaries, never domains). None of these exist in version 0.2.0. Before any of them ships,
 this policy will be updated, and the extension will ask for your explicit consent and show a
 preview before anything leaves your device.
 

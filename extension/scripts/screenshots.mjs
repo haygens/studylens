@@ -99,6 +99,13 @@ try {
     await expect(options.getByLabel(`Category for ${domain}`)).toHaveValue(category);
   }
 
+  // Research interventions are on by default from v0.2.0. Keep the screenshots predictable (no
+  // notice, no random friction/intention pages) by switching them off in this throwaway profile.
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  await worker.evaluate(() =>
+    globalThis.chrome.storage.local.set({ 'interventions:enabled': false }),
+  );
+
   // 2. A short session that ends on its own while browsing, for the check-in screen.
   let popup = await openPopup();
   await popup.getByLabel('What will you work on?').fill('Read chapter 4: photosynthesis');

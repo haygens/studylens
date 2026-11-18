@@ -258,6 +258,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
                   <th style={head}>Check-in</th>
                   <th style={head}>Condition</th>
                   <th style={head}>Friction countdowns</th>
+                  <th style={head}>Intention prompts</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,6 +275,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
                     <td style={cell}>{s.checkIn}</td>
                     <td style={cell}>{s.condition}</td>
                     <td style={cell}>{s.friction}</td>
+                    <td style={cell}>{s.intention}</td>
                   </tr>
                 ))}
               </tbody>

@@ -7,23 +7,33 @@ distraction sites. When the session ends, a two-question check-in asks whether y
 focused you felt. You decide which sites count as study or distraction.
 
 StudyLens is also a student research project asking **which focus interventions actually help
-students study**. The research features are not in this version; they will be optional and need
-your explicit consent.
+students study**. From version 0.2.0, each focus session gets one of three conditions at random:
+nothing changes, a 10-second countdown before sites you labeled Distraction, or a "What did you
+come here for?" question before them. A one-time notice explains this before your first session,
+and you can turn it off anytime. It all stays on your device; nothing is shared.
 
 **Install:** _Firefox Add-ons link coming soon (pending review)._
 
 ## Privacy in one minute
 
-- **Local-first:** everything is stored only in your browser. Version 0.1.0 has no server and makes
+- **Local-first:** everything is stored only in your browser. Version 0.2.0 has no server and makes
   no network requests.
 - **Domains only:** it records `youtube.com`, never full addresses, search terms, page titles, page
-  content, or keystrokes.
+  content, or keystrokes. What you type in the "What did you come here for?" box is never stored.
 - **Not in private windows.**
 - **You're in control:** pause tracking, see every stored record on the My Data page, export it as
   JSON, or delete everything.
 - **No ads, analytics, or trackers.**
 
 Full policy: [PRIVACY.md](PRIVACY.md).
+
+## Known limitations
+
+- The friction countdown and the intention question appear when you **navigate** to a site you
+  labeled Distraction, or **switch tabs** to one, during a session. They do **not** appear when you
+  come back to the browser from another app while a Distraction tab is already showing, even
+  though that return still counts as a distraction visit in the session's numbers.
+- Tested automatically in Edge/Chromium; Firefox is tested by hand.
 
 ## Build from source (for add-on reviewers)
 
@@ -49,7 +59,7 @@ npm run build:firefox -w extension
 - The built add-on is in **`extension/.output/firefox-mv3/`**. Its files should match the uploaded
   add-on's files.
 - To make the uploadable zip instead: `npm run zip:firefox -w extension` →
-  `extension/.output/studylens-0.1.0-firefox.zip` (it also writes the sources zip next to it).
+  `extension/.output/studylens-0.2.0-firefox.zip` (it also writes the sources zip next to it).
 
 **What the build does:** [WXT](https://wxt.dev) (which uses Vite) bundles the TypeScript + React
 source in `extension/` and the shared types in `packages/shared/`. No code is downloaded at
@@ -76,7 +86,8 @@ docs/              plan, session log, store listing
 npm install
 npm run dev:firefox -w extension   # opens Firefox with the extension loaded
 npm test                           # unit tests (Vitest)
-npm run test:e2e                   # browser tests (Playwright, uses installed Edge)
+npm run test:e2e                   # browser tests (Playwright, uses installed Edge; builds the
+                                   # E2E and normal Edge versions first)
 npm run lint
 npm run typecheck
 ```

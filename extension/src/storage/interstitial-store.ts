@@ -1,17 +1,17 @@
 /**
- * Local storage for the friction intervention (P9).
+ * Local storage for the friction (P9) and intention (P10) interventions.
  *
  * Key (from ./keys.ts):
- * - `friction:state` — grace periods and short-lived bookkeeping for the current session. Holds
- *   site names, tab ids and times only — never a URL.
+ * - `interstitial:state` — grace periods and short-lived bookkeeping for the current session.
+ *   Holds site names, tab ids and times only — never a URL, never anything the user typed.
  *
- * The counts (shown / continued / turned back) are saved on the session record itself.
+ * The counts (shown / continued / turned back, per mode) are saved on the session record itself.
  */
-import type { FrictionState } from '../interventions/friction';
+import type { InterstitialState } from '../interventions/interstitial';
 import type { KeyValueStore } from './activity-store';
 import { STORAGE_KEYS } from './keys';
 
-export const FRICTION_STATE_KEY = STORAGE_KEYS.frictionState;
+export const INTERSTITIAL_STATE_KEY = STORAGE_KEYS.interstitialState;
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -23,7 +23,7 @@ function tabSite(value: unknown, timeField: 'at' | 'until') {
 }
 
 /** The stored state, or null if it is missing or broken. */
-export function asFrictionState(value: unknown): FrictionState | null {
+export function asInterstitialState(value: unknown): InterstitialState | null {
   const v = value as Record<string, unknown> | null;
   if (typeof v !== 'object' || v === null || typeof v.sessionId !== 'string') return null;
   const grace: Record<string, number> = {};
@@ -40,7 +40,9 @@ export function asFrictionState(value: unknown): FrictionState | null {
   };
 }
 
-export async function loadFrictionState(store: KeyValueStore): Promise<FrictionState | null> {
-  const { [FRICTION_STATE_KEY]: saved } = await store.get([FRICTION_STATE_KEY]);
-  return asFrictionState(saved);
+export async function loadInterstitialState(
+  store: KeyValueStore,
+): Promise<InterstitialState | null> {
+  const { [INTERSTITIAL_STATE_KEY]: saved } = await store.get([INTERSTITIAL_STATE_KEY]);
+  return asInterstitialState(saved);
 }

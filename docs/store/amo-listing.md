@@ -1,4 +1,4 @@
-# addons.mozilla.org listing — StudyLens 0.1.0
+# addons.mozilla.org listing — StudyLens 0.2.0
 
 Copy each field into the AMO Developer Hub when submitting. Distribution: **On this site (listed)**.
 Platform: **Firefox for desktop only** (leave Android unchecked; the `idle` API and toolbar popup are
@@ -6,9 +6,9 @@ desktop features).
 
 ## Files to upload
 
-- Add-on: `extension/.output/studylens-0.1.0-firefox.zip`
+- Add-on: `extension/.output/studylens-0.2.0-firefox.zip`
 - Source code (AMO asks "Do you need to submit source code?" → **Yes**, because the code is bundled
-  by Vite): `extension/.output/studylens-0.1.0-sources.zip`
+  by Vite): `extension/.output/studylens-0.2.0-sources.zip`
 - Screenshots: `docs/store/screenshots/1-focus-session.png`, `2-check-in.png`,
   `3-site-categories.png`, `4-my-data.png` (1280×800)
 - Icon: AMO uses the 128px icon from the add-on itself (`extension/public/icon/128.png`).
@@ -52,9 +52,13 @@ requests.
 delete-everything button.
 • No ads, analytics, or trackers. Open source.
 
-StudyLens is a student project that will later explore which focus techniques actually help
-students. Any research or sharing features will be optional, off by default, and will ask for your
-consent first.
+**Research helpers.** StudyLens is a student project testing which focus techniques actually help.
+Each focus session gets one of three conditions at random: nothing changes, a 10-second countdown
+before sites you labeled Distraction, or a "What did you come here for?" question before them (what
+you type is never stored). A notice explains this before your first session, with "Keep on" and
+"Turn off" buttons, and you can turn it off anytime on the My Data page. Only the condition and a
+few counts are saved, on your device. Any future sharing features will be optional, off by
+default, and will ask for your consent first.
 
 ## Categories
 
@@ -88,7 +92,8 @@ https://github.com/haygens/studylens/blob/main/PRIVACY.md
 
 ## This add-on is experimental
 
-Yes. (Ticked on AMO for the v0.1 testing stage; plan to untick it once friends have tested it.)
+Yes. (Ticked on AMO for the v0.1/v0.2 testing stage; plan to untick it once friends have tested
+it.)
 
 ## Requires payment / non-free services
 
@@ -100,7 +105,7 @@ No.
 
 > Paste everything in this section into "Notes to Reviewer".
 
-StudyLens is a local-only focus tracker. Version 0.1.0 has no server, no account, no remote code,
+StudyLens is a local-only focus tracker. Version 0.2.0 has no server, no account, no remote code,
 and makes no network requests. It does not collect or transmit any data
 (`data_collection_permissions: { required: ["none"] }`).
 
@@ -121,7 +126,11 @@ app is not part of the add-on. Public repository: https://github.com/haygens/stu
 
 - `tabs`: read the hostname of the active tab (`tabs.query`, `tabs.onActivated`, `tabs.onUpdated`)
   to know which site is being used. The URL is immediately reduced to its hostname; full URLs,
-  paths, query strings and titles are never stored.
+  paths, query strings and titles are never stored. During a research session, `tabs.update`
+  sends a tab opening a user-labeled Distraction site to the add-on's own `interstitial.html`
+  (countdown or "What did you come here for?"); the target address travels only in that page's
+  own URL so "Continue" can go there, and is never stored. The typed answer is never stored or
+  sent.
 - `idle`: stop counting time when the user has had no input for 60 seconds or the screen is locked
   (`idle.setDetectionInterval`, `idle.onStateChanged`, `idle.queryState`).
 - `alarms`: end a focus session at its planned time and a once-a-minute heartbeat that keeps the
@@ -141,10 +150,11 @@ add-on's own chunk files. The two `innerHTML` warnings from the linter are insid
 library code (`dangerouslySetInnerHTML` support); StudyLens never uses `innerHTML` or
 `dangerouslySetInnerHTML`.
 
-**How to test (about 6 minutes).**
+**How to test (about 8 minutes).**
 
-1. Install the add-on and click the StudyLens toolbar button. The popup shows a Start form and a
-   "Today" section.
+1. Install the add-on and click the StudyLens toolbar button. The popup shows the one-time
+   "Research interventions" notice, a Start form (disabled until the notice is answered) and a
+   "Today" section. Click **Keep on**.
 2. Click "Edit site categories…". Under "Your labels", type `wikipedia.org`, choose **Study**, click
    Add. Add `youtube.com` as **Distraction** (or click Accept next to the suggestions).
 3. Open the popup, type a goal (e.g. "Read chapter 4"), choose **Custom → 5** minutes, click
@@ -156,4 +166,9 @@ library code (`dangerouslySetInnerHTML` support); StudyLens never uses `innerHTM
    answer the check-in (finished? / focus 1–5) and click Save. "Last session" then shows the
    minutes per category and distraction visits. ("End early" shows the check-in right away.)
 7. Click "My Data" in the popup to see every stored record, export JSON, pause tracking, or delete
-   everything (type DELETE).
+   everything (type DELETE). The Focus sessions table shows each session's condition and its
+   friction / intention counts.
+8. To see a helper page without waiting for a random draw: open `about:debugging` → This Firefox →
+   StudyLens → Inspect → Console, run
+   `browser.storage.local.set({ 'interventions:block': ['intention'] })` (or `['friction']`), start
+   a session, then open youtube.com.

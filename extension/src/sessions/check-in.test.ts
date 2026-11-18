@@ -28,6 +28,9 @@ function session(id: string, endMin: number, checkIn: FocusSession['checkIn'] = 
     frictionShown: 0,
     frictionContinued: 0,
     frictionTurnedBack: 0,
+    intentionShown: 0,
+    intentionContinued: 0,
+    intentionTurnedBack: 0,
     checkIn,
   };
   return s;
@@ -44,6 +47,9 @@ const active: ActiveSession = {
   frictionShown: 0,
   frictionContinued: 0,
   frictionTurnedBack: 0,
+  intentionShown: 0,
+  intentionContinued: 0,
+  intentionTurnedBack: 0,
 };
 
 describe('pendingCheckIn', () => {

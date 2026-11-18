@@ -578,3 +578,112 @@ Problems / open questions:
 Disk space: C: 3.85 GB free, M: 13.57 GB free.
 
 Next piece (from PLAN.md): P10 — Intention intervention.
+
+## Handoff — 2026-11-18 (P10 intention intervention + v0.2.0 prep)
+
+Done:
+
+- P9 follow-up: README has a new "Known limitations" section. Friction and intention trigger when
+  you navigate to a Distraction site or switch tabs to one. They do not trigger when you come back
+  to the browser from another app, even though that return still counts as a distraction visit.
+- Refactor: friction and intention now share one page and one controller, with a `mode`
+  (`friction` | `intention`): `src/interventions/interstitial{,-controller}.ts`,
+  `src/storage/interstitial-store.ts`, `entrypoints/interstitial/` (`interstitial.html`). Files were
+  renamed with `git mv`. Trigger rules, duplicate-event window, 5-minute grace period, "Back"
+  handling and the stopped-background handling are the same code for both modes. One message
+  type: `interstitial:choice` with `{ choice, mode, sessionId, hostname }`.
+- Storage key `friction:state` renamed to `interstitial:state` (it's in the single key list). v0.1
+  never wrote the old key because the flag was off. An old dev profile would show it as "unknown",
+  and "Delete everything" still removes it.
+- P10 intention page: shows the hostname and the session goal, then "What did you come here for?"
+  "Continue to <site>" enables at ≥ 3 non-space characters (`intentionReady`). "Back to studying"
+  works right away. No countdown. Pressing Enter continues once the answer is long enough.
+- Privacy: the typed answer exists only in the page's React state. `choiceMessage()` takes no text
+  at all. The box has `autocomplete="off"`, is not inside a form, and is emptied before the page
+  navigates away (and on pagehide). Counts on every session: `intentionShown`,
+  `intentionContinued`, `intentionTurnedBack`. My Data has a new "Intention prompts" column, and
+  the export includes the counts.
+- Fix found by E2E: after Continue or Back, the next visit to the same site in the same tab within
+  3 s was wrongly ignored as a duplicate event. Answering the page now clears that marker.
+- v0.2.0: `INTERVENTIONS_DEFAULT_ENABLED = true`, and the version is bumped to 0.2.0 (package.json +
+  lock). New and existing users see the notice. It now explains all three conditions in plain
+  words. **No session can start until the notice is answered**: the popup's Start button stays
+  disabled and shows a note, and `startSession` in the background refuses with
+  `notice-unanswered`. The Research card's "Not active yet" note now reads "Switched off" (shown
+  only if the flag is stored as false).
+- E2E fixtures: new `build` option (`e2e` or `normal`) and `seed` option. By default each test
+  starts with `interventions:enabled = false` so older tests don't get random interstitials.
+  `npm run test:e2e` now also runs `build:edge`, because `notice-default-install.e2e.ts` loads the
+  normal Edge build with empty storage.
+- `scripts/screenshots.mjs` switches interventions off in its throwaway profile. Otherwise the
+  notice would leave Start disabled.
+- PRIVACY.md (0.2.0) says StudyLens never stores what you type, and explains the intention page
+  and that the feature is on by default behind the notice. README, CLAUDE.md (test:e2e) and
+  `docs/store/amo-listing.md` are updated for 0.2.0 (not uploaded).
+- Release prep (not tagged, not uploaded):
+  - `extension/.output/studylens-0.2.0-firefox.zip` (SHA-256 `43cc28ae…6e50`)
+  - `extension/.output/studylens-0.2.0-sources.zip` (SHA-256 `9c14f798…3f2f`)
+  - The sources zip, unzipped into a clean `M:\temp\studylens-verify-0.2.0` with `npm ci` and
+    `build:firefox`, gave identical SHA-256 for all 15 files. That folder was then deleted.
+  - addons-linter was installed temporarily in `M:\temp\addons-linter-tmp` (44 MB), then deleted:
+    0 errors, 0 notices, 2 warnings (the same React DOM `innerHTML` warnings as v0.1).
+  - Both manifests: version 0.2.0, permissions `storage, tabs, idle, alarms`, no host or optional
+    permissions, `incognito: not_allowed`. The v0.1.0 tag is unchanged.
+
+Changed files: `CLAUDE.md`, `PRIVACY.md`, `README.md`, `docs/{PLAN,LOG}.md`,
+`docs/store/amo-listing.md`, `package-lock.json`, `extension/package.json`,
+`extension/scripts/screenshots.mjs`, `extension/entrypoints/background.ts`,
+`extension/entrypoints/interstitial/{App.tsx,index.html,main.tsx}` (renamed from `friction/`),
+`extension/entrypoints/popup/{FocusSession,InterventionsNotice}.tsx`,
+`extension/entrypoints/options/MyData.tsx`,
+`extension/src/interventions/interstitial{,-controller}{,.test}.ts` (renamed from `friction*`),
+`extension/src/interventions/assignment.test.ts`, `extension/src/storage/interstitial-store.ts`
+(renamed), `extension/src/storage/{keys,interventions-store,sessions-store}.ts` + tests,
+`extension/src/sessions/{session,session-controller,messages}.ts` + tests,
+`extension/src/background/browser-adapter.ts`, `extension/src/my-data/tables.ts` + tests,
+`extension/src/my-data/export.test.ts`, `extension/src/popup/popup-data.test.ts`,
+`extension/src/ui/ResearchCard.tsx`, `extension/e2e/{fixtures,interstitial.e2e}.ts`,
+`extension/e2e/notice-default-install.e2e.ts` (new).
+
+Tests: unit pass, 235 tests in 22 files. E2E pass, 26 tests in local Edge. The interstitial file
+also passed 30/30 with `--repeat-each=3`. Lint, format check, typecheck, Firefox and Edge builds,
+and `check:builds` are clean.
+
+Problems / open questions:
+
+- Friction and intention are E2E-tested only in Edge/Chromium. Use the Firefox checklist (below)
+  before uploading 0.2.0.
+- Firefox may keep a closed page's form data for back/forward. The box is emptied before leaving,
+  but please confirm by hand (checklist step I5).
+- Store screenshots still show the v0.1 look (no notice). Fine for now; retake later if wanted.
+- C: free space dropped from 3.83 to 3.42 GB between sessions. Nothing from this project writes to
+  C:, so it's probably Windows or other apps.
+
+Firefox manual checklist (background console: `about:debugging#/runtime/this-firefox` → StudyLens →
+Inspect → Console). Setup: label `youtube.com` Distraction and `wikipedia.org` Study, then open
+wikipedia.org.
+
+- N1. Fresh profile, open the popup: the notice lists the three conditions, Start is disabled with
+  a note. Close and reopen the popup: the notice is still there. Press Keep on: Start works.
+- F1. Run `browser.storage.local.set({ 'interventions:block': ['friction'] })`, then start a
+  session. Go to youtube.com: "A moment before youtube.com", your goal, a 10 s countdown, then
+  Continue. After Continue, YouTube loads. Leave and come back within 5 min: no countdown.
+- F2. New friction session (set the block again): YouTube → Back to studying → back on Wikipedia,
+  no second countdown. Switch to a tab already on YouTube: countdown shows.
+- I1. Set the block to `['intention']`, then start a session. Go to youtube.com: "Before you open
+  youtube.com", your goal, the question box, and no countdown.
+- I2. Continue is disabled for "ab" and "a b", enabled for "abc". Continue → YouTube. Within 5 min:
+  no prompt again.
+- I3. New intention session: type something, press Back to studying → back on Wikipedia. Do it
+  again with the box empty: Back works right away.
+- I4. Wikipedia during an intention session: no prompt. Control session (`['control']`): nothing.
+- I5. Type a unique word, press Continue, then the browser Back button and Forward button: the box
+  must not show the word. Then run
+  `browser.storage.local.get(null).then(d => JSON.stringify(d).includes('YOURWORD'))`: expect
+  `false`.
+- M1. End the session, open My Data: Condition plus "Friction countdowns" / "Intention prompts"
+  counts. The export JSON has the `intention*` counts.
+
+Disk space: C: 3.42 GB free, M: 14.26 GB free.
+
+Next piece (from PLAN.md): P11 — Local dashboard.

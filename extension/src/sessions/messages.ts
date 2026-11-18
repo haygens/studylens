@@ -1,4 +1,5 @@
 /** Messages from the popup to the background script about focus sessions. */
+import type { ChoiceMessage } from '../interventions/interstitial';
 import type { CheckInError } from './check-in';
 import type { StartError } from './session';
 
@@ -19,10 +20,11 @@ export type SessionMessage =
   /** My Data (P6): delete everything, ending any running session without a check-in. */
   | { type: 'data:delete-all' }
   /**
-   * Friction countdown page (P9): "Continue" / "Back to studying". Only the hostname is sent,
-   * never the full address. The tab comes from the message sender.
+   * Interstitial page (friction P9 / intention P10): "Continue" / "Back to studying". Only the
+   * mode, session and hostname are sent — never the full address, and never the intention answer.
+   * The tab comes from the message sender.
    */
-  | { type: 'friction:continue' | 'friction:back'; sessionId: string; hostname: string };
+  | ChoiceMessage;
 
 export type SessionReply =
   { ok: true } | { ok: false; error: StartError | CheckInError | 'invalid-message' | 'unknown' };
@@ -34,8 +36,7 @@ const TYPES = new Set([
   'checkin:answer',
   'checkin:skip',
   'data:delete-all',
-  'friction:continue',
-  'friction:back',
+  'interstitial:choice',
 ]);
 
 export function isSessionMessage(value: unknown): value is SessionMessage {
