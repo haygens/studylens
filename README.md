@@ -21,6 +21,9 @@ and you can turn it off anytime. It all stays on your device; nothing is shared.
 - **Domains only:** it records `youtube.com`, never full addresses, search terms, page titles, page
   content, or keystrokes. What you type in the "What did you come here for?" box is never stored.
 - **Not in private windows.**
+- **Automatic cleanup:** once a day, detailed activity records older than 30 days are combined
+  into weekly totals (time per site and label) and deleted. Focus sessions are kept for Insights,
+  but their goal text is removed after 30 days.
 - **You're in control:** pause tracking, see every stored record on the My Data page, export it as
   JSON, or delete everything.
 - **No ads, analytics, or trackers.**
@@ -79,6 +82,10 @@ The **Insights** tab (options page) calculates these in the browser; nothing is 
   sessions without a condition are left out. A condition with fewer than 3 sessions shows "Not
   enough data yet" instead of averages. These are plain descriptive averages, with no
   significance test.
+- **After the 30-day cleanup:** the trend charts only cover the last 14 days, which are always
+  kept in full, and the other two use the focus sessions, which are kept (only their goal text
+  and helper-page counts are removed). So the cleanup never changes what Insights shows. Weekly
+  totals of older weeks are shown on the My Data page.
 
 ## Build from source (for add-on reviewers)
 

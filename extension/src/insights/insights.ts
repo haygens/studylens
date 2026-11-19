@@ -22,6 +22,7 @@ import { asSegments } from '../storage/activity-store';
 import { asRules } from '../storage/categories-store';
 import { ACTIVITY_DAY_PREFIX, STORAGE_KEYS } from '../storage/keys';
 import { asHistory } from '../storage/sessions-store';
+import { localDayId, splitAtLocalMidnight } from '../tracker/local-day';
 import { startOfLocalDay } from '../tracker/totals';
 import type { Segment } from '../tracker/tracker';
 
@@ -32,36 +33,7 @@ export const MIN_SESSIONS_PER_CONDITION = 3;
 
 const MINUTE_MS = 60_000;
 
-/** Start of the next local day (DST-safe: days can be 23 or 25 hours long). */
-export function nextLocalDay(dayStart: number): number {
-  const d = new Date(dayStart);
-  d.setDate(d.getDate() + 1);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-/** `2026-11-16` for the local day containing `time`. */
-export function localDayId(time: number): string {
-  const d = new Date(time);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-/** Splits [start, end) at every local midnight it crosses. Empty for end <= start. */
-export function splitAtLocalMidnight(
-  start: number,
-  end: number,
-): { day: string; start: number; end: number }[] {
-  const parts: { day: string; start: number; end: number }[] = [];
-  let t = start;
-  while (t < end) {
-    const stop = Math.min(end, nextLocalDay(startOfLocalDay(t)));
-    parts.push({ day: localDayId(t), start: t, end: stop });
-    t = stop;
-  }
-  return parts;
-}
+export { localDayId, nextLocalDay, splitAtLocalMidnight } from '../tracker/local-day';
 
 /** Local day ids for the last `count` days, oldest first, ending with the day of `now`. */
 export function lastDays(now: number, count: number): string[] {
@@ -236,6 +208,18 @@ export function conditionComparison(sessions: readonly FocusSession[]): {
       noCondition: sessions.filter((s) => s.condition === null).length,
     },
   };
+}
+
+const sessions = (n: number) => `${n} session${n === 1 ? '' : 's'}`;
+
+/** " Not included: …" naming only the groups that have sessions, or '' if none. */
+export function excludedText(optedOut: number, noCondition: number): string {
+  const parts = [
+    optedOut > 0 && `${sessions(optedOut)} with research interventions turned off`,
+    noCondition > 0 &&
+      `${sessions(noCondition)} without a condition (from before research interventions were on)`,
+  ].filter(Boolean);
+  return parts.length ? ` Not included: ${parts.join(', ')}.` : '';
 }
 
 export interface Insights {

@@ -26,7 +26,9 @@ export function buildExport(stored: Record<string, unknown>, now: number): Study
     exportedAt: new Date(now).toISOString(),
     about:
       'Everything StudyLens had stored in this browser at export time. Times are epoch ' +
-      'milliseconds. Activity is grouped by local day under "activity:YYYY-MM-DD".',
+      'milliseconds. Activity is grouped by local day under "activity:YYYY-MM-DD". Activity older ' +
+      'than 30 days is kept only as weekly totals under "totals:weekly" (milliseconds per week, ' +
+      'site and label; weeks start on Monday).',
     storage,
   };
 }

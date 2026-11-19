@@ -23,6 +23,7 @@ import {
 } from './activity-store';
 import { saveRules } from './categories-store';
 import { answerNotice, setInterventionsEnabled, setOptedOut } from './interventions-store';
+import { runRetention } from '../retention/retention';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
@@ -71,6 +72,11 @@ async function useEverything(store: FullStore) {
     await appendSegments(store, r.segments);
   }
   await appendSegments(store, [{ hostname: 'a.com', start: T0 - DAY, end: T0 - DAY + MIN }]);
+  // Retention (P12): a 40-day-old record becomes a weekly total; the run time is stamped.
+  await appendSegments(store, [
+    { hostname: 'b.com', start: T0 - 40 * DAY, end: T0 - 40 * DAY + MIN },
+  ]);
+  await runRetention(store, T0);
   await saveTrackerState(store, state);
   await setTrackingPaused(store, false);
   // Labels (P3).

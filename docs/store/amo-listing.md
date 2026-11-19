@@ -9,8 +9,10 @@ desktop features).
 - Add-on: `extension/.output/studylens-0.2.0-firefox.zip`
 - Source code (AMO asks "Do you need to submit source code?" → **Yes**, because the code is bundled
   by Vite): `extension/.output/studylens-0.2.0-sources.zip`
-- Screenshots: `docs/store/screenshots/1-focus-session.png`, `2-check-in.png`,
-  `3-site-categories.png`, `4-my-data.png` (1280×800)
+- Screenshots (1280×800, made by `npm run screenshots -w extension`), in this order:
+  `docs/store/screenshots/1-focus-session.png`, `2-friction-countdown.png`,
+  `3-intention-question.png`, `4-insights.png` (sample sessions, not real results),
+  `5-my-data.png`, `6-check-in.png`, `7-site-categories.png`
 - Icon: AMO uses the 128px icon from the add-on itself (`extension/public/icon/128.png`).
 
 ## Name
@@ -40,6 +42,11 @@ until you say so; a short list of common suggestions is there to accept with one
 then shows how much of today went to each site and category, and how many times you opened a
 distraction site during a session.
 
+**Insights.** A dashboard on the options page, calculated on your device: focus minutes per day
+for the last 14 days, study vs. distraction time, the time of day you rate your focus highest,
+and how your sessions went with each focus helper (below). It shows plain averages and says
+clearly when there isn't enough data yet.
+
 **Private by design.**
 • Records only the domain of the active tab (like youtube.com), never full addresses, search terms,
 page titles, page content, or keystrokes.
@@ -48,6 +55,7 @@ requests.
 • Does not run in private windows.
 • Stops counting when the browser isn't focused or you've been away from the keyboard for a minute.
 • Pause tracking at any time.
+• Detailed records are combined into weekly totals after 30 days, automatically.
 • The My Data page shows every stored record in plain tables, with one-click JSON export and a
 delete-everything button.
 • No ads, analytics, or trackers. Open source.
@@ -134,7 +142,8 @@ app is not part of the add-on. Public repository: https://github.com/haygens/stu
 - `idle`: stop counting time when the user has had no input for 60 seconds or the screen is locked
   (`idle.setDetectionInterval`, `idle.onStateChanged`, `idle.queryState`).
 - `alarms`: end a focus session at its planned time and a once-a-minute heartbeat that keeps the
-  time accounting accurate while the background script is suspended.
+  time accounting accurate while the background script is suspended. The heartbeat also runs the
+  once-a-day cleanup that turns activity records older than 30 days into weekly totals.
 - `storage`: keep everything locally in `storage.local` (activity by domain, sessions, check-in
   answers, site categories, pause setting).
 
@@ -167,7 +176,8 @@ library code (`dangerouslySetInnerHTML` support); StudyLens never uses `innerHTM
    minutes per category and distraction visits. ("End early" shows the check-in right away.)
 7. Click "My Data" in the popup to see every stored record, export JSON, pause tracking, or delete
    everything (type DELETE). The Focus sessions table shows each session's condition and its
-   friction / intention counts.
+   friction / intention counts. The **Insights** tab next to it shows charts for the last 14 days
+   and the per-condition table ("Not enough data yet" until a condition has 3 sessions).
 8. To see a helper page without waiting for a random draw: open `about:debugging` → This Firefox →
    StudyLens → Inspect → Console, run
    `browser.storage.local.set({ 'interventions:block': ['intention'] })` (or `['friction']`), start

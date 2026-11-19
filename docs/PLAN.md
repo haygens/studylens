@@ -41,7 +41,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       Interventions on by default from v0.2.0 (behind the one-time notice).
 - [x] **P11. Local dashboard** — focus trends, best time of day, per-condition comparison (distraction
       visits, focus rating, goal completion).
-- [ ] **P12. Retention job** — `alarms` daily: roll raw records >30 days into weekly totals, delete raw.
+- [x] **P12. Retention job** — `alarms` daily: roll raw records >30 days into weekly totals, delete raw.
 - [ ] **P13. Edge build + submit** — verify on Edge, submit to Edge Add-ons (free, GitHub sign-in).
 - [ ] **P14. Recruit friends** — share install links, collect feedback. Consent screen ready before any
       data is shared (see P17).

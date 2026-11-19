@@ -7,6 +7,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   buildInsights,
+  excludedText,
   MIN_SESSIONS_PER_CONDITION,
   TREND_DAYS,
   type ConditionRow,
@@ -308,8 +309,7 @@ function Conditions({ data }: { data: InsightsData['conditions'] }) {
         Each focus session gets one condition at random. Averages appear once a condition has at
         least {MIN_SESSIONS_PER_CONDITION} sessions. Focus rating and goal use answered check-ins
         only.
-        {(optedOut > 0 || noCondition > 0) &&
-          ` Not included: ${optedOut} session${optedOut === 1 ? '' : 's'} with research interventions turned off, ${noCondition} without a condition (older versions).`}
+        {excludedText(optedOut, noCondition)}
       </p>
     </Section>
   );

@@ -51,11 +51,13 @@ function conditionOf(value: unknown) {
  */
 export function asHistory(value: unknown): FocusSession[] {
   if (!Array.isArray(value)) return [];
-  return value.filter(isFocusSession).map((s) => ({
+  return value.filter(isFocusSession).map(({ compacted, ...s }) => ({
     ...s,
     ...countsOf(s),
     condition: conditionOf(s.condition),
     checkIn: isCheckIn(s.checkIn) ? s.checkIn : null,
+    // Retention (P12): compacted sessions have no goal text or counts (read as 0).
+    ...(compacted === true && { compacted }),
   }));
 }
 

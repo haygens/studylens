@@ -1,5 +1,6 @@
 /**
- * Store screenshots for addons.mozilla.org (docs/store/screenshots/, 1280x800 PNG).
+ * Store screenshots for addons.mozilla.org and Edge Add-ons (docs/store/screenshots/, 1280x800
+ * PNG), plus the Edge store logo (300x300) and small promo tile (440x280) in docs/store/edge/.
  * Run: `npm run screenshots -w extension` (builds the E2E version first).
  *
  * Why the E2E build: it ignores OS idle (nobody touches the PC while this runs, so the normal
@@ -7,15 +8,20 @@
  * appears without waiting 5 minutes. Its only visible difference is the "Test length in seconds"
  * field on the Start form, which is never captured — every capture first checks that no test-only
  * text is on screen. All web requests go to tiny local stub pages; nothing touches the internet.
+ *
+ * The Insights screenshot needs a few weeks of history, so this throwaway profile gets sample
+ * sessions and activity (made up for the picture, clearly not research results).
  */
 import { chromium, expect } from '@playwright/test';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const EXTENSION_DIR = fileURLToPath(new URL('../.output/edge-mv3-e2e', import.meta.url));
 const OUT_DIR = fileURLToPath(new URL('../../docs/store/screenshots/', import.meta.url));
+const EDGE_DIR = fileURLToPath(new URL('../../docs/store/edge/', import.meta.url));
+const ICON_SVG = readFileSync(fileURLToPath(new URL('../assets/icon.svg', import.meta.url)));
 const SITES = {
   'en.wikipedia.org': 'Photosynthesis - Wikipedia',
   'www.khanacademy.org': 'Khan Academy',
@@ -23,8 +29,78 @@ const SITES = {
   'www.reddit.com': 'Reddit',
 };
 const TEST_ONLY_TEXT = /E2E|test build|Test length/i;
+const MIN = 60_000;
+
+/** Sample history for the Insights picture: 3+ sessions per condition over the last 12 days. */
+function sampleData() {
+  const at = (daysAgo, hour) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, 0, 0, 0);
+    return d.getTime();
+  };
+  const plan = [
+    // [days ago, hour, condition, visits, distraction min, rating, goal]
+    [12, 9, 'control', 4, 9, 3, 'partly'],
+    [11, 15, 'friction', 1, 3, 4, 'yes'],
+    [10, 20, 'intention', 2, 4, 4, 'yes'],
+    [9, 10, 'friction', 2, 5, 3, 'partly'],
+    [8, 14, 'control', 3, 8, 3, 'no'],
+    [7, 9, 'intention', 1, 2, 5, 'yes'],
+    [6, 16, 'control', 5, 11, 2, 'partly'],
+    [5, 10, 'friction', 1, 2, 4, 'yes'],
+    [4, 19, 'intention', 2, 3, 4, 'partly'],
+    [3, 9, 'control', 2, 6, 4, 'yes'],
+    [2, 11, 'friction', 0, 1, 5, 'yes'],
+    [1, 21, 'intention', 1, 2, 3, 'yes'],
+  ];
+  const history = plan.map(([days, hour, condition, visits, distraction, rating, goal], i) => {
+    const start = at(days, hour);
+    return {
+      id: `sample-${i}`,
+      goal: 'Sample study session',
+      plannedMinutes: 50,
+      start,
+      plannedEnd: start + 50 * MIN,
+      actualEnd: start + 50 * MIN,
+      endedEarly: false,
+      condition,
+      minutesByCategory: { study: 50 - distraction - 3, neutral: 3, distraction },
+      distractionVisits: visits,
+      checkIn: { goalCompleted: goal, focusRating: rating, answeredAt: start + 51 * MIN },
+      frictionShown: 0,
+      frictionContinued: 0,
+      frictionTurnedBack: 0,
+      intentionShown: 0,
+      intentionContinued: 0,
+      intentionTurnedBack: 0,
+    };
+  });
+  const activity = {};
+  for (const s of history) {
+    const d = new Date(s.start);
+    const key = `activity:${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const study = s.minutesByCategory.study * MIN;
+    const distraction = s.minutesByCategory.distraction * MIN;
+    activity[key] = [
+      { hostname: 'en.wikipedia.org', start: s.start, end: s.start + study / 2 },
+      {
+        hostname: 'www.youtube.com',
+        start: s.start + study / 2,
+        end: s.start + study / 2 + distraction,
+      },
+      {
+        hostname: 'www.khanacademy.org',
+        start: s.start + study / 2 + distraction,
+        end: s.start + study + distraction,
+      },
+    ];
+  }
+  return { 'sessions:history': history, ...activity };
+}
 
 mkdirSync(OUT_DIR, { recursive: true });
+mkdirSync(EDGE_DIR, { recursive: true });
 const profile = mkdtempSync(path.join(os.tmpdir(), 'studylens-shots-'));
 const context = await chromium.launchPersistentContext(profile, {
   channel: process.env.E2E_CHANNEL ?? 'msedge',
@@ -47,6 +123,7 @@ try {
   });
   const sw = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const base = `chrome-extension://${new URL(sw.url()).host}`;
+  const storage = (items) => sw.evaluate((i) => globalThis.chrome.storage.local.set(i), items);
 
   /** Saves a 1280x800 screenshot of `page`, after checking no test-only text is visible. */
   async function capture(page, name) {
@@ -83,6 +160,29 @@ try {
     return page;
   }
 
+  /** Starts a session from the popup; `seconds` uses the E2E-only test length (never captured). */
+  async function startSession(goal, { minutes = 25, seconds } = {}) {
+    const popup = await openPopup();
+    await popup.getByLabel('What will you work on?').fill(goal);
+    if (seconds) {
+      await popup.getByLabel('Test length in seconds (E2E build only)').fill(String(seconds));
+    } else {
+      await popup.getByLabel(`${minutes} min`).check();
+    }
+    await popup.getByRole('button', { name: 'Start focus session' }).click();
+    await expect(popup.getByText('Focusing on')).toBeVisible();
+    return popup;
+  }
+
+  /** "End early", then Skip the check-in, so the next session can start. */
+  async function endAndSkip() {
+    const popup = await openPopup();
+    await popup.getByRole('button', { name: 'End early' }).click();
+    await popup.getByRole('button', { name: 'Skip' }).click();
+    await expect(popup.getByRole('button', { name: 'Start focus session' })).toBeVisible();
+    await popup.close();
+  }
+
   // 1. Label sites on the options page.
   const options = await context.newPage();
   await options.setViewportSize({ width: 1280, height: 800 });
@@ -99,22 +199,21 @@ try {
     await expect(options.getByLabel(`Category for ${domain}`)).toHaveValue(category);
   }
 
-  // Research interventions are on by default from v0.2.0. Keep the screenshots predictable (no
-  // notice, no random friction/intention pages) by switching them off in this throwaway profile.
-  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  await worker.evaluate(() =>
-    globalThis.chrome.storage.local.set({ 'interventions:enabled': false }),
-  );
+  // Sample history for Insights. Research interventions are on (notice answered); the condition of
+  // each session is chosen by writing the shuffled block (as the E2E tests do), so the check-in and
+  // running sessions are `control` (no helper page) and the helper screenshots are predictable.
+  await storage({
+    ...sampleData(),
+    'interventions:enabled': true,
+    'interventions:notice-seen': true,
+    'interventions:block': ['control'],
+  });
 
   // 2. A short session that ends on its own while browsing, for the check-in screen.
-  let popup = await openPopup();
-  await popup.getByLabel('What will you work on?').fill('Read chapter 4: photosynthesis');
-  await popup.getByLabel('Test length in seconds (E2E build only)').fill('75');
-  await popup.getByRole('button', { name: 'Start focus session' }).click();
-  await expect(popup.getByText('Focusing on')).toBeVisible();
+  let popup = await startSession('Read chapter 4: photosynthesis', { seconds: 75 });
   await popup.close();
-
   const site = await context.newPage();
+  await site.setViewportSize({ width: 1280, height: 800 });
   for (const [url, seconds] of [
     ['https://en.wikipedia.org/wiki/Photosynthesis', 30],
     ['https://www.youtube.com/watch?v=1', 8],
@@ -126,21 +225,40 @@ try {
     await site.goto(url);
     await site.waitForTimeout(seconds * 1000);
   }
-
   popup = await openPopup();
   await expect(popup.getByText('Did you finish your goal?')).toBeVisible({ timeout: 60_000 });
   await popup.getByRole('button', { name: 'Yes' }).click();
   await popup.getByRole('button', { name: '4 – mostly focused' }).click();
-  await capturePopup(popup, '2-check-in.png', 'A quick check-in when your session ends');
+  await capturePopup(popup, '6-check-in.png', 'A quick check-in when your session ends');
   await popup.getByRole('button', { name: 'Save' }).click();
   await popup.close();
 
-  // 3. A normal 25-minute session, running.
-  popup = await openPopup();
-  await popup.getByLabel('What will you work on?').fill('Problem set 3, questions 1–10');
-  await popup.getByLabel('25 min').check();
-  await popup.getByRole('button', { name: 'Start focus session' }).click();
-  await expect(popup.getByText('Focusing on')).toBeVisible();
+  // 3. Friction: a countdown before a Distraction site.
+  await storage({ 'interventions:block': ['friction'] });
+  (await startSession('Problem set 3, questions 1–10')).close();
+  await site.bringToFront();
+  await site.goto('https://www.khanacademy.org/math');
+  await site.goto('https://www.youtube.com/watch?v=2').catch(() => undefined); // redirected
+  await expect(site.getByRole('heading', { name: 'A moment before youtube.com' })).toBeVisible();
+  await site.waitForTimeout(3_500); // let the countdown visibly run
+  await capture(site, '2-friction-countdown.png');
+  await endAndSkip();
+
+  // 4. Intention: "What did you come here for?" before a Distraction site.
+  await storage({ 'interventions:block': ['intention'] });
+  (await startSession('Essay outline for history')).close();
+  await site.bringToFront();
+  await site.goto('https://en.wikipedia.org/wiki/Renaissance');
+  await site.goto('https://www.reddit.com/r/history').catch(() => undefined); // redirected
+  await expect(site.getByRole('heading', { name: 'Before you open reddit.com' })).toBeVisible();
+  await site.getByLabel('What did you come here for?').fill('Check one source for my essay');
+  await capture(site, '3-intention-question.png');
+  await site.getByLabel('What did you come here for?').fill(''); // never stored either way
+  await endAndSkip();
+
+  // 5. A normal 25-minute session, running (control: no helper page).
+  await storage({ 'interventions:block': ['control'] });
+  popup = await startSession('Problem set 3, questions 1–10');
   await site.bringToFront();
   await site.goto('https://www.khanacademy.org/math');
   await site.waitForTimeout(3_000);
@@ -154,13 +272,53 @@ try {
   );
   await popup.close();
 
-  // 4. Options: site categories, then My Data.
+  // 6. Options: Insights, My Data, site categories.
   await options.bringToFront();
-  await options.reload();
-  await capture(options, '3-site-categories.png');
+  await options.goto(`${base}/options.html#insights`);
+  await expect(options.getByRole('heading', { name: 'Insights', level: 1 })).toBeVisible();
+  // Start the picture at the "Best time of day" card, so the comparison table fits below it.
+  await options
+    .getByRole('region', { name: 'Best time of day' })
+    .evaluate((el) =>
+      globalThis.scrollTo(0, el.getBoundingClientRect().top + globalThis.scrollY - 24),
+    );
+  await capture(options, '4-insights.png');
   await options.goto(`${base}/options.html#my-data`);
   await expect(options.getByRole('heading', { name: 'My Data', level: 1 })).toBeVisible();
-  await capture(options, '4-my-data.png');
+  await options.evaluate(() => globalThis.scrollTo(0, 0)); // a hash change keeps the scroll
+  await capture(options, '5-my-data.png');
+  await options.goto(`${base}/options.html`);
+  await options.reload();
+  await capture(options, '7-site-categories.png');
+
+  // 7. Edge Add-ons images: store logo (300x300) and small promo tile (440x280).
+  const art = await context.newPage();
+  const iconSrc = `data:image/svg+xml;base64,${ICON_SVG.toString('base64')}`;
+  await art.setViewportSize({ width: 300, height: 300 });
+  await art.setContent(
+    `<style>html,body{margin:0;background:transparent}</style>` +
+      `<img src="${iconSrc}" width="300" height="300" style="display:block">`,
+  );
+  await art.locator('img').evaluate((img) => img.decode());
+  await art.screenshot({
+    path: path.join(EDGE_DIR, 'store-logo-300x300.png'),
+    omitBackground: true,
+  });
+  console.log('✓ docs/store/edge/store-logo-300x300.png');
+  await art.setViewportSize({ width: 440, height: 280 });
+  await art.setContent(`<!doctype html>
+    <style>
+      body { margin: 0; width: 440px; height: 280px; display: flex; align-items: center; gap: 24px;
+             padding: 0 32px; box-sizing: border-box; background: #eef2fb;
+             font-family: system-ui, sans-serif; color: #1f2328; }
+      h1 { font-size: 40px; margin: 0 0 8px; }
+      p { font-size: 18px; line-height: 1.3; margin: 0; color: #424a53; }
+    </style>
+    <img src="${iconSrc}" width="112" height="112">
+    <div><h1>StudyLens</h1><p>Focus sessions for students. Your data stays on your device.</p></div>`);
+  await art.locator('img').evaluate((img) => img.decode());
+  await art.screenshot({ path: path.join(EDGE_DIR, 'small-promo-tile-440x280.png') });
+  console.log('✓ docs/store/edge/small-promo-tile-440x280.png');
 } finally {
   await context.close();
   rmSync(profile, { recursive: true, force: true, maxRetries: 3 });

@@ -18,6 +18,7 @@ import {
 } from '@/src/interventions/interstitial-controller';
 import { cryptoRandomInt } from '@/src/interventions/randomize';
 import { deleteEverything } from '@/src/my-data/delete-all';
+import { runRetentionIfDue } from '@/src/retention/retention';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
   endSessionEarly,
@@ -56,9 +57,9 @@ const interstitialDeps: InterstitialDeps = { store: localStore, pageUrl: interst
 
 /**
  * Activity tracking (P2), focus sessions (P4), their check-ins (P5) and the friction (P9) and
- * intention (P10) interventions. This script can be suspended at any time, so nothing lives in
- * memory: every event loads its state from storage, runs pure logic, and saves
- * the result. All work runs one task at a time, in order, through `queue`, so session end-of-time
+ * intention (P10) interventions, and the daily retention cleanup (P12). This script can be
+ * suspended at any time, so nothing lives in memory: every event loads its state from storage,
+ * runs pure logic, and saves the result. All work runs one task at a time, in order, through `queue`, so session end-of-time
  * calculations always see the tracker's latest saved state.
  */
 export default defineBackground(() => {
@@ -84,6 +85,10 @@ export default defineBackground(() => {
       await saveTrackerState(localStore, state);
     }).catch(() => undefined); // Already logged by enqueue.
   }
+
+  /** Retention (P12): at most once per local day, queued so it never races another write. */
+  const cleanUpIfDue = () =>
+    void enqueue(() => runRetentionIfDue(localStore, Date.now())).catch(() => undefined);
 
   const sync = () =>
     dispatch(async () => ({
@@ -226,6 +231,7 @@ export default defineBackground(() => {
       sync();
       // Auto-skip a check-in left unanswered for 12 hours and keep the "?" badge right.
       void enqueue(() => expireCheckIns(sessionDeps, Date.now())).catch(() => undefined);
+      cleanUpIfDue();
     }
     if (alarm.name === SESSION_END_ALARM) void reconcile().catch(() => undefined);
     if (alarm.name === SESSION_TICK_ALARM) {
@@ -256,4 +262,6 @@ export default defineBackground(() => {
   // end an overdue session at its planned end (or restore its alarms and badge).
   sync();
   void enqueue(() => reconcileSession(sessionDeps, Date.now())).catch(() => undefined);
+  // Retention (P12): run now if it is overdue (e.g. the browser was closed for days).
+  cleanUpIfDue();
 });

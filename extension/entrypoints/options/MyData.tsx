@@ -15,6 +15,7 @@ import {
   recordingNow,
   sessionRows,
   siteLabels,
+  weeklyTotals,
 } from '@/src/my-data/tables';
 import { LOAD_TIMEOUT_MS, settle, type LoadState } from '@/src/popup/popup-data';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
@@ -181,6 +182,7 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
 
 function Tables({ stored }: { stored: Record<string, unknown> }) {
   const days = activityByDay(stored);
+  const weeks = weeklyTotals(stored);
   const sessions = sessionRows(stored);
   const labels = siteLabels(stored);
   const running = activeSession(stored);
@@ -229,6 +231,45 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
                         <td style={cell}>{r.hostname}</td>
                         <td style={cell}>{r.start}</td>
                         <td style={cell}>{r.end}</td>
+                        <td style={cell}>{r.duration}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          ))
+        )}
+      </section>
+
+      <section style={card}>
+        <h2 style={{ margin: 0, fontSize: 18 }}>Weekly totals (older than 30 days)</h2>
+        <p style={muted}>
+          Detailed records older than 30 days are combined into time per site and label for each
+          week (Monday to Sunday), then deleted.
+        </p>
+        {weeks.length === 0 ? (
+          <p style={muted}>No weekly totals yet.</p>
+        ) : (
+          weeks.map((w, i) => (
+            <details key={w.week} open={i === 0} style={{ marginTop: 8 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 14 }}>
+                {w.label} — {w.rows.length} site{w.rows.length === 1 ? '' : 's'}, {w.total}
+              </summary>
+              <div style={tableWrap}>
+                <table style={table} aria-label={`Weekly totals, ${w.label}`}>
+                  <thead>
+                    <tr>
+                      <th style={head}>Site</th>
+                      <th style={head}>Label</th>
+                      <th style={head}>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {w.rows.map((r) => (
+                      <tr key={`${r.site}|${r.category}`}>
+                        <td style={cell}>{r.site}</td>
+                        <td style={cell}>{CATEGORY_LABELS[r.category]}</td>
                         <td style={cell}>{r.duration}</td>
                       </tr>
                     ))}
@@ -346,9 +387,9 @@ export default function MyData() {
         </button>
         <p style={{ ...muted, marginBottom: 0 }}>
           <strong>How long data is kept:</strong> detailed activity records are kept for 30 days.
-          After that they are meant to be combined into weekly totals and the details deleted. That
-          automatic cleanup is not switched on yet (it comes in a later version), so for now records
-          stay until you delete them here.
+          After that, once a day, they are combined into weekly totals (time per site and label) and
+          the detailed records are deleted automatically. Focus sessions are kept so Insights keeps
+          working, but after 30 days their goal text and helper-page counts are removed.
         </p>
       </section>
 

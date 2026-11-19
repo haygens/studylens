@@ -1,6 +1,7 @@
 # StudyLens Privacy Policy
 
-_Effective: November 16, 2026 · Applies to StudyLens version 0.2.0 for Firefox (and earlier)_
+_Effective: November 18, 2026 · Applies to StudyLens version 0.2.0 for Firefox and Microsoft Edge (and
+earlier)_
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
 browsing stays yours: **everything it records stays on your device, and this version never sends
@@ -26,6 +27,12 @@ label.
   its page was shown, how many times you pressed "Continue", and how many times "Back to studying"
   (just these numbers), plus which sites (domain names only) are in their 5-minute "not again"
   period. See "Research interventions" below.
+- **Weekly totals** of activity older than 30 days (time per week, site, and label), and the time
+  the daily cleanup last ran. See "Retention" below.
+
+The **Insights** tab (charts of your focus time, best time of day, and the research conditions
+compared) is calculated in your browser from the records above each time you open it. It stores
+nothing extra and sends nothing anywhere.
 
 ## What StudyLens never records
 
@@ -77,11 +84,16 @@ requests: nothing is uploaded, synced, or shared, and the developer cannot see y
 
 ## Retention
 
-- Your data stays on your device until you delete it on the My Data page, or uninstall the
-  extension (which removes its storage).
-- **Planned for a later version:** detailed activity records older than 30 days will be combined
-  into weekly totals and the details deleted automatically. This automatic cleanup is **not**
-  in version 0.2.0.
+- **Automatic cleanup (on from version 0.2.0):** once a day, detailed activity records (domain,
+  start and end time) older than 30 days are combined into **weekly totals**: the time per site
+  (domain) and label for each week, Monday to Sunday. The detailed records for those days are then
+  deleted. The weekly totals show on the My Data page and are included in the export.
+- **Focus sessions** are kept, because the Insights tab needs them. After 30 days, the session's
+  goal text and its friction/intention counts are deleted. What stays is: start and end time,
+  planned length, minutes per category, number of distraction visits, condition, and the check-in
+  answers.
+- Everything else (weekly totals, sessions, labels, settings) stays on your device until you
+  delete it on the My Data page, or uninstall the extension (which removes its storage).
 
 ## Your controls
 

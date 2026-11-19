@@ -4,6 +4,9 @@
  *
  * - Every `.output/<browser>-mv3` folder must exist and must NOT contain the E2E markers.
  * - An E2E build (`*-e2e`), if present, MUST contain them, so this check can't pass by accident.
+ * - Both manifests are complete and browser-correct: MV3, the same 4 permissions, no host
+ *   permissions, never in private windows, every icon file present. Edge: a service worker and no
+ *   Firefox-only keys. Firefox: background scripts and the add-on ID that must never change.
  */
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -31,6 +34,46 @@ function markersIn(dir) {
 }
 
 let failed = false;
+
+const PERMISSIONS = ['alarms', 'idle', 'storage', 'tabs'];
+const GECKO_ID = 'studylens@haygens.github.io';
+
+/** Problems with a normal build's manifest (empty when it is correct). */
+function manifestProblems(name, dir) {
+  const m = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+  const problems = [];
+  const check = (ok, text) => ok || problems.push(text);
+  check(m.manifest_version === 3, 'manifest_version is not 3');
+  check(m.name === 'StudyLens' && typeof m.version === 'string', 'name/version');
+  check(
+    JSON.stringify([...(m.permissions ?? [])].sort()) === JSON.stringify(PERMISSIONS),
+    `permissions are ${JSON.stringify(m.permissions)}`,
+  );
+  check(
+    !m.host_permissions && !m.optional_permissions && !m.optional_host_permissions,
+    'host or optional permissions',
+  );
+  check(!m.content_scripts, 'content scripts');
+  check(m.incognito === 'not_allowed', 'incognito is not not_allowed');
+  const icons = { ...m.icons, ...m.action?.default_icon };
+  check(m.icons?.['128'], 'no 128px icon');
+  for (const file of Object.values(icons)) {
+    check(existsSync(path.join(dir, file)), `missing ${file}`);
+  }
+  check(existsSync(path.join(dir, m.action?.default_popup ?? '-')), 'missing popup');
+  check(existsSync(path.join(dir, m.options_ui?.page ?? '-')), 'missing options page');
+  if (name.startsWith('edge')) {
+    check(
+      m.background?.service_worker === 'background.js' && !m.background?.scripts,
+      'Edge needs a service worker',
+    );
+    check(!m.browser_specific_settings, 'Firefox-only browser_specific_settings in the Edge build');
+  } else {
+    check(Array.isArray(m.background?.scripts), 'Firefox needs background scripts');
+    check(m.browser_specific_settings?.gecko?.id === GECKO_ID, 'Firefox add-on ID changed');
+  }
+  return problems;
+}
 for (const name of REQUIRED) {
   const dir = path.join(outRoot, name);
   if (!existsSync(dir)) {
@@ -44,6 +87,13 @@ for (const name of REQUIRED) {
     failed = true;
   } else {
     console.log(`✓ ${name}: no E2E-only code`);
+  }
+  const problems = manifestProblems(name, dir);
+  if (problems.length) {
+    console.error(`✗ ${name}: manifest: ${problems.join('; ')}`);
+    failed = true;
+  } else {
+    console.log(`✓ ${name}: manifest complete and correct for this browser`);
   }
 }
 

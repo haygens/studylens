@@ -9,6 +9,7 @@ import { countName } from '../interventions/interstitial';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import { asSegments } from '../storage/activity-store';
 import { asRules } from '../storage/categories-store';
+import { asWeeklyTotals } from '../retention/retention';
 import { STORAGE_KEYS, dayOfKey } from '../storage/keys';
 import { asActiveSession, asHistory } from '../storage/sessions-store';
 
@@ -166,13 +167,16 @@ export interface SessionRow {
   intention: string;
 }
 
+/** Shown for details that retention (P12) removed from sessions older than 30 days. */
+export const REMOVED = 'Removed after 30 days';
+
 /** Finished sessions, newest first. */
 export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
   return asHistory(stored[STORAGE_KEYS.sessionHistory])
     .map((s: FocusSession) => ({
       id: s.id,
       date: `${formatDay(s.start)} ${formatClock(s.start)}`,
-      goal: s.goal,
+      goal: s.compacted ? REMOVED : s.goal,
       planned: formatMinutes(s.plannedMinutes),
       actual:
         formatMinutes((s.actualEnd - s.start) / 60_000) + (s.endedEarly ? ' (ended early)' : ''),
@@ -184,8 +188,8 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
       distractionVisits: s.distractionVisits,
       checkIn: describeCheckIn(s.checkIn),
       condition: describeCondition(s.condition),
-      friction: describeFriction(s),
-      intention: describeIntention(s),
+      friction: s.compacted ? REMOVED : describeFriction(s),
+      intention: s.compacted ? REMOVED : describeIntention(s),
     }))
     .reverse();
 }
@@ -196,4 +200,38 @@ export function activeSession(stored: Record<string, unknown>): ActiveSession | 
 
 export function siteLabels(stored: Record<string, unknown>): CategoryRule[] {
   return asRules(stored[STORAGE_KEYS.categoryRules]);
+}
+
+export interface WeeklyRow {
+  site: string;
+  category: SiteCategory;
+  duration: string;
+}
+
+export interface WeeklyGroup {
+  /** The Monday that starts the week, `2026-10-12`. */
+  week: string;
+  label: string;
+  rows: WeeklyRow[];
+  total: string;
+}
+
+/** Retention (P12): weekly totals of older activity, newest week first, biggest site first. */
+export function weeklyTotals(stored: Record<string, unknown>): WeeklyGroup[] {
+  const groups = new Map<string, WeeklyGroup & { ms: number }>();
+  for (const t of asWeeklyTotals(stored[STORAGE_KEYS.weeklyTotals])) {
+    const group = groups.get(t.week) ?? {
+      week: t.week,
+      label: `Week of ${formatDay(t.week)}`,
+      rows: [],
+      total: '',
+      ms: 0,
+    };
+    group.rows.push({ site: t.site, category: t.category, duration: formatDuration(t.ms) });
+    group.ms += t.ms;
+    groups.set(t.week, group);
+  }
+  return [...groups.values()]
+    .sort((a, b) => b.week.localeCompare(a.week))
+    .map(({ ms, ...g }) => ({ ...g, total: formatDuration(ms) }));
 }

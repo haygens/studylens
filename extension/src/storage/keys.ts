@@ -33,6 +33,13 @@ export const STORAGE_KEYS = {
    * never what the user typed on the intention page (that is not stored anywhere).
    */
   interstitialState: 'interstitial:state',
+  /**
+   * Retention (P12): activity older than 30 days, rolled up into time per week, site (domain
+   * group) and category. The raw records for those days are deleted.
+   */
+  weeklyTotals: 'totals:weekly',
+  /** Retention (P12): when the daily cleanup last ran (epoch ms). */
+  retentionLastRun: 'retention:last-run',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

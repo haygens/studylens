@@ -7,6 +7,7 @@ import {
   buildInsights,
   conditionComparison,
   dailyTotals,
+  excludedText,
   focusByTimeOfDay,
   hourBandOf,
   lastDays,
@@ -256,5 +257,20 @@ describe('buildInsights', () => {
     const insights = buildInsights({ 'sessions:history': 'oops', 'activity:2026-11-18': 3 }, NOW);
     expect(insights.totalSessions).toBe(0);
     expect(insights.days).toHaveLength(14);
+  });
+});
+
+describe('excludedText', () => {
+  it('names only the groups that have sessions', () => {
+    expect(excludedText(0, 0)).toBe('');
+    expect(excludedText(1, 0)).toBe(
+      ' Not included: 1 session with research interventions turned off.',
+    );
+    expect(excludedText(0, 2)).toBe(
+      ' Not included: 2 sessions without a condition (from before research interventions were on).',
+    );
+    expect(excludedText(2, 1)).toContain(
+      '2 sessions with research interventions turned off, 1 session without',
+    );
   });
 });

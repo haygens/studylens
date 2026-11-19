@@ -11,6 +11,8 @@ import {
   recordingNow,
   sessionRows,
   siteLabels,
+  REMOVED,
+  weeklyTotals,
 } from './tables';
 
 beforeEach(() => {
@@ -192,5 +194,64 @@ describe('labels and active session', () => {
     ).toEqual([{ domain: 'youtube.com', category: 'distraction' }]);
     expect(activeSession({ 'sessions:active': { id: 'x' } })).toBeNull();
     expect(activeSession({})).toBeNull();
+  });
+});
+
+describe('retention (P12) in My Data', () => {
+  it('groups weekly totals by week, newest first, with a total', () => {
+    const groups = weeklyTotals({
+      'totals:weekly': [
+        { week: '2026-10-05', site: 'wikipedia.org', category: 'study', ms: 3_600_000 },
+        { week: '2026-10-12', site: 'youtube.com', category: 'distraction', ms: 900_000 },
+        { week: '2026-10-12', site: 'wikipedia.org', category: 'study', ms: 1_800_000 },
+        { week: 7 }, // malformed: ignored
+      ],
+    });
+    expect(groups).toEqual([
+      {
+        week: '2026-10-12',
+        label: 'Week of Mon, Oct 12, 2026',
+        rows: [
+          { site: 'youtube.com', category: 'distraction', duration: '15m 00s' },
+          { site: 'wikipedia.org', category: 'study', duration: '30m 00s' },
+        ],
+        total: '45m 00s',
+      },
+      {
+        week: '2026-10-05',
+        label: 'Week of Mon, Oct 5, 2026',
+        rows: [{ site: 'wikipedia.org', category: 'study', duration: '1h 00m' }],
+        total: '1h 00m',
+      },
+    ]);
+    expect(weeklyTotals({})).toEqual([]);
+  });
+
+  it('shows removed details for compacted sessions', () => {
+    const [row] = sessionRows({
+      'sessions:history': [
+        {
+          id: 'x',
+          goal: '',
+          compacted: true,
+          plannedMinutes: 25,
+          start: 0,
+          plannedEnd: 1_500_000,
+          actualEnd: 1_500_000,
+          endedEarly: false,
+          condition: 'friction',
+          minutesByCategory: { study: 20, neutral: 0, distraction: 5 },
+          distractionVisits: 1,
+          checkIn: null,
+        },
+      ],
+    });
+    expect(row).toMatchObject({
+      goal: REMOVED,
+      friction: REMOVED,
+      intention: REMOVED,
+      distractionVisits: 1,
+      condition: 'Friction (short countdown)',
+    });
   });
 });

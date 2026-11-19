@@ -45,6 +45,11 @@ export interface FocusSession extends ActiveSession {
   distractionVisits: number;
   /** End-of-session check-in (P5). Null until it is answered or skipped. */
   checkIn: CheckIn | null;
+  /**
+   * Retention (P12): true once the session is more than 30 days old and its details that Insights
+   * doesn't need were removed (the goal text and the friction/intention counts).
+   */
+  compacted?: true;
 }
 
 /** Cleans the goal text; null if it is empty. */
