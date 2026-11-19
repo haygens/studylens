@@ -56,7 +56,7 @@ export function asHistory(value: unknown): FocusSession[] {
     ...countsOf(s),
     condition: conditionOf(s.condition),
     checkIn: isCheckIn(s.checkIn) ? s.checkIn : null,
-    // Retention (P12): compacted sessions have no goal text or counts (read as 0).
+    // Retention (P12): compacted sessions have no goal text; everything else is kept.
     ...(compacted === true && { compacted }),
   }));
 }

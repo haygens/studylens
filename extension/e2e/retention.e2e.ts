@@ -87,10 +87,20 @@ test('40-day-old activity becomes weekly totals when the background wakes up', a
   expect(await background.get(dayKey(RECENT))).toHaveLength(1);
   expect(await background.get('retention:last-run')).toBeGreaterThan(OLD);
 
-  // The old session is kept for Insights but its goal text and counts are gone.
+  // The old session is kept for Insights; only its goal text is gone, every number stays.
   const [session] = await background.get<FocusSession[]>('sessions:history');
-  expect(session).toMatchObject({ id: 'old-session', goal: '', compacted: true });
-  expect(session).not.toHaveProperty('frictionShown');
+  expect(session).toMatchObject({
+    id: 'old-session',
+    goal: '',
+    compacted: true,
+    condition: 'friction',
+    distractionVisits: 1,
+    minutesByCategory: { study: 20, neutral: 0, distraction: 5 },
+    checkIn: { goalCompleted: 'yes', focusRating: 4 },
+    frictionShown: 2,
+    frictionContinued: 1,
+    frictionTurnedBack: 1,
+  });
   expect(JSON.stringify(await background.storage())).not.toContain('Old private goal');
 
   const myData = await openMyData();

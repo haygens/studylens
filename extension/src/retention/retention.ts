@@ -8,7 +8,8 @@
  *   the raw records are deleted. Records that cross local midnight are split, so each part counts
  *   toward the week of its own day.
  * - Finished sessions that ended more than RETENTION_DAYS before today are kept (Insights needs
- *   them) but compacted: the goal text and the friction/intention counts are removed.
+ *   them) but compacted: only the goal text is removed. Every numeric field (condition, check-in,
+ *   minutes, distraction visits, friction/intention counts) stays, for Insights and P20 results.
  *
  * Safe to run twice and safe to interrupt. Step 1 is ONE `storage.set` (atomic in both Firefox
  * and Chromium) that writes the new weekly totals, empties the old buckets (`[]`), compacts the
@@ -19,7 +20,6 @@
  */
 import type { SiteCategory } from '@studylens/shared';
 import { categoryOf, siteKey } from '../categories/rules';
-import { NO_COUNTS } from '../interventions/interstitial';
 import type { FocusSession } from '../sessions/session';
 import { asSegments, type FullStore } from '../storage/activity-store';
 import { asRules } from '../storage/categories-store';
@@ -101,11 +101,12 @@ export function mergeWeeklyTotals(
   );
 }
 
-/** A session past retention: the goal text and the friction/intention counts are dropped. */
-export function compactSession(session: FocusSession): Record<string, unknown> {
-  const rest: Record<string, unknown> = { ...session };
-  for (const name of Object.keys(NO_COUNTS)) delete rest[name];
-  return { ...rest, goal: '', compacted: true };
+/**
+ * A session past retention: only the goal text (the one personal, free-text field) is dropped.
+ * All numbers are kept, including the friction/intention counts (needed for P20 results).
+ */
+export function compactSession(session: FocusSession): FocusSession {
+  return { ...session, goal: '', compacted: true };
 }
 
 export interface RetentionPlan {

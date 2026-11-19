@@ -227,7 +227,7 @@ describe('retention (P12) in My Data', () => {
     expect(weeklyTotals({})).toEqual([]);
   });
 
-  it('shows removed details for compacted sessions', () => {
+  it('shows only the goal as removed for compacted sessions', () => {
     const [row] = sessionRows({
       'sessions:history': [
         {
@@ -243,13 +243,16 @@ describe('retention (P12) in My Data', () => {
           minutesByCategory: { study: 20, neutral: 0, distraction: 5 },
           distractionVisits: 1,
           checkIn: null,
+          frictionShown: 2,
+          frictionContinued: 1,
+          frictionTurnedBack: 1,
         },
       ],
     });
     expect(row).toMatchObject({
       goal: REMOVED,
-      friction: REMOVED,
-      intention: REMOVED,
+      friction: '2 shown · 1 continued · 1 turned back',
+      intention: '—',
       distractionVisits: 1,
       condition: 'Friction (short countdown)',
     });

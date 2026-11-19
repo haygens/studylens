@@ -88,10 +88,11 @@ requests: nothing is uploaded, synced, or shared, and the developer cannot see y
   start and end time) older than 30 days are combined into **weekly totals**: the time per site
   (domain) and label for each week, Monday to Sunday. The detailed records for those days are then
   deleted. The weekly totals show on the My Data page and are included in the export.
-- **Focus sessions** are kept, because the Insights tab needs them. After 30 days, the session's
-  goal text and its friction/intention counts are deleted. What stays is: start and end time,
-  planned length, minutes per category, number of distraction visits, condition, and the check-in
-  answers.
+- **Focus sessions** are kept, because the Insights tab and the research results need them. After
+  30 days, only the session's goal text is deleted. What stays is numbers only: start and end
+  time, planned length, minutes per category, number of distraction visits, condition, check-in
+  answers, and the friction/intention counts (how often each helper page was shown, and how often
+  you continued or went back to studying). None of these contain site names or text you typed.
 - Everything else (weekly totals, sessions, labels, settings) stays on your device until you
   delete it on the My Data page, or uninstall the extension (which removes its storage).
 

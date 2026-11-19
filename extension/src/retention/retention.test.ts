@@ -161,7 +161,7 @@ describe('planRetention', () => {
     ]);
   });
 
-  it('keeps sessions but compacts those that ended more than 30 days ago', () => {
+  it('keeps sessions; after 30 days drops only the goal text, keeping every number', () => {
     const store = seeded();
     const plan = planRetention(store.data, NOW);
     expect(plan.compactedSessions).toBe(1);
@@ -179,11 +179,23 @@ describe('planRetention', () => {
       minutesByCategory: { study: 20, neutral: 0, distraction: 5 },
       distractionVisits: 2,
       checkIn: { goalCompleted: 'yes', focusRating: 4, answeredAt: at(10, 18, 10) + MIN },
+      frictionShown: 3,
+      frictionContinued: 1,
+      frictionTurnedBack: 0,
+      intentionShown: 0,
+      intentionContinued: 0,
+      intentionTurnedBack: 0,
     });
     expect(edge).toMatchObject({ goal: 'Goal edge', frictionShown: 3 });
     expect(recent).toMatchObject({ goal: 'Goal new' });
-    // A compacted session still loads; its counts read as 0.
-    expect(asHistory([old])[0]).toMatchObject({ id: 'old', compacted: true, frictionShown: 0 });
+    // A compacted session still loads with all its numbers.
+    expect(asHistory([old])[0]).toMatchObject({
+      id: 'old',
+      goal: '',
+      compacted: true,
+      frictionShown: 3,
+      frictionContinued: 1,
+    });
   });
 
   it('only stamps the run time when there is nothing to do', () => {

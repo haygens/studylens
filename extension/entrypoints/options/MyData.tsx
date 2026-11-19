@@ -389,7 +389,8 @@ export default function MyData() {
           <strong>How long data is kept:</strong> detailed activity records are kept for 30 days.
           After that, once a day, they are combined into weekly totals (time per site and label) and
           the detailed records are deleted automatically. Focus sessions are kept so Insights keeps
-          working, but after 30 days their goal text and helper-page counts are removed.
+          working, but after 30 days their goal text is removed. Their numbers (minutes, visits,
+          check-in answers, condition, and helper-page counts) are kept.
         </p>
       </section>
 

@@ -167,7 +167,7 @@ export interface SessionRow {
   intention: string;
 }
 
-/** Shown for details that retention (P12) removed from sessions older than 30 days. */
+/** Shown for the goal text that retention (P12) removed from sessions older than 30 days. */
 export const REMOVED = 'Removed after 30 days';
 
 /** Finished sessions, newest first. */
@@ -188,8 +188,8 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
       distractionVisits: s.distractionVisits,
       checkIn: describeCheckIn(s.checkIn),
       condition: describeCondition(s.condition),
-      friction: s.compacted ? REMOVED : describeFriction(s),
-      intention: s.compacted ? REMOVED : describeIntention(s),
+      friction: describeFriction(s),
+      intention: describeIntention(s),
     }))
     .reverse();
 }

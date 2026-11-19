@@ -83,8 +83,8 @@ The **Insights** tab (options page) calculates these in the browser; nothing is 
   enough data yet" instead of averages. These are plain descriptive averages, with no
   significance test.
 - **After the 30-day cleanup:** the trend charts only cover the last 14 days, which are always
-  kept in full, and the other two use the focus sessions, which are kept (only their goal text
-  and helper-page counts are removed). So the cleanup never changes what Insights shows. Weekly
+  kept in full, and the other two use the focus sessions, which are kept (only their goal text is
+  removed). So the cleanup never changes what Insights shows. Weekly
   totals of older weeks are shown on the My Data page.
 
 ## Build from source (for add-on reviewers)
