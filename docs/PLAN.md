@@ -26,7 +26,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       popup loading/error states. Test-only seconds + ignored OS idle exist only in the E2E build
       (`check:builds` proves it). Separate CI job.
 - [x] **P6. My Data page** — raw records table, export JSON, delete everything, pause tracking.
-- [ ] **P7. Privacy policy + store listing** — finalize PRIVACY.md, icons, screenshots. Submit v0.1 to
+- [x] **P7. Privacy policy + store listing** — finalize PRIVACY.md, icons, screenshots. Submit v0.1 to
       Firefox Add-ons (AMO) early so review never blocks the deadline.
 
 ## Week 2 (Nov 22–28): Research layer + dashboard + Edge
@@ -43,6 +43,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       visits, focus rating, goal completion).
 - [x] **P12. Retention job** — `alarms` daily: roll raw records >30 days into weekly totals, delete raw.
 - [ ] **P13. Edge build + submit** — verify on Edge, submit to Edge Add-ons (free, GitHub sign-in).
+      Verify = `npm run smoke:edge` (production build in installed Edge, headless) — passing.
 - [ ] **P14. Recruit friends** — share install links, collect feedback. Consent screen ready before any
       data is shared (see P17).
 

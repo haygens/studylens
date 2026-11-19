@@ -12,6 +12,7 @@
     "zip:firefox": "wxt zip -b firefox --mv3",
     "zip:edge": "wxt zip -b edge",
     "check:builds": "node scripts/check-builds.mjs",
+    "smoke:edge": "wxt build -b edge && node scripts/smoke-edge.mjs",
     "icons": "node scripts/make-icons.mjs",
     "screenshots": "npm run build:e2e && node scripts/screenshots.mjs",
     "test:e2e": "npm run build:e2e && npm run build:edge && playwright test",

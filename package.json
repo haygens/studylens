@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run test:e2e -w extension",
+    "smoke:edge": "npm run smoke:edge -w extension",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

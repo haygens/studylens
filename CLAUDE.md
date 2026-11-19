@@ -94,6 +94,8 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - E2E tests (builds the E2E version and the normal Edge build, runs Playwright in installed Edge):
   `npm run test:e2e`
   — watch in a visible browser: `npm run test:e2e -- --headed`. Never install extra browsers locally.
+- Smoke test of the real production Edge build (`.output/edge-mv3`, installed Edge, headless):
+  `npm run smoke:edge` — replaces the manual Edge check before store submission.
 - Prove normal builds have no E2E-only code (after both builds): `npm run check:builds -w extension`
 - Icons (after editing `extension/assets/icon.svg`): `npm run icons -w extension`
 - Store screenshots → `docs/store/screenshots/`: `npm run screenshots -w extension`

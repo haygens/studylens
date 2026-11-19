@@ -914,3 +914,53 @@ Problems / open questions:
 Disk space: C: 3.48 GB free, M: 14.20 GB free.
 
 Next piece (from PLAN.md): P13 — Edge build + submit (manual verify on Edge, then submit).
+
+## Handoff — 2026-11-19 (v0.1.0 live on AMO; Edge smoke test; 0.2.0 release notes)
+
+Done:
+
+- **v0.1.0 approved and live on AMO:**
+  https://addons.mozilla.org/en-US/firefox/addon/studylens/. P7 is checked off in PLAN.md. In
+  README.md, an "Install for Firefox" link replaces the "coming soon" placeholder.
+- **New `npm run smoke:edge`** (`extension/scripts/smoke-edge.mjs`, separate from the E2E suite).
+  It builds the normal Edge build, then loads the real production files (`.output/edge-mv3`) in
+  the installed Edge (`msedge`, headless) with a fresh profile in M:\temp (deleted afterwards).
+  It uses stub pages only and downloads no browsers. Result: **11 passed, 0 failed, 0 skipped**
+  (Edge 139.0.3405.125):
+  - manifest version 0.2.0, MV3, service worker, no gecko keys
+  - permissions exactly storage/tabs/idle/alarms, no host/optional permissions, no content
+    scripts, incognito not allowed
+  - no test-only code (15 files scanned)
+  - the build has the same 15 files (SHA-256) as `studylens-0.2.0-edge.zip`
+  - the research notice shows and Start stays disabled until "Keep on"
+  - a 25-min session starts and the badge shows "25"
+  - visiting a stub wikipedia.org shows it in Today ("wikipedia.org Neutral 0.1"), and the
+    storage has no path
+  - End early shows the check-in, with badge "?"
+  - the options tabs Site categories, Insights, Settings and My Data render with no error alerts
+  - no console errors or uncaught errors from the extension pages or the service worker
+- The production build stops counting when the PC has been idle for 60 s. If that happens, the
+  Today check reports SKIPPED instead of failing. It didn't happen in this run.
+- **`docs/store/release-notes-0.2.0.md`:** short notes for the AMO 0.1.0 → 0.2.0 update and the
+  first Edge release (helpers, Insights, automatic cleanup, the distraction-visit fix).
+- The smoke command was added to CLAUDE.md, README.md and the P13 line in PLAN.md.
+
+Changed files: `CLAUDE.md`, `README.md`, `docs/PLAN.md`, `docs/LOG.md`,
+`docs/store/release-notes-0.2.0.md` (new), `extension/scripts/smoke-edge.mjs` (new),
+`extension/package.json`, `package.json`.
+
+Tests: unit pass, 277 tests in 24 files. Smoke on Edge 11/11. Lint, format check, typecheck and
+`check:builds` are clean. The extension code didn't change, so the three 0.2.0 zips from
+`23622c0` are still current.
+
+Problems / open questions:
+
+- The smoke test isn't in CI. It needs the installed Edge, and CI uses Playwright's Chromium.
+  Run it locally before submitting.
+- Edge Partner Center may not have a release-notes field for a first submission. If it doesn't,
+  use the Edge text in the description or the certification notes.
+
+Disk space: C: 3.34 GB free, M: 14.21 GB free.
+
+Next piece (from PLAN.md): P13 — Edge build + submit (submit `studylens-0.2.0-edge.zip`), and
+upload 0.2.0 to AMO.

@@ -12,7 +12,7 @@ nothing changes, a 10-second countdown before sites you labeled Distraction, or 
 come here for?" question before them. A one-time notice explains this before your first session,
 and you can turn it off anytime. It all stays on your device; nothing is shared.
 
-**Install:** _Firefox Add-ons link coming soon (pending review)._
+**Install:** [Install for Firefox](https://addons.mozilla.org/en-US/firefox/addon/studylens/)
 
 ## Privacy in one minute
 
@@ -141,6 +141,7 @@ npm run dev:firefox -w extension   # opens Firefox with the extension loaded
 npm test                           # unit tests (Vitest)
 npm run test:e2e                   # browser tests (Playwright, uses installed Edge; builds the
                                    # E2E and normal Edge versions first)
+npm run smoke:edge                 # smoke test of the real production Edge build in installed Edge
 npm run lint
 npm run typecheck
 ```
