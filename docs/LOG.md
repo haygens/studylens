@@ -871,3 +871,46 @@ Problems / open questions:
 Disk space: C: 3.77 GB free, M: 14.19 GB free.
 
 Next piece (from PLAN.md): P13 — Edge build + submit (manual verify on Edge, then submit).
+
+## Handoff — 2026-11-19 (P12 decision: keep session numbers)
+
+Done:
+
+- **Decision applied:** after 30 days, retention drops only the session's **goal text**. All
+  numeric fields stay: condition, check-in answers, planned/actual times, minutes per category,
+  distraction visits, and the friction/intention counts (shown / continued / turned back). They
+  are needed for the P20 results and contain nothing personal.
+- `compactSession` now returns the session with `goal: ''` and `compacted: true` and nothing
+  else changed. My Data shows "Removed after 30 days" only in the Goal column; the friction and
+  intention columns show the real counts. The "How long data is kept" text, PRIVACY.md, README
+  and code comments were updated.
+- Tests: the retention unit test checks the exact compacted session (counts kept). The tables test
+  checks that compacted rows show the counts. `retention.e2e.ts` now checks that the 40-day-old
+  session keeps condition, visits, minutes, check-in and friction counts, and that the goal text is
+  gone from storage.
+- **Zips rebuilt** from commit `23622c0` (version 0.2.0, **not uploaded**, v0.1.0 tag untouched
+  at `48fba49`):
+  - `M:\Projects\studylens\extension\.output\studylens-0.2.0-edge.zip` (SHA-256 `4936ffcb…cd20`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.2.0-firefox.zip` (SHA-256 `1a754424…4f47`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.2.0-sources.zip` (SHA-256 `1ade15e4…1364`)
+  - The sources zip was unzipped into a clean `M:\temp\studylens-verify-0.2.0`, then `npm ci` +
+    `build:firefox`: all 15 files had identical SHA-256. The folder was deleted afterwards.
+- Store screenshots unchanged (the changed text isn't in any of them).
+
+Changed files: `PRIVACY.md`, `README.md`, `docs/LOG.md`, `extension/e2e/retention.e2e.ts`,
+`extension/entrypoints/options/MyData.tsx`, `extension/src/my-data/{tables,tables.test}.ts`,
+`extension/src/retention/{retention,retention.test}.ts`, `extension/src/sessions/session.ts`,
+`extension/src/storage/sessions-store.ts`.
+
+Tests: unit pass, 277 tests in 24 files. E2E pass, 30/30 in local Edge. Lint, format check,
+typecheck, Firefox/Edge/web builds and `check:builds` are clean.
+
+Problems / open questions:
+
+- Sessions that the earlier P12 code already compacted on hs's own test install lost their counts.
+  Those can't be recovered. v0.2.0 was never published, so no other users are affected.
+- Still to do before uploading: test Edge by hand (P13), and run the Firefox checklist.
+
+Disk space: C: 3.48 GB free, M: 14.20 GB free.
+
+Next piece (from PLAN.md): P13 — Edge build + submit (manual verify on Edge, then submit).
