@@ -774,3 +774,100 @@ Problems / open questions:
 Disk space: C: 3.77 GB free, M: 14.25 GB free.
 
 Next piece (from PLAN.md): P12 — Retention job.
+
+## Handoff — 2026-11-18 (P12 + P13 prep)
+
+Done:
+
+- **P12 Retention job** (`src/retention/retention.ts`, pure, runs over the KeyValueStore
+  interface).
+  - **What:** once per local day, activity day buckets more than 30 days before today are rolled
+    into weekly totals and the raw records deleted. Example: on Nov 18, Oct 19 is kept and Oct 18
+    is rolled. Totals are kept per week (Monday start), per site (domain group, same as
+    `siteKey`), and per category at roll time. Records crossing midnight are split, so each part
+    counts toward its own day's week.
+  - **When:** the heartbeat alarm checks `retention:last-run` every minute, so the job runs once
+    per local day. It also runs on every background wake-up if it is overdue. It always runs
+    inside the background's task queue, so nothing else writes at the same time.
+  - **Safe to repeat or interrupt:** step 1 is a single atomic `storage.set` (new totals, emptied
+    old buckets, compacted sessions, run time). Step 2 removes the emptied buckets. A second run
+    changes nothing. A run cut off before step 2 is finished by the next one, with no loss and
+    no double counting. Both cases are unit-tested.
+  - **Sessions** are kept (Insights needs them). After 30 days they are compacted: the goal text
+    and friction/intention counts are deleted and `compacted: true` is set. Start/end, planned
+    length, minutes per category, visits, condition and check-in stay.
+  - **New keys** `totals:weekly` and `retention:last-run` (in `keys.ts`; the key-list test covers
+    them).
+  - **My Data:** new "Weekly totals (older than 30 days)" section. Compacted sessions show
+    "Removed after 30 days". The retention note now says cleanup is on. The export includes
+    the totals, and its `about` text explains them.
+  - **Insights** is unchanged by cleanup (unit-tested: identical output before/after). Its trends
+    cover 14 days, and the other charts use sessions.
+  - **Docs:** PRIVACY.md updated (cleanup is on; what is kept; weekly totals listed; Insights
+    stores nothing; effective date Nov 18, covers Firefox and Edge). README updated too.
+  - **Tests:** 17 retention unit tests with a fake clock, covering:
+    - exactly 30 vs 31 days, and the next day
+    - week boundary Sun → Mon
+    - a record crossing midnight into another week, and into a kept day
+    - merging into existing totals
+    - running twice, interrupted before the remove, interrupted before the write
+    - once per local day
+    - Insights unchanged
+  - They pass with TZ set to Auckland, New York (DST change in range), Kolkata, and UTC. Also new
+    My Data table tests, and `retention.e2e.ts`: it seeds 40-day-old activity and a session, stops
+    the background, wakes it, and checks the weekly totals, deletion, compaction, and My Data.
+- **Small Insights fix:** the "Not included" note lists only non-zero groups, and its wording now
+  fits sessions from before research interventions were on (`excludedText`, unit-tested).
+- **P13 prep (Edge):**
+  - The Edge manifest is MV3 with `background.service_worker`, has no `browser_specific_settings`,
+    icons 16–128 present, permissions `storage, tabs, idle, alarms`, `incognito: not_allowed`.
+  - `check:builds` now verifies both manifests: permissions, no host/optional permissions, no
+    content scripts, all icon/popup/options files present. Edge: service worker and no gecko
+    keys. Firefox: background scripts and the unchanged add-on ID.
+  - New `docs/store/edge-listing.md` (fields, files, description, notes for certification),
+    `docs/store/edge/store-logo-300x300.png` and `small-promo-tile-440x280.png`.
+  - The AMO listing was updated to match (screenshots, Insights, cleanup, reviewer notes).
+- **Screenshots** (1280×800, `npm run screenshots -w extension`):
+  `1-focus-session`, `2-friction-countdown`, `3-intention-question`, `4-insights` (sample
+  sessions), `5-my-data`, `6-check-in`, `7-site-categories`. Each one is checked for test-only text.
+- **Zips** (from commit `1648bd3`, version 0.2.0, **not uploaded**; v0.1.0 tag untouched at
+  `48fba49`):
+  - `extension/.output/studylens-0.2.0-edge.zip` (SHA-256 `8e764caa…3ba3`)
+  - `extension/.output/studylens-0.2.0-firefox.zip` (SHA-256 `fbc537a5…bd7d`)
+  - `extension/.output/studylens-0.2.0-sources.zip` (SHA-256 `51ac40ea…4e4d`)
+  - Sources zip unzipped into a clean `M:\temp\studylens-verify-0.2.0`, then `npm ci` +
+    `build:firefox`: all 15 files had identical SHA-256. Folder deleted afterwards.
+  - addons-linter installed temporarily in `M:\temp\addons-linter-tmp` (30 MB), then deleted:
+    0 errors, 0 notices, 2 warnings (React DOM `innerHTML`, same as before).
+
+Changed files: `PRIVACY.md`, `README.md`, `docs/{PLAN,LOG}.md`, `docs/store/amo-listing.md`,
+`docs/store/edge-listing.md` (new), `docs/store/edge/*.png` (new), `docs/store/screenshots/*.png`
+(renamed/refreshed), `extension/entrypoints/background.ts`,
+`extension/entrypoints/options/{Insights,MyData}.tsx`,
+`extension/scripts/{check-builds,screenshots}.mjs`, `extension/src/retention/retention{,.test}.ts`
+(new), `extension/src/tracker/local-day.ts` (new, moved from Insights),
+`extension/src/insights/insights{,.test}.ts`, `extension/src/my-data/{export,tables,tables.test}.ts`,
+`extension/src/sessions/session.ts`, `extension/src/storage/{keys,keys.test,sessions-store}.ts`,
+`extension/e2e/retention.e2e.ts` (new).
+
+Tests: unit pass, 277 tests in 24 files. E2E pass, 30/30 in local Edge. Lint, format check,
+typecheck, Firefox, Edge, E2E and web builds, and `check:builds` are clean.
+
+Problems / open questions:
+
+- Compaction drops the friction/intention counts (Continue / Back to studying) after 30 days, as
+  asked. If P20 wants "how often people continued" as a measure, upload (P17) must happen within
+  30 days, or keep the counts. They are small numbers, not personal.
+- Weekly totals keep the label a site had when it was rolled up. Later label changes don't
+  rewrite old weeks (documented).
+- The Insights screenshot uses made-up sample sessions (documented in the listings and the
+  script). It shows the UI, not research results.
+- Edge listing: Partner Center field limits weren't checked live. Check the short description
+  and search terms when submitting.
+- Before uploading: test Edge by hand (P13 "verify on Edge"), and run the Firefox checklist for
+  Insights and cleanup. Cleanup can be forced from the background console with
+  `browser.storage.local.set({ 'retention:last-run': 0 })` and then reopening the popup.
+
+Disk space: C: 3.77 GB free, M: 14.19 GB free.
+
+Next piece (from PLAN.md): P13 — Edge build + submit (manual verify on Edge, then submit).
