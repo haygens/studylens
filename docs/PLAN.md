@@ -3,7 +3,8 @@
 Goal: a privacy-respecting focus extension (Firefox + Edge) that helps students study and tests which
 focus interventions actually work. Final show and tell: **Mon Dec 7, 2026**. Solo, ~10+ hrs/week.
 
-Priority if time runs short: **Core tracker → Research interventions → Sync & study groups.**
+Priority if time runs short: **Core tracker → Research instrumentation + preregistration → Backend & study
+groups.** Pieces marked _(stretch)_ may not be done by Dec 7; that's allowed for a moonshot.
 Each piece should fit in one or two Claude Code sessions. Check boxes as pieces finish.
 
 ---
@@ -29,7 +30,7 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 - [x] **P7. Privacy policy + store listing** — finalize PRIVACY.md, icons, screenshots. Submit v0.1 to
       Firefox Add-ons (AMO) early so review never blocks the deadline.
 
-## Week 2 (Nov 22–28): Research layer + dashboard + Edge
+## Week 2 (Nov 22–28): Research layer + dashboard + Edge + instrumentation
 
 - [x] **P8. Intervention engine** — each session randomly assigned `control` / `friction` / `intention`.
       Log the condition on the session record. Tests for randomization balance.
@@ -54,36 +55,89 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       buttons, session-complete moment, 13 px+ text), readable My Data table, friendly empty states,
       visible focus, feedback link behind `FEEDBACK_URL` (hidden until the Microsoft Form exists).
       Screenshots: `docs/ux-review/after/<theme>/`. 0.3.0 zips built, not uploaded.
-- [ ] **P14. Recruit friends** — share install links, collect feedback. Consent screen ready before any
-      data is shared (see P17).
+- [ ] **P13c. Research instrumentation (v0.4.0)** — log distraction _attempts_ in every condition
+      (incl. control) at the same trigger point, with outcome (control `visited`; friction/intention
+      `continued` / `turned_back`) and dwell seconds on the helper page; equal time cost (intention
+      Continue needs 3+ characters **and** 10 s, same constant as friction); per-device session
+      sequence number; session `mode` field (`solo` for now); study mode ("Lock my site labels")
+      with lock on/off times + label-set version on each session; "Export for research (CSV)" on My
+      Data with a random local participant ID, documented in `docs/research/codebook.md`. No new
+      permissions.
+- [ ] **P14. Recruit friends (usability only)** — share install links, collect **usability feedback**
+      through the anonymous form. **No research data from other people is collected until IRB
+      approval** (with Dr. Su). Friends' sessions stay on their own devices.
 
-## Week 3 (Nov 29–Dec 6): Backend, sync, study groups, results
+## Week 3 (Nov 29–Dec 6): Backend, study groups, results
 
-- [ ] **P15. Data layer + Turso** — `web/lib/db/` interface with stub implementation first, then Turso.
-      Create the Turso DB (web dashboard), set env vars in Vercel.
-- [ ] **P16. Accounts** — simple auth (Auth.js or Better Auth). Extension links to an account only if the
-      user opts in.
-- [ ] **P17. Research consent + upload** — consent screen; opt-in upload of _anonymous session summaries_
-      (condition, durations, rating, goal y/n — no domains). Preview before upload.
-- [ ] **P18. Study groups** — create/join a group with a code; members see each other's daily focus totals
-      only. Live "who's focusing" via polling (WebSockets optional, Vercel's are in beta).
-- [ ] **P19. Reliability** — `withErrorLogging` wrapper → `error_logs` table, Vercel Cron cleanup
-      (14 days, `CRON_SECRET`), optional Discord webhook alerts, tests in CI.
-- [ ] **P20. Results + show and tell** — analyze collected summaries, make 2–3 charts of intervention
-      results, demo script, portfolio card (title, link, reflection).
+Not everything has to ship by Dec 7 (a moonshot may fall short). Pieces marked _(stretch)_ stay in
+the plan as the full vision; the show and tell presents whatever is done plus the design.
+
+- [ ] **P15. Backend + Turso** — `web/lib/db/` interface with stub implementation first, then Turso
+      (create the DB in the web dashboard, env vars in Vercel). API routes on Vercel; error logging
+      through the data layer.
+- [ ] **P16. Group join (no accounts)** — no email accounts. A random device ID generated locally + a
+      chosen display name + a group code. The extension asks for permission to contact the StudyLens
+      server **only when the user first joins or creates a group** (optional host permission requested
+      at runtime, never at install). When this ships: update the AMO `data_collection_permissions`,
+      PRIVACY.md, and the store listings.
+- [ ] **P18. Study groups (passive)** — members see each other's **daily focus totals** and who is in a
+      session right now. Never site names. Polling (WebSockets optional; Vercel's are in beta).
+- [ ] **P18b. Live group focus sessions** _(stretch)_ — someone starts a group session (goal + length)
+      and shares a code; others join; everyone gets the same shared timer; live presence list
+      (focusing / finished / left); a group "Session complete!" summary showing each member's focus
+      minutes only if they choose to share. Handle joining late, leaving early, reconnecting, and the
+      host leaving. Group sessions get `mode: "group"`.
+- [ ] **P19. Reliability** _(partly stretch)_ — `withErrorLogging` wrapper → `error_logs` table,
+      Vercel Cron cleanup (14 days, `CRON_SECRET`), optional Discord webhook alerts _(stretch)_, tests
+      in CI.
+- [ ] **P19b. Preregistration draft + analysis script** — OSF-style preregistration draft
+      (hypotheses, design, measures, exclusions, analysis plan below) and an analysis script that
+      reads the research CSV (P13c) and fits the planned models. Run it on hs's own N=1 pilot data.
+- [ ] **P20. Results + show and tell** — present the study **design + preregistration draft + hs's
+      own N=1 pilot** (2–3 charts from the pilot), the usability feedback from friends, demo script,
+      portfolio card (title, link, reflection).
+
+Removed: ~~P17. Research consent + upload~~ — no research upload before IRB approval. A future
+upload would need IRB approval, a consent screen, and a preview first.
 
 ## Stretch / future work
 
 - Chrome Web Store ($5), Safari ($99/yr + Mac)
 - Optional AI coach reading weekly _summaries_ only
 - Per-site daily limits, weekly email report
+- **Solo vs group sessions** as a research question (group sessions are excluded from the main
+  analysis for now)
+- Research data from other participants — only after IRB approval, with consent screen + preview
 
 ## Research question details
 
 - **Question:** Do friction delays or intention prompts reduce distraction and improve self-rated focus
   compared with no intervention?
-- **Design:** within-subject; condition randomized per session.
-- **Measures:** distraction visits/session, distraction minutes/session, focus rating (1–5), goal
-  completed (y/n).
-- **Ethics:** informal friend group; explicit in-app consent; anonymous summaries only; confirm with
-  instructor that this is sufficient for a class presentation.
+- **Design:** within-subject; condition (`control` / `friction` / `intention`) randomized per solo
+  session (balanced shuffled blocks).
+- **Primary measures:** distraction **attempts** per session (logged at the same trigger point in every
+  condition, including control), share of attempts where the user turned back (interventions),
+  distraction minutes/session, focus rating (1–5), goal completed (yes / partly / no). Secondary:
+  distraction visits (old measure, kept), helper-page dwell time.
+- **Design fixes (P13c):**
+  - _Same trigger point in all conditions_ — control sessions log an attempt (outcome `visited`)
+    exactly where an intervention would have appeared, so attempts are comparable across conditions.
+  - _Equal time cost_ — friction and intention both cost at least 10 s (same constant); intention also
+    needs 3+ typed characters.
+  - _Session order_ — every session stores a per-device sequence number (practice/novelty effects).
+  - _Labels frozen during the study_ — "study mode" locks site labels; each session stores its label
+    snapshot and a label-set version number.
+  - _Mode field_ — every session is `solo` or `group`.
+- **Analysis plan (preregistered on OSF before any non-pilot data):**
+  - Mixed-effects models with **participant as a random effect** (random intercept), condition as a
+    fixed effect, **session order** (sequence number) as a predictor. Count outcomes (attempts) with a
+    Poisson / negative-binomial mixed model; focus rating as ordinal or linear mixed model; goal
+    completion as a logistic mixed model.
+  - Inclusion: **at least 5 solo sessions per condition per person**.
+  - **Group sessions are excluded** from the main intervention analysis (still shown in the user's own
+    Insights). Opted-out sessions are excluded.
+  - Labels frozen (study mode on) during the study; **hypotheses are not shared with participants**.
+- **Ethics:** **no research data from other people until IRB approval** (with Dr. Su). Before Dec 7:
+  friends give usability feedback only; the study is presented as design + preregistration draft +
+  hs's own N=1 pilot. Any future data collection: IRB approval, explicit in-app consent screen, preview
+  before sharing, anonymous summaries only (no domains, no goal text).

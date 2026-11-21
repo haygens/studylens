@@ -71,6 +71,9 @@ If a requested change would break one of these rules, stop and tell hs instead o
   distraction site loads), or `intention` ("What did you come here for?" prompt).
 - Measures: distraction visits, time on distraction sites, self-rated focus (1–5), goal completed (y/n).
 - Users categorize sites themselves: study / neutral / distraction.
+- **No research data from other people until IRB approval** (with Dr. Su). Before Dec 7: friends give
+  usability feedback only; the study = design + preregistration draft + hs's own N=1 pilot.
+- Every session has a `mode` (`solo` | `group`); group sessions are excluded from the main analysis.
 
 ## Conventions
 
