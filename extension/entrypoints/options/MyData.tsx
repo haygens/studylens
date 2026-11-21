@@ -167,7 +167,7 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
         This permanently deletes all your activity records, focus sessions, check-in answers, site
         labels and research settings from this browser, and stops a running session. It can't be
         undone. Export first if you want a copy. (If tracking is paused, it stays paused; if
-        research interventions are off, they stay off.)
+        research interventions are off, they stay off. The theme goes back to Sunrise.)
       </p>
       <form
         onSubmit={(e) => void onSubmit(e)}
@@ -228,7 +228,10 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
           Which site was active and for how long. Only the domain is stored, never the page.
         </p>
         {days.length === 0 ? (
-          <p style={muted}>No activity records.</p>
+          <p style={muted}>
+            No activity records. Browse with tracking on, and each site you visit will be listed
+            here (domain only).
+          </p>
         ) : (
           days.map((day, i) => (
             <details key={day.day} open={i === 0} style={{ marginTop: 8 }}>
@@ -272,7 +275,9 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
           week (Monday to Sunday), then deleted.
         </p>
         {weeks.length === 0 ? (
-          <p style={muted}>No weekly totals yet.</p>
+          <p style={muted}>
+            No weekly totals yet. They appear once records are older than 30 days.
+          </p>
         ) : (
           weeks.map((w, i) => (
             <details key={w.week} open={i === 0} style={{ marginTop: 8 }}>
@@ -314,7 +319,10 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
           </p>
         )}
         {sessions.length === 0 ? (
-          <p style={muted}>No finished focus sessions.</p>
+          <p style={muted}>
+            No finished focus sessions. Start one from the StudyLens button in your toolbar, and it
+            will show up here when it ends.
+          </p>
         ) : (
           <div style={tableWrap}>
             <table style={{ ...table, marginTop: 8, minWidth: 1180 }} aria-label="Focus sessions">
@@ -360,7 +368,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
       <section style={card}>
         <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Site labels</h2>
         {labels.length === 0 ? (
-          <p style={muted}>No site labels.</p>
+          <p style={muted}>No site labels. Add some on the Site categories tab.</p>
         ) : (
           <table style={{ ...table, marginTop: 8 }} aria-label="Site labels">
             <thead>

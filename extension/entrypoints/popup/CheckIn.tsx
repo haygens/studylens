@@ -15,6 +15,7 @@ import { FOCUS_LABELS, GOAL_LABELS } from '@/src/sessions/check-in';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
 import type { FocusSession } from '@/src/sessions/session';
 import { checkInBlockReason } from '@/src/popup/popup-view';
+import SessionComplete from './SessionComplete';
 import { CheckIcon, CrossIcon, HalfIcon, InfoIcon, ShieldIcon } from '@/src/ui/icons';
 
 const GOAL_ICONS = { yes: CheckIcon, partly: HalfIcon, no: CrossIcon } as const;
@@ -75,14 +76,7 @@ export default function CheckIn({
 
   return (
     <form onSubmit={onSubmit} className="sl-card sl-stack" aria-label="Session check-in">
-      <div>
-        <div className="sl-muted">
-          Session over{session.endedEarly ? ' (ended early)' : ''}. Your goal was
-        </div>
-        <div className="sl-goal" style={{ textAlign: 'left' }}>
-          {session.goal}
-        </div>
-      </div>
+      <SessionComplete session={session} />
 
       <fieldset className="sl-field">
         <legend>Did you finish your goal?</legend>

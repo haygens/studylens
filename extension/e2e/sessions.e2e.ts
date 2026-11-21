@@ -60,6 +60,7 @@ test('b. session ends with the popup closed: badge "?", check-in on next open, a
   // The next popup opens on the check-in, before the Start form.
   const next = await openPopup();
   await expect(next.getByText('Did you finish your goal?')).toBeVisible();
+  await expect(next.getByText('Session complete!')).toBeVisible(); // the friendly moment (P13b)
   await expect(next.getByText('Read chapter 4')).toBeVisible();
   await expect(next.getByRole('button', { name: 'Start focus session' })).toHaveCount(0);
 
@@ -101,7 +102,10 @@ test('d. End early shows the check-in right away and marks the session endedEarl
   await popup.getByRole('button', { name: 'End early' }).click();
 
   await expect(popup.getByText('Did you finish your goal?')).toBeVisible();
-  await expect(popup.getByText('Session over (ended early). Your goal was')).toBeVisible();
+  // A kind word instead of the celebration (no confetti for an ended-early session).
+  await expect(popup.getByText('Session over. Nice effort!')).toBeVisible();
+  await expect(popup.getByText(/\(ended early\)\. Your goal was/)).toBeVisible();
+  await expect(popup.locator('.sl-confetti')).toHaveCount(0);
   await expect.poll(() => background.badge()).toBe('?');
 
   const done = lastSession(await background.get<FocusSession[]>('sessions:history'));

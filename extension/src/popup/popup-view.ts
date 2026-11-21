@@ -75,7 +75,7 @@ export function categoryTotals(
 export function lastSessionSummary(session: FocusSession): string {
   const actualMs = session.actualEnd - session.start;
   const actual = actualMs < 60_000 ? '<1' : String(Math.round(actualMs / 60_000));
-  const planned = Math.round(session.plannedMinutes);
+  const planned = session.plannedMinutes < 1 ? '<1' : String(Math.round(session.plannedMinutes));
   const parts = [
     `Last session: ${actual} of ${planned} min${session.endedEarly ? ' (ended early)' : ''}`,
   ];

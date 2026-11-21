@@ -106,7 +106,7 @@ describe('lastSessionSummary', () => {
         endedEarly: true,
         checkIn: { skipped: true, reason: 'user', answeredAt: 0 },
       }),
-    ).toBe('Last session: <1 of 0 min (ended early) · Check-in skipped');
+    ).toBe('Last session: <1 of <1 min (ended early) · Check-in skipped');
     expect(lastSessionSummary({ ...base, checkIn: null })).toBe('Last session: 25 of 25 min');
   });
 });
