@@ -14,81 +14,80 @@ import {
   type Insights as InsightsData,
 } from '@/src/insights/insights';
 import { formatDay, formatMinutes } from '@/src/my-data/tables';
+import { CATEGORY_LABELS } from '@/src/categories/display';
+import { CATEGORY_ICONS } from '@/src/ui/CategoryChip';
 import { LoadError, Loading } from '../popup/LoadStatus';
 import { useAllData } from './MyData';
 
-// Blue/red instead of the usual green/red category colors: green vs red is hard to tell apart for
-// red-green color blindness. Distraction bars are also striped.
-const STUDY = '#0969da';
-const DISTRACTION = '#cf222e';
-const FOCUS = '#57606a';
-const distractionFill = `repeating-linear-gradient(135deg, ${DISTRACTION} 0 4px, #e5737a 4px 6px)`;
-
 const card: CSSProperties = {
-  border: '1px solid #d0d7de',
-  borderRadius: 8,
+  background: 'var(--sl-surface)',
+  border: 'var(--sl-border-w) solid var(--sl-border)',
+  borderRadius: 'var(--sl-radius)',
+  boxShadow: 'var(--sl-card-shadow)',
   padding: 16,
   marginTop: 16,
 };
-const muted: CSSProperties = { color: '#57606a', fontSize: 13 };
-const table: CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
+const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-small)' };
+const table: CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  fontSize: 'var(--sl-fs-small)',
+};
 const cell: CSSProperties = {
   textAlign: 'left',
   padding: '4px 8px',
-  borderTop: '1px solid #eaeef2',
+  borderTop: '1px solid var(--sl-hair)',
   verticalAlign: 'middle',
 };
-const head: CSSProperties = { ...cell, borderTop: 'none', color: '#57606a', fontWeight: 600 };
+const head: CSSProperties = {
+  ...cell,
+  borderTop: 'none',
+  color: 'var(--sl-muted)',
+  fontWeight: 600,
+};
 const caption: CSSProperties = {
   textAlign: 'left',
   fontWeight: 600,
-  fontSize: 16,
+  fontSize: 'var(--sl-fs-h3)',
   marginBottom: 4,
 };
 
 /** "Mon, Nov 16" for `2026-11-16`. */
 const shortDay = (day: string) => formatDay(day).replace(/, \d{4}$/, '');
 
-/** A horizontal bar; decorative (the number is always written next to it). */
-function Bar({ value, max, fill }: { value: number; max: number; fill: string }) {
+type Fill = 'study' | 'distraction' | 'focus';
+
+/**
+ * A horizontal bar; decorative (the number is always written next to it). Study and Distraction
+ * use the same theme colors as everywhere else, and Distraction is striped.
+ */
+function Bar({ value, max, fill }: { value: number; max: number; fill: Fill }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <div aria-hidden="true" style={{ height: 10, background: '#f6f8fa', borderRadius: 4 }}>
+    <div aria-hidden="true" className="sl-track">
       {value > 0 && (
-        <div
-          style={{
-            width: `max(${pct}%, 3px)`,
-            height: '100%',
-            background: fill,
-            borderRadius: 4,
-          }}
-        />
+        <div className={`sl-fill sl-fill-${fill}`} style={{ width: `max(${pct}%, 4px)` }} />
       )}
     </div>
   );
 }
 
-function Swatch({ fill }: { fill: string }) {
+/** Legend: the category's icon and swatch next to its name. */
+function Legend({ category }: { category: 'study' | 'distraction' }) {
+  const Icon = CATEGORY_ICONS[category];
   return (
-    <span
-      aria-hidden="true"
-      style={{
-        display: 'inline-block',
-        width: 12,
-        height: 12,
-        borderRadius: 3,
-        background: fill,
-        verticalAlign: 'middle',
-        marginRight: 4,
-      }}
-    />
+    <span className={`sl-row sl-text-${category}`} style={{ display: 'inline-flex', gap: 4 }}>
+      <span aria-hidden="true" className={`sl-swatch sl-fill-${category}`} />
+      <Icon />
+      {CATEGORY_LABELS[category]}
+    </span>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section style={card} aria-label={title}>
-      <h2 style={{ margin: 0, fontSize: 18 }}>{title}</h2>
+      <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>{title}</h2>
       {children}
     </section>
   );
@@ -116,7 +115,7 @@ function FocusTrend({ days }: { days: InsightsData['days'] }) {
             <td style={cell}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <Bar value={d.focusMinutes} max={max} fill={FOCUS} />
+                  <Bar value={d.focusMinutes} max={max} fill="focus" />
                 </div>
                 <span style={{ minWidth: 70, textAlign: 'right' }}>
                   {formatMinutes(d.focusMinutes)}
@@ -140,12 +139,10 @@ function StudyVsDistraction({ days }: { days: InsightsData['days'] }) {
         <tr>
           <th style={{ ...head, width: 130 }}>Day</th>
           <th style={head}>
-            <Swatch fill={STUDY} />
-            Study
+            <Legend category="study" />
           </th>
           <th style={head}>
-            <Swatch fill={distractionFill} />
-            Distraction
+            <Legend category="distraction" />
           </th>
         </tr>
       </thead>
@@ -158,8 +155,8 @@ function StudyVsDistraction({ days }: { days: InsightsData['days'] }) {
             </td>
             {(
               [
-                [d.studyMinutes, STUDY],
-                [d.distractionMinutes, distractionFill],
+                [d.studyMinutes, 'study'],
+                [d.distractionMinutes, 'distraction'],
               ] as const
             ).map(([value, fill], i) => (
               <td key={i} style={cell}>
@@ -208,7 +205,7 @@ function TimeOfDay({ bands }: { bands: InsightsData['timeOfDay'] }) {
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ flex: 1 }}>
-                        <Bar value={b.averageRating} max={5} fill={STUDY} />
+                        <Bar value={b.averageRating} max={5} fill="focus" />
                       </div>
                       <span style={{ minWidth: 150, textAlign: 'right' }}>
                         {b.averageRating.toFixed(1)} / 5 · {b.ratedSessions} session
@@ -235,7 +232,7 @@ const CONDITION_NAMES: Record<ConditionRow['condition'], string> = {
 function ConditionCells({ row }: { row: ConditionRow }) {
   if (!row.enoughData) {
     return (
-      <td style={{ ...cell, color: '#57606a' }} colSpan={4}>
+      <td style={{ ...cell, color: 'var(--sl-muted)' }} colSpan={4}>
         Not enough data yet: {row.sessions} of {MIN_SESSIONS_PER_CONDITION} sessions needed.
       </td>
     );
@@ -270,11 +267,11 @@ function Conditions({ data }: { data: InsightsData['conditions'] }) {
     <Section title="Focus helpers compared">
       <p
         style={{
-          background: '#fff8c5',
-          border: '1px solid #d4a72c',
+          background: 'var(--sl-warn-soft)',
+          border: '1px solid var(--sl-warn-border)',
           borderRadius: 6,
           padding: 8,
-          fontSize: 13,
+          fontSize: 'var(--sl-fs-small)',
         }}
       >
         <strong>Early results, small sample.</strong> These are plain averages of your own sessions,
@@ -296,7 +293,9 @@ function Conditions({ data }: { data: InsightsData['conditions'] }) {
             {data.rows.map((row) => (
               <tr key={row.condition}>
                 <th scope="row" style={{ ...cell, fontWeight: 600 }}>
-                  {CONDITION_NAMES[row.condition]}
+                  <span className={`sl-chip sl-chip-${row.condition}`}>
+                    {CONDITION_NAMES[row.condition]}
+                  </span>
                 </th>
                 <td style={cell}>{row.sessions}</td>
                 <ConditionCells row={row} />
@@ -331,7 +330,7 @@ export default function Insights() {
   const data = buildInsights(state.data, now);
   return (
     <>
-      <h1 style={{ margin: 0, fontSize: 24 }}>Insights</h1>
+      <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Insights</h1>
       <p style={muted}>
         Calculated in this browser from the data on the My Data page. Nothing is sent anywhere.
         Activity that crosses midnight is split between the two days.

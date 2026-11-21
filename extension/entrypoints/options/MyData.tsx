@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
-import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/src/categories/display';
+import CategoryChip from '@/src/ui/CategoryChip';
 import { exportFileName, exportJson } from '@/src/my-data/export';
 import {
   activeSession,
@@ -24,21 +24,32 @@ import { useTrackingPaused } from '@/src/ui/use-tracking-paused';
 import { LoadError, Loading } from '../popup/LoadStatus';
 
 const card: CSSProperties = {
-  border: '1px solid #d0d7de',
-  borderRadius: 8,
+  background: 'var(--sl-surface)',
+  border: 'var(--sl-border-w) solid var(--sl-border)',
+  borderRadius: 'var(--sl-radius)',
+  boxShadow: 'var(--sl-card-shadow)',
   padding: 16,
   marginTop: 16,
 };
-const muted: CSSProperties = { color: '#57606a', fontSize: 13 };
-const table: CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
+const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-small)' };
+const table: CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  fontSize: 'var(--sl-fs-small)',
+};
 const cell: CSSProperties = {
   textAlign: 'left',
   padding: '4px 8px',
-  borderTop: '1px solid #eaeef2',
+  borderTop: '1px solid var(--sl-hair)',
   verticalAlign: 'top',
   overflowWrap: 'anywhere',
 };
-const head: CSSProperties = { ...cell, borderTop: 'none', color: '#57606a', fontWeight: 600 };
+const head: CSSProperties = {
+  ...cell,
+  borderTop: 'none',
+  color: 'var(--sl-muted)',
+  fontWeight: 600,
+};
 const tableWrap: CSSProperties = { overflowX: 'auto' };
 
 export function useAllData() {
@@ -79,8 +90,8 @@ export function PauseCard() {
   }
   const paused = state.status === 'ready' && state.data;
   return (
-    <section style={{ ...card, background: paused ? '#fff8c5' : undefined }}>
-      <h2 style={{ margin: 0, fontSize: 18 }}>Tracking</h2>
+    <section style={{ ...card, background: paused ? 'var(--sl-warn-soft)' : 'var(--sl-surface)' }}>
+      <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Tracking</h2>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
         <input
           type="checkbox"
@@ -95,16 +106,20 @@ export function PauseCard() {
           ? 'Tracking paused. StudyLens is not recording any sites. A running focus session keeps its timer, but nothing is counted until you resume.'
           : 'StudyLens is recording which site is active (domain names only) while you browse.'}
       </p>
-      {saveError && <p style={{ color: '#cf222e', fontSize: 13 }}>{saveError}</p>}
+      {saveError && (
+        <p style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
+          {saveError}
+        </p>
+      )}
     </section>
   );
 }
 
 function NeverCollected() {
   return (
-    <section style={{ ...card, background: '#f6f8fa' }}>
-      <h2 style={{ margin: 0, fontSize: 18 }}>What StudyLens never collects</h2>
-      <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 14 }}>
+    <section style={{ ...card, background: 'var(--sl-bg)' }}>
+      <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>What StudyLens never collects</h2>
+      <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 'var(--sl-fs-body)' }}>
         <li>Full web addresses, search terms, page titles, or page content</li>
         <li>Keystrokes, form entries, passwords, or screenshots</li>
         <li>Anything in private / incognito windows</li>
@@ -142,8 +157,8 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
   }
 
   return (
-    <section style={{ ...card, borderColor: '#cf222e' }}>
-      <h2 style={{ margin: 0, fontSize: 18 }}>Delete everything</h2>
+    <section style={{ ...card, borderColor: 'var(--sl-distraction)' }}>
+      <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Delete everything</h2>
       <p style={muted}>
         This permanently deletes all your activity records, focus sessions, check-in answers, site
         labels and research settings from this browser, and stops a running session. It can't be
@@ -154,7 +169,9 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
         onSubmit={(e) => void onSubmit(e)}
         style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
       >
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+        <label
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--sl-fs-body)' }}
+        >
           Type DELETE to confirm:
           <input
             value={typed}
@@ -166,13 +183,13 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
         <button
           type="submit"
           disabled={typed !== 'DELETE' || busy}
-          style={{ color: typed === 'DELETE' ? '#cf222e' : undefined }}
+          style={{ color: typed === 'DELETE' ? 'var(--sl-distraction)' : undefined }}
         >
           Delete everything
         </button>
       </form>
       {error && (
-        <p role="alert" style={{ color: '#cf222e', fontSize: 13 }}>
+        <p role="alert" style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
           {error}
         </p>
       )}
@@ -191,8 +208,8 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
   return (
     <>
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Right now</h2>
-        <p style={{ fontSize: 14, marginBottom: 0 }}>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Right now</h2>
+        <p style={{ fontSize: 'var(--sl-fs-body)', marginBottom: 0 }}>
           {now ? `Recording: ${now}` : 'Not recording any site at the moment.'}
           <br />
           {running
@@ -202,7 +219,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
       </section>
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Activity records</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Activity records</h2>
         <p style={muted}>
           Which site was active and for how long. Only the domain is stored, never the page.
         </p>
@@ -211,7 +228,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
         ) : (
           days.map((day, i) => (
             <details key={day.day} open={i === 0} style={{ marginTop: 8 }}>
-              <summary style={{ cursor: 'pointer', fontSize: 14 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 'var(--sl-fs-body)' }}>
                 {day.label} — {day.rows.length} record{day.rows.length === 1 ? '' : 's'},{' '}
                 {day.total}
               </summary>
@@ -243,7 +260,9 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
       </section>
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Weekly totals (older than 30 days)</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>
+          Weekly totals (older than 30 days)
+        </h2>
         <p style={muted}>
           Detailed records older than 30 days are combined into time per site and label for each
           week (Monday to Sunday), then deleted.
@@ -253,7 +272,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
         ) : (
           weeks.map((w, i) => (
             <details key={w.week} open={i === 0} style={{ marginTop: 8 }}>
-              <summary style={{ cursor: 'pointer', fontSize: 14 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 'var(--sl-fs-body)' }}>
                 {w.label} — {w.rows.length} site{w.rows.length === 1 ? '' : 's'}, {w.total}
               </summary>
               <div style={tableWrap}>
@@ -269,7 +288,9 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
                     {w.rows.map((r) => (
                       <tr key={`${r.site}|${r.category}`}>
                         <td style={cell}>{r.site}</td>
-                        <td style={cell}>{CATEGORY_LABELS[r.category]}</td>
+                        <td style={cell}>
+                          <CategoryChip category={r.category} />
+                        </td>
                         <td style={cell}>{r.duration}</td>
                       </tr>
                     ))}
@@ -282,7 +303,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
       </section>
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Focus sessions</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Focus sessions</h2>
         {sessions.length === 0 ? (
           <p style={muted}>No finished focus sessions.</p>
         ) : (
@@ -326,7 +347,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
       </section>
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Site labels</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Site labels</h2>
         {labels.length === 0 ? (
           <p style={muted}>No site labels.</p>
         ) : (
@@ -341,8 +362,8 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
               {labels.map((r) => (
                 <tr key={r.domain}>
                   <td style={cell}>{r.domain}</td>
-                  <td style={{ ...cell, color: CATEGORY_COLORS[r.category], fontWeight: 600 }}>
-                    {CATEGORY_LABELS[r.category]}
+                  <td style={cell}>
+                    <CategoryChip category={r.category} />
                   </td>
                 </tr>
               ))}
@@ -360,7 +381,7 @@ export default function MyData() {
 
   return (
     <>
-      <h1 style={{ margin: 0, fontSize: 24 }}>My Data</h1>
+      <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>My Data</h1>
       <p style={muted}>
         This is everything StudyLens has stored about your browsing, exactly as it is saved in this
         browser. You can download it, delete it, pause tracking, or turn research interventions off
@@ -372,7 +393,7 @@ export default function MyData() {
       <NeverCollected />
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Export</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Export</h2>
         <p style={muted}>Download everything below as one JSON file.</p>
         <button
           type="button"
@@ -399,9 +420,9 @@ export default function MyData() {
           role="status"
           style={{
             ...card,
-            background: '#dafbe1',
-            borderColor: '#1a7f37',
-            fontSize: 14,
+            background: 'var(--sl-study-soft)',
+            borderColor: 'var(--sl-study)',
+            fontSize: 'var(--sl-fs-body)',
             marginBottom: 0,
           }}
         >

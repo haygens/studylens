@@ -1,14 +1,11 @@
-/** Display names and colors for categories, shared by the popup and options page. */
+/**
+ * Display names for categories, shared by every page. Colors and icons live in the theme
+ * (src/ui/themes.ts) and src/ui/CategoryChip.tsx, so they are the same on every screen.
+ */
 import type { SiteCategory } from '@studylens/shared';
 
 export const CATEGORY_LABELS: Record<SiteCategory, string> = {
   study: 'Study',
   neutral: 'Neutral',
   distraction: 'Distraction',
-};
-
-export const CATEGORY_COLORS: Record<SiteCategory, string> = {
-  study: '#1a7f37',
-  neutral: '#6e7781',
-  distraction: '#cf222e',
 };

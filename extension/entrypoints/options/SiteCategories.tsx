@@ -12,7 +12,8 @@ import {
   upsertRule,
   type CategoryRule,
 } from '@/src/categories/rules';
-import { CATEGORY_COLORS, CATEGORY_LABELS as LABELS } from '@/src/categories/display';
+import { CATEGORY_LABELS as LABELS } from '@/src/categories/display';
+import CategoryChip, { CATEGORY_ICONS } from '@/src/ui/CategoryChip';
 import { unlabeledSites } from '@/src/categories/sites';
 import type { HostTotal } from '@/src/tracker/totals';
 import { pendingSuggestions } from '@/src/categories/suggestions';
@@ -26,12 +27,13 @@ const page: CSSProperties = {
   maxWidth: 720,
   margin: '0 auto',
   padding: '24px 16px',
-  fontFamily: 'system-ui, sans-serif',
   lineHeight: 1.4,
 };
 const card: CSSProperties = {
-  border: '1px solid #d0d7de',
-  borderRadius: 8,
+  background: 'var(--sl-surface)',
+  border: 'var(--sl-border-w) solid var(--sl-border)',
+  borderRadius: 'var(--sl-radius)',
+  boxShadow: 'var(--sl-card-shadow)',
   padding: 16,
   marginTop: 16,
 };
@@ -40,23 +42,15 @@ const row: CSSProperties = {
   alignItems: 'center',
   gap: 8,
   padding: '6px 0',
-  borderTop: '1px solid #eaeef2',
+  borderTop: '1px solid var(--sl-hair)',
   flexWrap: 'wrap',
 };
 const grow: CSSProperties = { flex: '1 1 200px', minWidth: 0, overflowWrap: 'anywhere' };
-const muted: CSSProperties = { color: '#57606a', fontSize: 13 };
+const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-small)' };
 
 function minutes(ms: number): string {
   const m = Math.round(ms / 60_000);
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
-}
-
-function CategoryBadge({ category }: { category: SiteCategory }) {
-  return (
-    <span style={{ color: CATEGORY_COLORS[category], fontWeight: 600, fontSize: 13 }}>
-      {LABELS[category]}
-    </span>
-  );
 }
 
 function CategorySelect(props: {
@@ -82,11 +76,21 @@ function CategorySelect(props: {
 function QuickButtons({ onPick }: { onPick: (c: SiteCategory) => void }) {
   return (
     <span style={{ display: 'flex', gap: 4 }}>
-      {SITE_CATEGORIES.map((c) => (
-        <button key={c} type="button" onClick={() => onPick(c)}>
-          {LABELS[c]}
-        </button>
-      ))}
+      {SITE_CATEGORIES.map((c) => {
+        const Icon = CATEGORY_ICONS[c];
+        return (
+          <button
+            key={c}
+            type="button"
+            className={`sl-text-${c}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            onClick={() => onPick(c)}
+          >
+            <Icon />
+            {LABELS[c]}
+          </button>
+        );
+      })}
     </span>
   );
 }
@@ -147,7 +151,9 @@ function RuleRow(props: {
       <button type="button" onClick={() => props.onRemove(rule.domain)}>
         Remove
       </button>
-      {error && <div style={{ ...muted, color: '#cf222e', width: '100%' }}>{error}</div>}
+      {error && (
+        <div style={{ ...muted, color: 'var(--sl-distraction)', width: '100%' }}>{error}</div>
+      )}
     </li>
   );
 }
@@ -212,7 +218,7 @@ export default function SiteCategories() {
 
   return (
     <main style={page}>
-      <h1 style={{ margin: 0, fontSize: 24 }}>Site categories</h1>
+      <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Site categories</h1>
       <p style={muted}>
         Label sites as study, neutral, or distraction. A label for youtube.com also covers its
         subdomains (m.youtube.com); a more specific label like docs.google.com beats google.com.
@@ -220,7 +226,7 @@ export default function SiteCategories() {
       </p>
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Your labels</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Your labels</h2>
         <form
           onSubmit={addRule}
           style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}
@@ -235,7 +241,7 @@ export default function SiteCategories() {
           <CategorySelect label="New site category" value={newCategory} onChange={setNewCategory} />
           <button type="submit">Add</button>
         </form>
-        {addError && <div style={{ ...muted, color: '#cf222e' }}>{addError}</div>}
+        {addError && <div style={{ ...muted, color: 'var(--sl-distraction)' }}>{addError}</div>}
         {rules.length === 0 ? (
           <p style={muted}>No labels yet. Add one above or accept a suggestion below.</p>
         ) : (
@@ -253,7 +259,7 @@ export default function SiteCategories() {
       </section>
 
       <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Sites you visited recently</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Sites you visited recently</h2>
         <p style={muted}>Unlabeled sites from the last {RECENT_DAYS} days, most time first.</p>
         {recent.length === 0 ? (
           <p style={muted}>Nothing unlabeled. 🎉</p>
@@ -275,7 +281,7 @@ export default function SiteCategories() {
 
       <section style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, fontSize: 18, flex: 1 }}>Suggestions</h2>
+          <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)', flex: 1 }}>Suggestions</h2>
           {suggestions.length > 0 && (
             <button
               type="button"
@@ -293,7 +299,7 @@ export default function SiteCategories() {
             {suggestions.map((s) => (
               <li key={s.domain} style={row}>
                 <span style={grow}>{s.domain}</span>
-                <CategoryBadge category={s.category} />
+                <CategoryChip category={s.category} />
                 <button type="button" onClick={() => commit(upsertRule(rules, s))}>
                   Accept
                 </button>
