@@ -1007,3 +1007,78 @@ Disk space: C: 3.36 GB free, M: 14.19 GB free.
 
 Next piece (from PLAN.md): P13 — submit to Edge once the account is verified; meanwhile P13b — UI
 polish + onboarding (v0.3.0).
+
+## Handoff — 2026-11-21 (P13b: themes, welcome page, UI polish — v0.3.0 built, not uploaded)
+
+Status notes from hs (2026-11-20): **v0.2.0 is approved and live on AMO** (auto-approved). Edge:
+registered in Partner Center as an individual developer, account verification pending (email not
+received yet), so P13 stays open.
+
+Done (one commit per part):
+
+1. **Theme system** (`21af5e5`): Sunrise (default), Ocean, Pastel as design tokens in
+   `extension/src/ui/themes.ts` → `--sl-*` CSS variables on any element with `data-theme`. Shared
+   styles in `src/ui/styles.css`. Every page (popup, options, helper pages, welcome) applies the
+   stored theme before rendering and follows changes live. `ui:theme` is in the key list; Delete
+   everything resets it to Sunrise. Settings tab: "Look" card with live preview cards. System fonts
+   only, no new permissions, reduced motion respected.
+2. **Contrast + consistency** (`5e90173`): unit tests check every text/background and control pair
+   (`theme-pairs.ts`) in every theme for WCAG AA (4.5:1 text, 3:1 controls/focus/bars). A guard test
+   fails if any UI file has a hard-coded color. Insights now uses the theme's Study color (was blue);
+   category chips (icon + label + color) everywhere; Distraction bars striped.
+3. **Must-fix items** (`3421713`): new popup (logo header, "Tracking on · Pause" pill, one primary
+   Start button, ring timer, short last-session line, Today bar + chips + whole minutes, footer);
+   disabled buttons always explain why next to them; shorter research notice for existing users;
+   helper pages with countdown ring; Site categories intro + Quick start first when empty; empty
+   states that say what to do; readable My Data sessions table; visible focus; popup text 13 px+.
+4. **Welcome / onboarding** (`3bfb071`): `runtime.onInstalled` opens `welcome.html` on install
+   (3 steps with progress: look, sites, helpers; ends with a toolbar picture). The research
+   question must still be answered before the first session. Upgrades from <0.3.0 get only a
+   "New: themes!" popup hint. Keys `onboarding:welcome`, `onboarding:themes-hint`.
+5. **Delight** (`a47b4a6`): "Session complete!" card with one-time confetti (none with reduced
+   motion, none for ended-early sessions), encouraging empty states.
+6. **Feedback link** (`cc4f48c`): `FEEDBACK_URL` in `extension/src/ui/feedback.ts`, empty = hidden.
+   When set: "Send feedback" in the popup footer and a Settings card, new tab, nothing sent.
+7. **Version 0.3.0** (`b0730d4`): PRIVACY.md (theme/onboarding settings, feedback link, no web
+   fonts), README, `docs/store/release-notes-0.3.0.md`.
+8. **Tests** (`0e61d82`): E2E for the welcome flow, Skip/close-early path, theme switching (live,
+   reset by Delete everything), no blank screen in any theme (9 screens × 3 themes), and the
+   upgrade from 0.2.0 (a copy of the build reloads itself with a new manifest version, which fires
+   `onInstalled` "update"). smoke:edge found the field name `testSeconds` in the production popup;
+   fixed so E2E-only code compiles away again.
+9. **Screenshots** (`de46063`): `docs/ux-review/after/{sunrise,ocean,pastel}/` (23 each), store
+   screenshots + Edge images refreshed in Sunrise.
+10. **Zips** (from `de46063`, **not uploaded**):
+    - `M:\Projects\studylens\extension\.output\studylens-0.3.0-edge.zip` (SHA-256 `529762cb…af776c86`)
+    - `M:\Projects\studylens\extension\.output\studylens-0.3.0-firefox.zip` (SHA-256 `3b98f651…31610c22`)
+    - `M:\Projects\studylens\extension\.output\studylens-0.3.0-sources.zip` (SHA-256 `8da329d9…1fa2bb00`)
+    - Sources zip unzipped into a clean `M:\temp\studylens-verify-0.3.0`, `npm ci` + `build:firefox`:
+      all 21 files identical SHA-256. Folder deleted.
+    - addons-linter 10.16.0 installed temporarily in `M:\temp\addons-linter-tmp` (30 MB), then
+      deleted: 0 errors, 0 notices, 2 warnings (React DOM `innerHTML`, same as before).
+    - Manifests: version 0.3.0, permissions `storage, tabs, idle, alarms` only, no host permissions.
+
+Changed files (main ones): `extension/src/ui/*` (themes, styles, page, icons, chips, picker,
+contrast, feedback), `extension/src/onboarding/*`, `extension/src/storage/{keys,theme-store,
+onboarding-store}.ts`, `extension/src/popup/popup-view.ts`, `extension/entrypoints/**` (popup,
+options, interstitial, new welcome), `extension/e2e/*` (fixtures, welcome, themes, upgrade,
+sessions, notice), `extension/scripts/{smoke-edge,screenshots,ux-review-shots}.mjs`,
+`extension/package.json`, `package-lock.json`, `PRIVACY.md`, `README.md`, `CLAUDE.md`,
+`docs/PLAN.md`, `docs/LOG.md`, `docs/store/*`, `docs/ux-review/after/**`.
+
+Tests: unit 649 passed (30 files). E2E 37/37 in local Edge. smoke:edge 12/12 (incl. same files
+as the 0.3.0 Edge zip). Lint, format check, typecheck, Firefox/Edge/web builds, check:builds clean.
+
+Problems / open questions:
+
+- `FEEDBACK_URL` is empty: paste the Microsoft Form link into `extension/src/ui/feedback.ts`, then
+  rebuild the zips (the link only appears after that).
+- Friends who close the welcome page early see "New here? Finish setting up StudyLens" in the popup
+  until they finish it (by design).
+- Edge account verification still pending; then submit `studylens-0.3.0-edge.zip` (P13).
+- Firefox build shows Vite's ">500 kB chunk" notice (React in one shared chunk). Harmless.
+
+Disk space: C: 3.16 GB free, M: 14.02 GB free.
+
+Next piece (from PLAN.md): P13 — Edge submit once verified (0.3.0 zip); upload 0.3.0 to AMO when
+ready; then P14 — Recruit friends.

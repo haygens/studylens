@@ -47,14 +47,13 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       Status 2026-11-20: v0.2.0 is approved and live on AMO. Edge Partner Center: registered as an
       individual developer; account verification pending (verification email not received yet).
       Submit `studylens-0.2.0-edge.zip` once Microsoft verifies the account.
-- [ ] **P13b. UI polish + onboarding (v0.3.0)** — first-run welcome page (opens once on install:
-      what StudyLens does, privacy, pick a few sites, research helpers yes/no), colorful visual
-      redesign (one palette around the icon blue + warm accents; color with meaning for Study /
-      Neutral / Distraction, the three helpers and session states; WCAG AA; never color alone),
-      clearer popup (one primary action, tracking as a status pill, friendly empty states, no silent
-      disabled buttons, session-complete moment), accessibility (visible focus, 12 px minimum text),
-      and a feedback link. Plan + mockups: `docs/ux-review/REVIEW.md` and
-      `docs/ux-review/mockup-*.html`. Pick a direction before building.
+- [x] **P13b. UI polish + onboarding (v0.3.0)** — all three directions shipped as user-selectable
+      themes (Sunrise default, Ocean, Pastel; WCAG AA checked in unit tests, icons + labels for
+      categories), welcome page on install (look, sites, helpers), "New: themes!" hint for upgrades,
+      clearer popup (one primary action, tracking pill, ring timer, reasons next to disabled
+      buttons, session-complete moment, 13 px+ text), readable My Data table, friendly empty states,
+      visible focus, feedback link behind `FEEDBACK_URL` (hidden until the Microsoft Form exists).
+      Screenshots: `docs/ux-review/after/<theme>/`. 0.3.0 zips built, not uploaded.
 - [ ] **P14. Recruit friends** — share install links, collect feedback. Consent screen ready before any
       data is shared (see P17).
 
