@@ -8,7 +8,7 @@
  * reloads itself, which fires `runtime.onInstalled` with reason "update" and previousVersion
  * "0.2.0", exactly like a store update.
  */
-import { chromium, type BrowserContext, type Worker } from '@playwright/test';
+import { chromium, type BrowserContext } from '@playwright/test';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -73,42 +73,31 @@ test('update from 0.2.0: no welcome page, a "New: themes!" hint that links to Se
     await first
       .evaluate(() => (globalThis as unknown as Chrome).chrome.runtime.reload())
       .catch(() => undefined);
-    // The reloaded extension gets a new service worker; wait until one answers as 0.3.0.
-    const version = (worker: Worker) =>
-      worker
-        .evaluate(
-          () =>
-            (globalThis as unknown as Partial<Chrome>).chrome?.runtime?.getManifest?.().version ??
-            null,
-        )
-        .catch(() => null);
-    let sw: Worker | undefined;
+    // Read the reloaded extension through one of its own pages (Playwright doesn't always list the
+    // new service worker after a reload in Chromium). Extension pages have the same APIs.
+    const probe = await context.newPage();
+    const fromPage = <T>(fn: () => T | Promise<T>) => probe.evaluate(fn).catch(() => null);
+    const storage = () =>
+      fromPage(() => (globalThis as unknown as Chrome).chrome.storage.local.get(null));
     await expect
       .poll(
         async () => {
-          for (const worker of context!.serviceWorkers()) {
-            if ((await version(worker)) === '0.3.0') sw = worker;
-          }
-          return sw !== undefined;
+          await probe.goto(`chrome-extension://${id}/popup.html`).catch(() => undefined);
+          return fromPage(
+            () => (globalThis as unknown as Chrome).chrome.runtime.getManifest().version,
+          );
         },
-        { timeout: 20_000, message: 'reloaded service worker' },
+        { timeout: 30_000, message: 'reloaded extension at 0.3.0' },
       )
-      .toBe(true);
-    if (!sw) throw new Error('No reloaded service worker');
-    const bg: Worker = sw;
+      .toBe('0.3.0');
     await expect
-      .poll(() =>
-        bg.evaluate(() => (globalThis as unknown as Chrome).chrome.storage.local.get(null)),
-      )
+      .poll(storage)
       .toMatchObject({ 'onboarding:themes-hint': true, 'interventions:notice-seen': true });
 
     // No welcome page for existing users (give it a moment to be sure).
     await new Promise((r) => setTimeout(r, 2000));
     expect(context.pages().filter((p) => p.url().includes('/welcome.html'))).toHaveLength(0);
-    const stored = await bg.evaluate(() =>
-      (globalThis as unknown as Chrome).chrome.storage.local.get(null),
-    );
-    expect(stored['onboarding:welcome']).toBeUndefined();
+    expect((await storage())?.['onboarding:welcome']).toBeUndefined();
 
     // The popup: the hint, no research notice, the default theme, and a working Start form.
     const popup = await context.newPage();
@@ -126,11 +115,7 @@ test('update from 0.2.0: no welcome page, a "New: themes!" hint that links to Se
     ]);
     await expect(settings).toHaveURL(/options\.html#settings$/);
     await expect(settings.getByRole('radiogroup', { name: 'Theme' })).toBeVisible();
-    await expect
-      .poll(() =>
-        bg.evaluate(() => (globalThis as unknown as Chrome).chrome.storage.local.get(null)),
-      )
-      .toMatchObject({ 'onboarding:themes-hint': false });
+    await expect.poll(storage).toMatchObject({ 'onboarding:themes-hint': false });
     const again = await context.newPage();
     await again.goto(`chrome-extension://${id}/popup.html`);
     await expect(again.getByRole('button', { name: 'Start focus session' })).toBeVisible();
