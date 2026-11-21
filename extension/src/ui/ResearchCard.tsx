@@ -50,10 +50,15 @@ export default function ResearchCard() {
         </li>
         <li>
           <strong>Intention:</strong> opening a site you labeled Distraction first asks “What did
-          you come here for?” StudyLens never saves, logs or sends what you type: only how many
-          times the question was shown and which button you pressed are counted.
+          you come here for?” You can continue after 10 seconds. StudyLens never saves, logs or
+          sends what you type.
         </li>
       </ul>
+      <p style={{ ...muted, marginBottom: 4 }}>
+        In every session (control too), StudyLens notes each time you open a Distraction site: the
+        domain, the time, which button you pressed, and how long a helper page was open. Never what
+        you type, never the full address.
+      </p>
       <p style={{ ...muted, marginBottom: 0 }}>
         Which helper a session got is saved with the session, so you can see it in the Focus
         sessions table on My Data. You can turn this off at any time; sessions after that are marked

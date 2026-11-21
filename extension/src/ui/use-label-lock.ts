@@ -10,6 +10,7 @@ import {
   LABEL_LOCK_KEY,
   loadLabelLock,
   setLabelLock,
+  switchLock,
   type LabelLock,
 } from '../storage/research-store';
 
@@ -33,7 +34,10 @@ export function useLabelLock() {
   const setLocked = useCallback(
     (locked: boolean) => {
       setSaveError(null);
-      setLabelLock(localStore, locked, Date.now())
+      const now = Date.now();
+      // Show the new state right away (a controlled checkbox must change on click).
+      setState((s) => (s.status === 'ready' ? { ...s, data: switchLock(s.data, locked, now) } : s));
+      setLabelLock(localStore, locked, now)
         .then((lock) => setState({ status: 'ready', data: lock }))
         .catch((err: unknown) => {
           console.error('[StudyLens] could not save study mode', err);

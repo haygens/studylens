@@ -21,7 +21,7 @@ Distraction always have an icon and a label, never just a color.
 
 ## Privacy in one minute
 
-- **Local-first:** everything is stored only in your browser. Version 0.3.0 has no server and makes
+- **Local-first:** everything is stored only in your browser. Version 0.4.0 has no server and makes
   no network requests.
 - **Domains only:** it records `youtube.com`, never full addresses, search terms, page titles, page
   content, or keystrokes. What you type in the "What did you come here for?" box is never stored.
@@ -44,6 +44,13 @@ Full policy: [PRIVACY.md](PRIVACY.md).
 - Tested automatically in Edge/Chromium; Firefox is tested by hand.
 
 ## How measures are defined
+
+- **Distraction attempts** (from v0.4.0, the primary research measure): each time you **enter** a
+  Distraction site during a session at the moment a helper page would appear, logged the same way
+  in every condition, including control (where nothing is shown). After an attempt where the site
+  loaded (control, or "Continue"), that site gets a 5-minute grace period in the session, so
+  attempts count the same way in all conditions. Each attempt also records the outcome and, for
+  the helper pages, how long the page was open. Distraction visits (below) are still counted.
 
 Every number is calculated on your device from the stored activity records (domain + start/end
 time) and your site labels. A "site" is a registrable domain (`m.youtube.com` and `youtube.com`
@@ -116,7 +123,7 @@ npm run build:firefox -w extension
 - The built add-on is in **`extension/.output/firefox-mv3/`**. Its files should match the uploaded
   add-on's files.
 - To make the uploadable zip instead: `npm run zip:firefox -w extension` →
-  `extension/.output/studylens-0.3.0-firefox.zip` (it also writes the sources zip next to it).
+  `extension/.output/studylens-0.4.0-firefox.zip` (it also writes the sources zip next to it).
 
 **What the build does:** [WXT](https://wxt.dev) (which uses Vite) bundles the TypeScript + React
 source in `extension/` and the shared types in `packages/shared/`. No code is downloaded at
