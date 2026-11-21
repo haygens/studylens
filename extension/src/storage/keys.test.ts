@@ -25,6 +25,8 @@ import { saveRules } from './categories-store';
 import { answerNotice, setInterventionsEnabled, setOptedOut } from './interventions-store';
 import { runRetention } from '../retention/retention';
 import { saveTheme } from './theme-store';
+import { installPlan } from '../onboarding/onboarding';
+import { applyInstallPlan, dismissThemesHint, finishWelcome } from './onboarding-store';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
@@ -88,6 +90,11 @@ async function useEverything(store: FullStore) {
   await setOptedOut(store, false);
   // Theme (P13b).
   await saveTheme(store, 'ocean');
+  // Onboarding (P13b): welcome page and the "New: themes!" hint.
+  await applyInstallPlan(store, installPlan('install'));
+  await finishWelcome(store);
+  await applyInstallPlan(store, installPlan('update', '0.2.0'));
+  await dismissThemesHint(store);
   // Sessions and check-ins (P4, P5): one answered, one ended early, one running.
   await startSession(d, 'First', 25, T0);
   await reconcileSession(d, T0 + 25 * MIN);

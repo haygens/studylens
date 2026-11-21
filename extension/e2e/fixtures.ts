@@ -126,10 +126,17 @@ interface Options {
   build: keyof typeof EXTENSION_DIRS;
   /** Storage written right after the extension loads, before any page opens. */
   seed: Record<string, unknown>;
+  /**
+   * A new install opens the welcome page (P13b). Most tests don't need it, so it is closed
+   * before the test starts ('close'); welcome tests use 'keep' and get it as `welcomePage`.
+   */
+  welcome: 'close' | 'keep';
 }
 
 interface Fixtures {
   context: BrowserContext;
+  /** The welcome page that opened on install (only with `test.use({ welcome: 'keep' })`). */
+  welcomePage: Page;
   extensionId: string;
   background: Background;
   /** `beforeLoad` runs before the popup's scripts (e.g. to add an init script). */
@@ -141,6 +148,7 @@ interface Fixtures {
 export const test = base.extend<Fixtures & Options>({
   build: ['e2e', { option: true }],
   seed: [{ 'interventions:enabled': false }, { option: true }],
+  welcome: ['close', { option: true }],
 
   context: async ({ headless, build }, use) => {
     const EXTENSION_DIR = EXTENSION_DIRS[build];
@@ -164,10 +172,18 @@ export const test = base.extend<Fixtures & Options>({
     rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
   },
 
-  extensionId: async ({ context, seed }, use) => {
+  extensionId: async ({ context, seed, welcome }, use) => {
     const sw = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
     if (Object.keys(seed).length > 0) await new Background(context).set(seed);
+    // Wait for the welcome tab first, so it can never steal focus from the test's own pages.
+    const page = await findWelcomePage(context);
+    if (welcome === 'close') await page.close();
     await use(new URL(sw.url()).host);
+  },
+
+  welcomePage: async ({ context, extensionId }, use) => {
+    void extensionId; // Opens (and keeps) the welcome page first.
+    await use(await findWelcomePage(context));
   },
 
   background: async ({ context, extensionId }, use) => {
@@ -204,6 +220,15 @@ export const test = base.extend<Fixtures & Options>({
 });
 
 export { expect };
+
+/** The welcome page that a new install opens (P13b). */
+export async function findWelcomePage(context: BrowserContext): Promise<Page> {
+  const isWelcome = (p: Page) => p.url().includes('/welcome.html');
+  await expect
+    .poll(() => context.pages().some(isWelcome), { timeout: 15_000, message: 'welcome page' })
+    .toBe(true);
+  return context.pages().find(isWelcome)!;
+}
 
 /** Labels wikipedia.org = Study and youtube.com = Distraction through the options page. */
 export async function labelSites(openOptions: () => Promise<Page>): Promise<void> {

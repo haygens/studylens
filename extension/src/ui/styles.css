@@ -17,13 +17,18 @@ html {
 
 body {
   margin: 0;
+  min-height: 100vh;
   font-family: var(--sl-font);
   font-size: var(--sl-fs-body);
   line-height: 1.45;
   color: var(--sl-ink);
-  background: linear-gradient(180deg, var(--sl-bg) 0%, var(--sl-bg-mid) 55%, var(--sl-bg-2) 100%)
-    fixed;
   background-color: var(--sl-bg);
+  background-image: linear-gradient(
+    180deg,
+    var(--sl-bg) 0%,
+    var(--sl-bg-mid) 55%,
+    var(--sl-bg-2) 100%
+  );
 }
 
 h1,
@@ -622,6 +627,8 @@ table.sl-table {
 /* ---------- Popup ---------- */
 
 body:has(.sl-popup) {
+  /* Popups size themselves to their content: no viewport-based height. */
+  min-height: 0;
   background: linear-gradient(180deg, var(--sl-pop-top) 0, var(--sl-bg) 260px, var(--sl-bg-2) 100%);
 }
 
@@ -1101,4 +1108,15 @@ body:has(.sl-popup) {
   justify-self: end;
   color: var(--sl-primary);
   font-weight: 700;
+}
+
+.sl-celebrate-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--sl-fs-h2);
+  font-weight: 800;
+  color: var(--sl-celebrate);
 }

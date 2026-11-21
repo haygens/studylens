@@ -13,7 +13,8 @@
  * Checks:
  *  1. Manifest: version, permissions (storage/tabs/idle/alarms only), no host permissions, no
  *     test-only code; the build folder has the same files as the Edge zip (if the zip exists).
- *  2. The research notice shows and blocks Start until "Keep on".
+ *  2. The welcome page opens once on install (Sunrise theme), and when it is closed early the
+ *     popup's research notice shows and blocks Start until "Keep on".
  *  3. A 25-min session starts, the badge shows minutes, End early shows the check-in.
  *  4. Visiting a stub site records it in the popup's Today list.
  *  5. The options tabs (Site categories, Insights, Settings, My Data) render without errors.
@@ -193,6 +194,16 @@ try {
   await check('loaded in Edge', async () => {
     const version = context.browser()?.version() ?? '(persistent context)';
     return `extension id ${extensionId}, Edge ${version}`;
+  });
+
+  await check('welcome page opens on install (Sunrise by default)', async () => {
+    const isWelcome = (page) => page.url().includes('/welcome.html');
+    await expect.poll(() => context.pages().some(isWelcome), { timeout: 15_000 }).toBe(true);
+    const welcome = context.pages().find(isWelcome);
+    await expect(welcome.getByRole('heading', { name: 'Pick your look' })).toBeVisible();
+    await expect(welcome.locator('html')).toHaveAttribute('data-theme', 'sunrise');
+    await welcome.close(); // Closed early: the popup must still ask the research question.
+    return 'Pick your look, Step 1 of 3';
   });
 
   let popup;

@@ -4,6 +4,7 @@ import InterventionsNotice from './InterventionsNotice';
 import PopupFooter from './PopupFooter';
 import TodayActivity from './TodayActivity';
 import { PausedBanner, TrackingPill } from './TrackingStatus';
+import WhatsNew from './WhatsNew';
 
 export default function App() {
   return (
@@ -17,6 +18,9 @@ export default function App() {
       </header>
       <ErrorBoundary name="Tracking">
         <PausedBanner />
+      </ErrorBoundary>
+      <ErrorBoundary name="What's new">
+        <WhatsNew />
       </ErrorBoundary>
       <ErrorBoundary name="Research notice">
         <InterventionsNotice />

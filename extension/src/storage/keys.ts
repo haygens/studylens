@@ -45,6 +45,10 @@ export const STORAGE_KEYS = {
    * removes it, which resets it to the default (Sunrise).
    */
   theme: 'ui:theme',
+  /** Welcome page (P13b): `pending` after a new install until it is finished, then `done`. */
+  welcome: 'onboarding:welcome',
+  /** `true` after updating from a version without themes, until the popup hint is dismissed. */
+  themesHint: 'onboarding:themes-hint',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

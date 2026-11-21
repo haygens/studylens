@@ -18,6 +18,8 @@ import {
 } from '@/src/interventions/interstitial-controller';
 import { cryptoRandomInt } from '@/src/interventions/randomize';
 import { deleteEverything } from '@/src/my-data/delete-all';
+import { installPlan } from '@/src/onboarding/onboarding';
+import { applyInstallPlan } from '@/src/storage/onboarding-store';
 import { runRetentionIfDue } from '@/src/retention/retention';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
@@ -246,6 +248,18 @@ export default defineBackground(() => {
       sendResponse({ ok: false, error: 'unknown' } satisfies SessionReply);
     });
     return true; // Reply asynchronously.
+  });
+
+  // Onboarding (P13b): a new install opens the welcome page once; an update from a version
+  // without themes only shows a small hint in the popup. Opening our own page needs no
+  // permission.
+  browser.runtime.onInstalled.addListener(({ reason, previousVersion }) => {
+    const plan = installPlan(reason, previousVersion);
+    void enqueue(async () => {
+      await applyInstallPlan(localStore, plan);
+      if (plan.openWelcome)
+        await browser.tabs.create({ url: browser.runtime.getURL('/welcome.html') });
+    }).catch(() => undefined); // Already logged by enqueue.
   });
 
   // Wakes the background at browser start so an overdue session is ended and the badge restored.
