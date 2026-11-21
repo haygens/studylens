@@ -1088,3 +1088,48 @@ which stays on M:. Nothing was deleted.)
 
 Next piece (from PLAN.md): P13 — Edge submit once verified (0.3.0 zip); upload 0.3.0 to AMO when
 ready; then P14 — Recruit friends.
+
+## Handoff — 2026-11-21 (Feedback link live, v0.3.0 zips rebuilt)
+
+Done:
+
+- `FEEDBACK_URL` in `extension/src/ui/feedback.ts` now points at the anonymous Microsoft Form.
+  "Send feedback" shows in the popup footer and on the Settings tab (Feedback card) and opens the
+  form in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).
+- PRIVACY.md: the feedback section now says it opens an anonymous Microsoft Form in a new tab;
+  StudyLens itself sends nothing; the form is a separate Microsoft service with its own privacy
+  terms and doesn't ask for names or emails.
+- README: "Feedback and support" section with the form link. Release notes 0.3.0 + CLAUDE.md
+  mention it too.
+- Tests: unit test checks the constant is the form link. E2E checks the link is visible with the
+  right href/target/rel in the popup and on Settings in all 3 themes, absent on the other 7
+  screens, and that clicking it opens a new tab at the form URL (the form request is answered by
+  a local stub, so tests never contact Microsoft).
+- Commit `a64489e`, pushed. CI: **both jobs passed** (`check` and `e2e`).
+- Zips rebuilt from `a64489e` content (**not uploaded**):
+  - `M:\Projects\studylens\extension\.output\studylens-0.3.0-edge.zip` (SHA-256 `00be4e1c…200f7854`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.3.0-firefox.zip` (SHA-256 `dadf6229…0b6220b4`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.3.0-sources.zip` (SHA-256 `c90ea12d…454386c1`)
+  - Sources zip unzipped into a clean `M:\temp\studylens-verify-0.3.0`, `npm ci` + `build:firefox`:
+    all 21 files identical SHA-256 (form URL present). Folder deleted.
+  - addons-linter 10.16.0 temporarily in `M:\temp\addons-linter-tmp`, then deleted: 0 errors,
+    0 notices, 2 warnings (React DOM `innerHTML`, same as before).
+  - Manifests: version 0.3.0, permissions `storage, tabs, idle, alarms` only, no host permissions.
+
+Changed files: `extension/src/ui/feedback.ts`, `extension/src/ui/feedback.test.ts`,
+`extension/e2e/themes.e2e.ts`, `PRIVACY.md`, `README.md`, `docs/store/release-notes-0.3.0.md`,
+`CLAUDE.md`, `docs/LOG.md`.
+
+Tests: unit 650 passed (30 files). E2E 38/38 in local Edge. smoke:edge 12/12 (same files as the
+new Edge zip; it failed once against the old zip before the rebuild, as expected). Lint, format
+check, typecheck, Firefox/Edge/web builds, check:builds clean. CI green.
+
+Problems / open questions:
+
+- Edge account verification still pending; then submit the new `studylens-0.3.0-edge.zip` (P13).
+- The old 0.3.0 zips from earlier today were overwritten. Upload only the new ones.
+
+Disk space: C: 2.47 GB free, M: 14.02 GB free.
+
+Next piece (from PLAN.md): P13 — Edge submit once verified (0.3.0 zip); upload 0.3.0 to AMO; then
+P14 — Recruit friends.
