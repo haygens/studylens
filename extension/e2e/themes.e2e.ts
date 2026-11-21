@@ -7,6 +7,49 @@ import { expect, test } from './fixtures';
 
 const THEMES = ['sunrise', 'ocean', 'pastel'] as const;
 
+const FEEDBACK_URL =
+  'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAATtyGOdURDg4VUNBRFRSRjgwMktVWEFEODMxTDk0Qi4u';
+const FEEDBACK_SCREENS = ['popup.html', 'options.html#settings'];
+
+/** The "Send feedback" link is visible, points at the form, and opens in a new tab. */
+async function expectFeedbackLink(page: Page, where: string) {
+  const link = page.getByRole('link', { name: 'Send feedback' });
+  await expect(link, where).toHaveCount(1);
+  await expect(link, where).toBeVisible();
+  await expect(link, where).toHaveAttribute('href', FEEDBACK_URL);
+  await expect(link, where).toHaveAttribute('target', '_blank');
+  await expect(link, where).toHaveAttribute('rel', 'noopener noreferrer');
+}
+
+test('"Send feedback" opens the Microsoft Form in a new tab from the popup and Settings', async ({
+  context,
+  openPopup,
+  openOptions,
+}) => {
+  // Answer the form request locally: the test never contacts Microsoft.
+  await context.route('https://forms.cloud.microsoft/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<title>Form stub</title>' }),
+  );
+  const popup = await openPopup();
+  const options = await openOptions();
+  await options.getByRole('link', { name: 'Settings' }).click();
+  await expect(options.getByRole('heading', { name: 'Feedback' })).toBeVisible();
+
+  for (const [where, page] of [
+    ['popup', popup],
+    ['Settings', options],
+  ] as const) {
+    await expectFeedbackLink(page, where);
+    const [tab] = await Promise.all([
+      context.waitForEvent('page'),
+      page.getByRole('link', { name: 'Send feedback' }).click(),
+    ]);
+    await expect(tab, where).toHaveURL(FEEDBACK_URL);
+    await tab.close();
+  }
+  await context.unroute('https://forms.cloud.microsoft/**');
+});
+
 test('Settings: picking a theme restyles open pages live; Delete everything resets it', async ({
   openOptions,
   openPopup,
@@ -88,8 +131,13 @@ for (const theme of THEMES) {
       expect(body.background, path).toContain('gradient');
       expect(body.color, path).not.toBe('rgb(0, 0, 0)'); // the theme's ink, not the default
       expect(errors, path).toEqual([]);
-      // FEEDBACK_URL is empty until the feedback form exists: the link is hidden everywhere.
-      await expect(page.getByText('Send feedback'), path).toHaveCount(0);
+      // "Send feedback" shows in the popup footer and on the Settings tab only.
+      const feedback = page.getByRole('link', { name: 'Send feedback' });
+      if (FEEDBACK_SCREENS.includes(path)) {
+        await expectFeedbackLink(page, path);
+      } else {
+        await expect(feedback, path).toHaveCount(0);
+      }
       await page.close();
     }
   });

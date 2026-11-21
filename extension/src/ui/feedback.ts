@@ -1,11 +1,12 @@
 /**
- * "Send feedback" link (P13b). hs will create a Microsoft Form later; until FEEDBACK_URL is
- * set, the link is hidden everywhere. The link only opens the form in a new tab: StudyLens
- * sends nothing itself, and nothing is filled in for the user.
+ * "Send feedback" link (P13b). Points at hs's anonymous Microsoft Form (no names or emails
+ * asked). The link only opens the form in a new tab: StudyLens sends nothing itself, and
+ * nothing is filled in for the user. Set FEEDBACK_URL to '' to hide the link everywhere.
  */
 
-/** Paste the Microsoft Form's https:// link here to show "Send feedback". Empty = hidden. */
-export const FEEDBACK_URL = '';
+/** The Microsoft Form's https:// link that "Send feedback" opens. Empty = hidden. */
+export const FEEDBACK_URL =
+  'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAATtyGOdURDg4VUNBRFRSRjgwMktVWEFEODMxTDk0Qi4u';
 
 /** The link to show, or null to hide it (empty, or not a plain https:// address). */
 export function feedbackLink(url: string = FEEDBACK_URL): string | null {

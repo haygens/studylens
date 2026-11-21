@@ -22,5 +22,7 @@ collected and nothing is sent anywhere.
 - **Helper pages:** a countdown ring and a calmer layout.
 - **My Data:** the focus sessions table is readable again (no headers split mid-word).
 - **Accessibility:** visible keyboard focus everywhere, larger popup text, reduced motion respected.
+- **Send feedback:** a link in the popup footer and on the Settings tab opens an anonymous
+  Microsoft Form in a new tab (no name or email asked). StudyLens itself sends nothing.
 - **Privacy:** unchanged. Themes use fonts already on your computer; nothing is downloaded or sent.
   The theme and welcome-page state are stored locally and removed by "Delete everything".

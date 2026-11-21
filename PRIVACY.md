@@ -87,10 +87,12 @@ themes use only fonts already on your computer; no web fonts or other files are 
 
 ## Feedback link
 
-From version 0.3.0, the popup and the Settings tab may show a **"Send feedback"** link (it only
-appears once the feedback form exists). It opens a Microsoft Forms page in a new tab. StudyLens
-sends nothing to it and fills nothing in for you: the form only receives what you choose to type
-there, under Microsoft's privacy statement. Using it is entirely optional.
+From version 0.3.0, the popup footer and the Settings tab show a **"Send feedback"** link. It
+opens an **anonymous Microsoft Form** in a new tab. StudyLens itself sends nothing: it doesn't
+pass your data, settings, or any web address to the form, and fills nothing in for you. The form
+is a separate Microsoft service with its own privacy terms (Microsoft's privacy statement). It
+doesn't ask for your name or email, and it only receives what you choose to type there. Using it
+is entirely optional.
 
 ## Retention
 

@@ -104,7 +104,7 @@ If a requested change would break one of these rules, stop and tell hs instead o
   `pastel`; no theme = the old v0.2.0 set in `docs/ux-review/screens/`)
 - Themes: tokens in `extension/src/ui/themes.ts` (every color must come from there; unit tests check
   WCAG AA for every pair in `theme-pairs.ts`). Feedback form link: `FEEDBACK_URL` in
-  `extension/src/ui/feedback.ts` (empty = hidden).
+  `extension/src/ui/feedback.ts` (set to the anonymous Microsoft Form; empty = hidden).
 - Firefox add-on ID `studylens@haygens.github.io` (in `extension/wxt.config.ts`) must NEVER change.
 - Lint: `npm run lint`
 - Format: `npm run format` — check only: `npm run format:check`

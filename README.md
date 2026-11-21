@@ -151,9 +151,12 @@ npm run lint
 npm run typecheck
 ```
 
-## Support
+## Feedback and support
 
-Questions and bug reports: [GitHub issues](https://github.com/haygens/studylens/issues).
+- **Feedback:** [anonymous feedback form](https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAATtyGOdURDg4VUNBRFRSRjgwMktVWEFEODMxTDk0Qi4u)
+  (Microsoft Forms; no name or email asked). It's also the "Send feedback" link in the popup and
+  on the Settings tab.
+- Questions and bug reports: [GitHub issues](https://github.com/haygens/studylens/issues).
 
 ## License
 

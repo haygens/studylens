@@ -23,4 +23,9 @@ describe('feedback link', () => {
   it('follows the constant by default', () => {
     expect(feedbackLink()).toBe(feedbackLink(FEEDBACK_URL));
   });
+
+  it('is set to the Microsoft Form, so the link shows', () => {
+    expect(feedbackLink()).toBe(FEEDBACK_URL);
+    expect(new URL(FEEDBACK_URL).hostname).toBe('forms.cloud.microsoft');
+  });
 });
