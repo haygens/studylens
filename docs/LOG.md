@@ -964,3 +964,46 @@ Disk space: C: 3.34 GB free, M: 14.21 GB free.
 
 Next piece (from PLAN.md): P13 — Edge build + submit (submit `studylens-0.2.0-edge.zip`), and
 upload 0.2.0 to AMO.
+
+## Handoff — 2026-11-20 (v0.2.0 live on AMO; Edge account pending; UX review + mockups)
+
+Done:
+
+- **v0.2.0 approved and live on AMO** (auto-approved 2026-11-20).
+- **Edge:** registered in Partner Center as an individual developer. Account verification is
+  pending (the verification email hasn't arrived yet). P13 stays open until Microsoft verifies the
+  account; then submit `studylens-0.2.0-edge.zip`. Status noted on the P13 line in PLAN.md.
+- **New piece P13b. UI polish + onboarding (v0.3.0)** added to PLAN.md before P14 (welcome page,
+  colorful redesign, clearer popup, accessibility, feedback link). Not built yet.
+- **UX review (no extension code changed):**
+  - New `extension/scripts/ux-review-shots.mjs` captures every screen at real size into
+    `docs/ux-review/screens/` (E2E build in installed Edge, headless, throwaway profile in
+    M:\temp, stub pages only): popup fresh install / notice / idle / running / check-in / paused /
+    keyboard focus, friction (countdown + done), intention (empty + typed), back-to-studying, and
+    every options tab (Site categories empty + labeled, Insights empty + sample, Settings, My Data).
+  - `docs/ux-review/REVIEW.md`: problems per screen for a first-time user, each with severity and a
+    fix; 3 visual directions with palettes, type scales, radius/spacing; a prioritized "must fix
+    before friends" vs "nice to have" list. Recommendation: Sunrise.
+  - Mockups (static HTML, no scripts or external files): `docs/ux-review/mockup-sunrise.html`,
+    `docs/ux-review/mockup-ocean.html`, `docs/ux-review/mockup-pastel.html` (popup idle, running,
+    check-in, friction page). Every text color was checked for 4.5:1 contrast.
+  - Biggest findings: no first-run flow (a long research notice is the first thing a user sees),
+    Start/Save/Continue are disabled with no visible reason, the My Data sessions table breaks
+    headers mid-word, Study is green everywhere except blue in Insights, and many 11–12 px texts.
+
+Changed files: `CLAUDE.md`, `docs/PLAN.md`, `docs/LOG.md`, `docs/ux-review/` (new: REVIEW.md, 3
+mockups, 22 screenshots), `extension/scripts/ux-review-shots.mjs` (new).
+
+Tests: unit pass, 277 tests in 24 files. Lint and format check clean. No extension code changed, so
+E2E, builds and the 0.2.0 zips are unaffected.
+
+Problems / open questions:
+
+- Pick a visual direction (Sunrise recommended) before starting P13b.
+- Where should the feedback link go: a GitHub issue form (needs a GitHub account) or a mailto link?
+- Edge account verification is still pending.
+
+Disk space: C: 3.36 GB free, M: 14.19 GB free.
+
+Next piece (from PLAN.md): P13 — submit to Edge once the account is verified; meanwhile P13b — UI
+polish + onboarding (v0.3.0).

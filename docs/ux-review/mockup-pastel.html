@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>StudyLens Playful pastel</title>
+    <!-- UX review mockup (P13b). Static, no scripts, no external files. Not extension code. -->
+    <style>
+      :root {
+        --font: ui-rounded, 'SF Pro Rounded', 'Nunito', 'Segoe UI', system-ui, sans-serif;
+        --fs-h1: 28px;
+        --fs-h2: 20px;
+        --fs-h3: 17px;
+        --fs-body: 15px;
+        --fs-timer: 42px;
+        --radius: 22px;
+        --radius-sm: 14px;
+        --ink: #2a2140;
+        --muted: #5f5878;
+        --surface: #fff;
+        --border: #2a2140;
+        --hair: #eee8fb;
+        --track: #ece6fb;
+        --input-border: #2a2140;
+        --focus: #d6336c;
+        --primary: #3557d6;
+        --primary-soft: #e9edff;
+        --primary-border: #2a2140;
+        --primary-grad: #3557d6;
+        --page-bg: #f6f3ff;
+        --pop-bg: #fffbea;
+        --shadow: 6px 6px 0 #2a2140;
+        --card-shadow: 0 3px 0 #2a2140;
+        --btn-shadow: 0 3px 0 #2a2140;
+        --card-border: 2px solid #2a2140;
+        --study: #237a3b;
+        --study-soft: #e4f8e9;
+        --study-border: #2a2140;
+        --study-fill: #69db7c;
+        --neutral: #5e6472;
+        --neutral-soft: #f0f1f5;
+        --neutral-fill: #ced4da;
+        --distr: #c0262e;
+        --distr-soft: #ffe8ea;
+        --distr-fill: #ff8787;
+        --friction: #8f5a00;
+        --friction-ring: #ffd43b;
+        --ring: #3557d6;
+        --run-bg: #effcf6;
+        --done-bg: #ffe8f0;
+        --done-ink: #b8246b;
+        --c1: #ffd43b;
+        --c2: #d6336c;
+        --c3: #69db7c;
+        --fr-bg: #f6f3ff;
+        --fr-deco:
+          radial-gradient(circle at 12% 20%, #ffd8a8 0 60px, transparent 61px),
+          radial-gradient(circle at 88% 30%, #c3fae8 0 80px, transparent 81px),
+          radial-gradient(circle at 20% 85%, #e5dbff 0 90px, transparent 91px),
+          radial-gradient(circle at 85% 88%, #ffdeeb 0 70px, transparent 71px);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: var(--font);
+        color: var(--ink);
+        background: var(--page-bg);
+        line-height: 1.4;
+      }
+      svg {
+        width: 1em;
+        height: 1em;
+        flex: none;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      a:focus-visible,
+      label:has(input:focus-visible) span {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+      .intro {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 16px 8px;
+      }
+      .intro h1 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: -0.01em;
+      }
+      .intro p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        max-width: 760px;
+      }
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 16px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .swatches li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 12px 4px 4px;
+        font-size: 12px;
+      }
+      .swatches i {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+      }
+      .swatches code {
+        color: var(--muted);
+      }
+      .grid {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 24px;
+        align-items: start;
+      }
+      .frame h3 {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 0 0 8px;
+      }
+      .wide {
+        grid-column: 1/-1;
+      }
+      .notes {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 16px 40px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .notes li {
+        margin: 4px 0;
+      }
+
+      /* popup */
+      .popup {
+        width: 340px;
+        max-width: 100%;
+        background: var(--pop-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+        overflow: hidden;
+      }
+      .pop-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .logo {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: var(--radius-sm);
+        background: var(--primary);
+        color: #fff;
+        font-size: 18px;
+      }
+      .logo.sm {
+        width: 22px;
+        height: 22px;
+        font-size: 13px;
+      }
+      .brand {
+        font-weight: 750;
+        font-size: var(--fs-h2);
+        letter-spacing: -0.01em;
+        flex: 1;
+      }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--study-border);
+        background: var(--study-soft);
+        color: var(--study);
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .status-session {
+        border-color: var(--primary-border);
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+      .pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
+      }
+      .card {
+        background: var(--surface);
+        border: var(--card-border);
+        border-radius: var(--radius);
+        padding: 14px;
+        box-shadow: var(--card-shadow);
+      }
+      h2 {
+        margin: 0;
+        font-size: var(--fs-h3);
+      }
+      .h-start {
+        margin-bottom: 10px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        border: 0;
+        padding: 0;
+        margin: 0 0 12px;
+        font-size: var(--fs-body);
+        font-weight: 600;
+      }
+      .field legend {
+        padding: 0;
+        margin-bottom: 6px;
+      }
+      input[type='text'] {
+        font: inherit;
+        font-weight: 400;
+        font-size: 15px;
+        padding: 9px 11px;
+        border: 1.5px solid var(--input-border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--ink);
+        width: 100%;
+      }
+      .seg-pick {
+        display: flex;
+        gap: 6px;
+      }
+      .seg-pick label {
+        flex: 1;
+      }
+      .seg-pick input {
+        position: absolute;
+        opacity: 0;
+      }
+      .seg-pick span {
+        display: block;
+        text-align: center;
+        padding: 8px 0;
+        border-radius: 999px;
+        border: 1.5px solid var(--input-border);
+        font-weight: 600;
+        font-size: 14px;
+        background: var(--surface);
+      }
+      .seg-pick input:checked + span {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .btn {
+        border: 0;
+        border-radius: var(--radius-sm);
+        padding: 9px 14px;
+        font-weight: 650;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .btn-primary {
+        background: var(--primary-grad);
+        color: #fff;
+        box-shadow: var(--btn-shadow);
+      }
+      .btn-big {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+      }
+      .btn-quiet {
+        background: transparent;
+        color: var(--muted);
+        border: 1.5px solid var(--input-border);
+      }
+      .btn-ghost {
+        background: var(--surface);
+        color: var(--muted);
+        border: 1.5px dashed var(--input-border);
+        width: 100%;
+        padding: 11px;
+      }
+      .btn-ghost:disabled {
+        cursor: not-allowed;
+      }
+      .last {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        padding: 0 4px;
+      }
+      .last b {
+        color: var(--ink);
+      }
+      .last-badge {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--study-soft);
+        color: var(--study);
+        font-size: 13px;
+      }
+      .row-between {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 10px;
+      }
+      .link {
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .daybar {
+        display: flex;
+        height: 12px;
+        border-radius: 999px;
+        overflow: hidden;
+        gap: 2px;
+        background: var(--track);
+      }
+      .seg {
+        display: block;
+      }
+      .seg-study {
+        background: var(--study-fill);
+      }
+      .seg-neutral {
+        background: var(--neutral-fill);
+      }
+      .seg-distr {
+        background: var(--distr-fill);
+        background-image: repeating-linear-gradient(
+          135deg,
+          transparent 0 3px,
+          rgba(255, 255, 255, 0.55) 3px 5px
+        );
+      }
+      .legend {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        font-size: 12px;
+        margin: 8px 0 6px;
+      }
+      .lg {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .lg-study {
+        color: var(--study);
+      }
+      .lg-neutral {
+        color: var(--neutral);
+      }
+      .lg-distr {
+        color: var(--distr);
+      }
+      .lg b {
+        color: var(--ink);
+        font-weight: 650;
+      }
+      .sites {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .sites li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 0;
+        border-top: 1px solid var(--hair);
+        font-size: 13px;
+      }
+      .site {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .min {
+        width: 48px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--muted);
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .chip-study {
+        background: var(--study-soft);
+        color: var(--study);
+      }
+      .chip-neutral {
+        background: var(--neutral-soft);
+        color: var(--neutral);
+      }
+      .chip-distr {
+        background: var(--distr-soft);
+        color: var(--distr);
+      }
+      .pop-foot {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 0 4px;
+      }
+
+      /* running */
+      .run {
+        text-align: center;
+        background: var(--run-bg);
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 650;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--primary);
+      }
+      .goal {
+        margin: 4px 0 0;
+        font-size: var(--fs-h3);
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+      .ring {
+        position: relative;
+        width: 170px;
+        height: 170px;
+        margin: 12px auto 4px;
+      }
+      .ring svg {
+        width: 100%;
+        height: 100%;
+      }
+      .ring-track {
+        fill: none;
+        stroke: var(--track);
+        stroke-width: 10;
+      }
+      .ring-fill {
+        fill: none;
+        stroke: var(--ring);
+        stroke-width: 10;
+        stroke-linecap: round;
+      }
+      .ring-text {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+      }
+      .time {
+        font-size: var(--fs-timer);
+        font-weight: 750;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+        line-height: 1;
+      }
+      .sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .ends {
+        margin: 4px 0 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .now {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        padding: 10px 14px;
+      }
+      .now-label {
+        font-weight: 700;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      /* check-in */
+      .done {
+        position: relative;
+        text-align: center;
+        background: var(--done-bg);
+        overflow: hidden;
+      }
+      .done > p {
+        position: relative;
+        z-index: 1;
+      }
+      .done-title {
+        margin: 6px 0 0;
+        font-size: var(--fs-h2);
+        font-weight: 800;
+        color: var(--done-ink);
+      }
+      .done-sub {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .confetti i {
+        position: absolute;
+        top: -6px;
+        left: calc(var(--i) * 7.2%);
+        width: 7px;
+        height: 11px;
+        border-radius: 2px;
+        background: var(--c1);
+        transform: rotate(calc(var(--i) * 37deg));
+        animation: fall 2.6s ease-in calc(var(--i) * -0.19s) infinite;
+        opacity: 0.55;
+      }
+      .confetti i:nth-child(3n) {
+        background: var(--c2);
+      }
+      .confetti i:nth-child(3n + 1) {
+        background: var(--c3);
+      }
+      @keyframes fall {
+        to {
+          transform: translateY(150px) rotate(300deg);
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .confetti i {
+          animation: none;
+          top: 2px;
+        }
+      }
+      .choice3,
+      .scale {
+        display: flex;
+        gap: 6px;
+      }
+      .pick {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 9px 0;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--input-border);
+        background: var(--surface);
+        color: var(--ink);
+        font-weight: 650;
+        font-size: 14px;
+      }
+      .pick[aria-pressed='true'] {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        box-shadow: var(--btn-shadow);
+      }
+      .pick-yes[aria-pressed='true'] {
+        background: var(--study);
+        border-color: var(--study);
+      }
+      .scale-ends {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--muted);
+      }
+      .row-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .row-actions .btn-primary {
+        flex: 1;
+      }
+      .fine {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 10px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* friction page */
+      .browser {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        background: var(--surface);
+        border: 1px solid var(--border);
+      }
+      .browser-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: var(--hair);
+      }
+      .browser-bar > span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--input-border);
+      }
+      .url {
+        margin-left: 12px;
+        font-size: 12px;
+        color: var(--muted);
+        background: var(--surface);
+        border-radius: 999px;
+        padding: 3px 12px;
+        flex: 1;
+        max-width: 420px;
+      }
+      .fr-page {
+        position: relative;
+        min-height: 540px;
+        display: grid;
+        place-items: center;
+        padding: 32px 16px;
+        background: var(--fr-bg);
+        overflow: hidden;
+      }
+      .fr-deco {
+        position: absolute;
+        inset: 0;
+        background: var(--fr-deco);
+        pointer-events: none;
+      }
+      .fr-card {
+        position: relative;
+        width: 100%;
+        max-width: 460px;
+        background: var(--surface);
+        border-radius: calc(var(--radius) + 6px);
+        padding: 28px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        border: var(--card-border);
+      }
+      .fr-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .fr-card h1 {
+        font-size: var(--fs-h1);
+        margin: 12px 0 4px;
+        line-height: 1.2;
+      }
+      .host {
+        color: var(--distr);
+        white-space: nowrap;
+      }
+      .fr-goal {
+        margin: 0;
+        font-size: 15px;
+        color: var(--muted);
+      }
+      .fr-goal b {
+        color: var(--ink);
+      }
+      .fr-ring {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin: 18px auto 6px;
+      }
+      .fr-ring svg {
+        width: 100%;
+        height: 100%;
+      }
+      .fr-fill {
+        stroke: var(--friction-ring);
+      }
+      .fr-num {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 44px;
+        font-weight: 800;
+        color: var(--friction);
+      }
+      .fr-hint {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .fr-actions {
+        display: grid;
+        gap: 10px;
+      }
+      @media (max-width: 420px) {
+        .popup {
+          width: 100%;
+        }
+      }
+      .popup {
+        border: 2px solid #2a2140;
+      }
+      .logo {
+        border: 2px solid #2a2140;
+        transform: rotate(-6deg);
+      }
+      .chip {
+        border: 1.5px solid currentColor;
+      }
+      .seg-pick span,
+      .pick,
+      input[type='text'],
+      .btn-quiet,
+      .btn-ghost {
+        border-width: 2px;
+      }
+      .btn-primary {
+        border: 2px solid #2a2140;
+      }
+      .ring-track {
+        stroke-width: 12;
+      }
+      .ring-fill {
+        stroke-width: 12;
+      }
+      .seg-study,
+      .seg-neutral,
+      .seg-distr {
+        border-right: 2px solid #2a2140;
+      }
+      .daybar {
+        border: 2px solid #2a2140;
+        height: 16px;
+        gap: 0;
+      }
+      .fr-card {
+        transform: rotate(-0.6deg);
+      }
+      .fr-brand .logo {
+        transform: rotate(-6deg);
+      }
+      .browser {
+        box-shadow: 6px 6px 0 #2a2140;
+        border: 2px solid #2a2140;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="intro">
+      <h1>StudyLens · Playful pastel</h1>
+      <p>
+        Friendly and a bit silly, like a sticker-covered notebook. Soft pastel tints, chunky rounded
+        shapes, and dark text for readability. <b>Mood:</b> Playful, cozy, bullet-journal stickers.
+      </p>
+      <ul class="swatches">
+        <li><i style="background: #3557d6"></i>Primary (icon blue) <code>#3557d6</code></li>
+        <li><i style="background: #d6336c"></i>Bubblegum accent <code>#d6336c</code></li>
+        <li><i style="background: #f6f3ff"></i>Lilac tint <code>#f6f3ff</code></li>
+        <li><i style="background: #fffbea"></i>Butter tint <code>#fffbea</code></li>
+        <li><i style="background: #effcf6"></i>Mint tint <code>#effcf6</code></li>
+        <li><i style="background: #2a2140"></i>Ink (plum) <code>#2a2140</code></li>
+        <li><i style="background: #5f5878"></i>Muted text <code>#5f5878</code></li>
+        <li><i style="background: #237a3b"></i>Study <code>#237a3b</code></li>
+        <li><i style="background: #5e6472"></i>Neutral <code>#5e6472</code></li>
+        <li><i style="background: #c0262e"></i>Distraction <code>#c0262e</code></li>
+        <li><i style="background: #8f5a00"></i>Friction <code>#8f5a00</code></li>
+        <li><i style="background: #6741d9"></i>Intention <code>#6741d9</code></li>
+      </ul>
+    </div>
+    <div class="grid">
+      <div class="frame">
+        <h3>Popup · idle</h3>
+        <div class="popup">
+          <header class="pop-head">
+            <span class="logo"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="6.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                />
+                <path
+                  d="M15 15l5.5 5.5"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                /></svg
+            ></span>
+            <span class="brand">StudyLens</span>
+            <button class="status" type="button" title="Pause tracking">
+              <span class="pulse" aria-hidden="true"></span>Tracking on
+            </button>
+          </header>
+          <form class="card start" onsubmit="return false;">
+            <h2 class="h-start">Ready to focus?</h2>
+            <label class="field"
+              >What will you work on?
+              <input type="text" value="Problem set 3, questions 1–10" />
+            </label>
+            <fieldset class="field">
+              <legend>How long?</legend>
+              <div class="seg-pick" role="radiogroup">
+                <label><input type="radio" name="d" checked /><span>25 min</span></label>
+                <label><input type="radio" name="d" /><span>50 min</span></label>
+                <label><input type="radio" name="d" /><span>Custom</span></label>
+              </div>
+            </fieldset>
+            <button class="btn btn-primary btn-big" type="submit">Start focusing</button>
+          </form>
+          <div class="last">
+            <span class="last-badge"
+              ><svg viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M3 8.5 6.5 12 13 4.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg
+            ></span>
+            <span>Last session: <b>50 min</b> · goal done · focus <b>4/5</b></span>
+          </div>
+
+          <section class="card today">
+            <div class="row-between">
+              <h2>Today</h2>
+              <a href="#" class="link">Label sites</a>
+            </div>
+
+            <div
+              class="daybar"
+              role="img"
+              aria-label="Today: study 55 min, neutral 12 min, distraction 9 min"
+            >
+              <span class="seg seg-study" style="flex: 55"></span
+              ><span class="seg seg-neutral" style="flex: 12"></span
+              ><span class="seg seg-distr" style="flex: 9"></span>
+            </div>
+            <div class="legend">
+              <span class="lg lg-study"
+                ><svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                  <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+                >Study <b>55m</b></span
+              >
+              <span class="lg lg-neutral"
+                ><svg viewBox="0 0 16 16" aria-hidden="true">
+                  <circle
+                    cx="8"
+                    cy="8"
+                    r="5.2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+                  <circle cx="8" cy="8" r="1.8" fill="currentColor" /></svg
+                >Neutral <b>12m</b></span
+              >
+              <span class="lg lg-distr"
+                ><svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M9.2 1.5 3.5 9h4l-1 5.5L12.5 7h-4z" fill="currentColor" /></svg
+                >Distraction <b>9m</b></span
+              >
+            </div>
+            <ul class="sites">
+              <li>
+                <span class="site">khanacademy.org</span
+                ><span class="chip chip-study"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                    <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+                  >Study</span
+                ><span class="min">34 min</span>
+              </li>
+              <li>
+                <span class="site">docs.google.com</span
+                ><span class="chip chip-study"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                    <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+                  >Study</span
+                ><span class="min">21 min</span>
+              </li>
+              <li>
+                <span class="site">youtube.com</span
+                ><span class="chip chip-distr"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M9.2 1.5 3.5 9h4l-1 5.5L12.5 7h-4z" fill="currentColor" /></svg
+                  >Distraction</span
+                ><span class="min">9 min</span>
+              </li>
+            </ul>
+          </section>
+          <footer class="pop-foot">
+            <a href="#" class="link"
+              ><svg viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M8 1.5 13 3.5v4c0 3.2-2.2 5.6-5 7-2.8-1.4-5-3.8-5-7v-4z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                /></svg
+              >My Data</a
+            ><span>Stays on this device</span>
+          </footer>
+        </div>
+      </div>
+      <div class="frame">
+        <h3>Popup · running session</h3>
+        <div class="popup">
+          <header class="pop-head">
+            <span class="logo"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="6.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                />
+                <path
+                  d="M15 15l5.5 5.5"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                /></svg
+            ></span>
+            <span class="brand">StudyLens</span>
+            <button class="status status-session" type="button" title="Pause tracking">
+              <span class="pulse" aria-hidden="true"></span>In session
+            </button>
+          </header>
+          <section class="card run">
+            <p class="eyebrow">Focusing on</p>
+            <p class="goal">Problem set 3, questions 1–10</p>
+            <div class="ring" role="timer" aria-label="18 minutes 2 seconds left">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="52" />
+                <circle
+                  class="ring-fill"
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  stroke-dasharray="326.7"
+                  stroke-dashoffset="91.5"
+                  transform="rotate(-90 60 60)"
+                />
+              </svg>
+              <div class="ring-text">
+                <span class="time">18:02</span><span class="sub">of 25 min</span>
+              </div>
+            </div>
+            <p class="ends">Ends at 3:40 PM · keep going!</p>
+            <button class="btn btn-quiet" type="button">End early</button>
+          </section>
+          <section class="card now">
+            <span class="now-label">Now</span><span class="site">khanacademy.org</span
+            ><span class="chip chip-study"
+              ><svg viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+                <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+              >Study</span
+            >
+          </section>
+
+          <section class="card today">
+            <div class="row-between">
+              <h2>Today</h2>
+              <a href="#" class="link">Label sites</a>
+            </div>
+
+            <div
+              class="daybar"
+              role="img"
+              aria-label="Today: study 41 min, neutral 6 min, distraction 3 min"
+            >
+              <span class="seg seg-study" style="flex: 41"></span
+              ><span class="seg seg-neutral" style="flex: 6"></span
+              ><span class="seg seg-distr" style="flex: 3"></span>
+            </div>
+            <div class="legend">
+              <span class="lg lg-study"
+                ><svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                  <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+                >Study <b>41m</b></span
+              >
+              <span class="lg lg-neutral"
+                ><svg viewBox="0 0 16 16" aria-hidden="true">
+                  <circle
+                    cx="8"
+                    cy="8"
+                    r="5.2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+                  <circle cx="8" cy="8" r="1.8" fill="currentColor" /></svg
+                >Neutral <b>6m</b></span
+              >
+              <span class="lg lg-distr"
+                ><svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M9.2 1.5 3.5 9h4l-1 5.5L12.5 7h-4z" fill="currentColor" /></svg
+                >Distraction <b>3m</b></span
+              >
+            </div>
+            <ul class="sites">
+              <li>
+                <span class="site">khanacademy.org</span
+                ><span class="chip chip-study"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                    <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+                  >Study</span
+                ><span class="min">34 min</span>
+              </li>
+              <li>
+                <span class="site">docs.google.com</span
+                ><span class="chip chip-study"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M2 3.2C3.6 2.4 5.6 2.4 8 3.6c2.4-1.2 4.4-1.2 6-.4v9.6c-1.6-.8-3.6-.8-6 .4-2.4-1.2-4.4-1.2-6-.4z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                    <path d="M8 3.6v9.6" stroke="currentColor" stroke-width="1.5" /></svg
+                  >Study</span
+                ><span class="min">21 min</span>
+              </li>
+              <li>
+                <span class="site">youtube.com</span
+                ><span class="chip chip-distr"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M9.2 1.5 3.5 9h4l-1 5.5L12.5 7h-4z" fill="currentColor" /></svg
+                  >Distraction</span
+                ><span class="min">9 min</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+      <div class="frame">
+        <h3>Popup · check-in (session complete)</h3>
+        <div class="popup">
+          <header class="pop-head">
+            <span class="logo"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="6.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                />
+                <path
+                  d="M15 15l5.5 5.5"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                /></svg
+            ></span>
+            <span class="brand">StudyLens</span>
+            <button class="status" type="button" title="Pause tracking">
+              <span class="pulse" aria-hidden="true"></span>Tracking on
+            </button>
+          </header>
+          <section class="card done">
+            <div class="confetti" aria-hidden="true">
+              <i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i
+              ><i style="--i: 3"></i><i style="--i: 4"></i><i style="--i: 5"></i
+              ><i style="--i: 6"></i><i style="--i: 7"></i><i style="--i: 8"></i
+              ><i style="--i: 9"></i><i style="--i: 10"></i><i style="--i: 11"></i
+              ><i style="--i: 12"></i><i style="--i: 13"></i>
+            </div>
+            <p class="done-title">Session complete! <span aria-hidden="true">🎉</span></p>
+            <p class="done-sub">You focused for <b>25 minutes</b> on</p>
+            <p class="goal">Read chapter 4: photosynthesis</p>
+          </section>
+          <form class="card checkin" onsubmit="return false;">
+            <fieldset class="field">
+              <legend>Did you finish your goal?</legend>
+              <div class="choice3">
+                <button type="button" class="pick pick-yes" aria-pressed="true">
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M3 8.5 6.5 12 13 4.5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    /></svg
+                  >Yes
+                </button>
+                <button type="button" class="pick pick-partly" aria-pressed="false">
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="5.5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+                    <path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" /></svg
+                  >Partly
+                </button>
+                <button type="button" class="pick pick-no" aria-pressed="false">
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M4 4l8 8M12 4l-8 8"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    /></svg
+                  >No
+                </button>
+              </div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>How focused were you?</legend>
+              <div class="scale">
+                <button type="button" class="pick" aria-pressed="false" aria-label="1">1</button
+                ><button type="button" class="pick" aria-pressed="false" aria-label="2">2</button
+                ><button type="button" class="pick" aria-pressed="false" aria-label="3">3</button
+                ><button type="button" class="pick" aria-pressed="true" aria-label="4">4</button
+                ><button type="button" class="pick" aria-pressed="false" aria-label="5">5</button>
+              </div>
+              <div class="scale-ends">
+                <span>1 · very distracted</span><span>5 · fully focused</span>
+              </div>
+            </fieldset>
+            <div class="row-actions">
+              <button class="btn btn-primary" type="submit">Save check-in</button>
+              <button class="btn btn-quiet" type="button">Skip</button>
+            </div>
+            <p class="fine">
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M8 1.5 13 3.5v4c0 3.2-2.2 5.6-5 7-2.8-1.4-5-3.8-5-7v-4z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                /></svg
+              >Your answers stay on this device.
+            </p>
+          </form>
+        </div>
+      </div>
+      <div class="frame wide">
+        <h3>Friction page (countdown)</h3>
+        <div class="browser">
+          <div class="browser-bar">
+            <span></span><span></span><span></span>
+            <div class="url">StudyLens — a moment before youtube.com</div>
+          </div>
+          <div class="fr-page">
+            <div class="fr-deco" aria-hidden="true"></div>
+            <main class="fr-card">
+              <p class="fr-brand">
+                <span class="logo sm"
+                  ><svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle
+                      cx="10"
+                      cy="10"
+                      r="6.5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.6"
+                    />
+                    <path
+                      d="M15 15l5.5 5.5"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    /></svg></span
+                >StudyLens · focus session
+              </p>
+              <h1>Quick pause before <span class="host">youtube.com</span></h1>
+              <p class="fr-goal">Your goal: <b>Problem set 3, questions 1–10</b></p>
+              <div class="fr-ring" role="timer" aria-label="7 seconds left">
+                <svg viewBox="0 0 110 110" aria-hidden="true">
+                  <circle class="ring-track" cx="55" cy="55" r="46" />
+                  <circle
+                    class="ring-fill fr-fill"
+                    cx="55"
+                    cy="55"
+                    r="46"
+                    stroke-dasharray="289.0"
+                    stroke-dashoffset="86.7"
+                    transform="rotate(-90 55 55)"
+                  />
+                </svg>
+                <span class="fr-num">7</span>
+              </div>
+              <p class="fr-hint">Take a breath. Still need this site?</p>
+              <div class="fr-actions">
+                <button class="btn btn-primary btn-big" type="button">
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M7 3 2.5 8 7 13M3 8h10.5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    /></svg
+                  >Back to studying
+                </button>
+                <button class="btn btn-ghost" type="button" disabled>
+                  Continue to youtube.com in 7 s
+                </button>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li>
+        Popup: butter-yellow background, white "sticker" cards with a thick plum outline and a hard
+        drop shadow; the logo tile is tilted a little. Pills and chips have outlines so they read
+        without color.
+      </li>
+      <li>
+        Friction/intention: lilac page with soft pastel blobs in the corners and a slightly tilted
+        card; the countdown ring is lemon yellow on a thick track.
+      </li>
+      <li>
+        Type: a rounded font when the system has one (ui-rounded / Nunito if installed), else Segoe
+        UI, 12 / 15 / 17 / 20 / 28 / 42 px. Radius 22 px cards, 14 px controls. Spacing 4-pt grid
+        (6, 12, 18, 24).
+      </li>
+      <li>
+        Risk: the hard shadows and outlines are strong; on My Data and Insights (dense tables) they
+        should be toned down to 1 px outlines.
+      </li>
+      <li>
+        All text colors pass WCAG AA (4.5:1) on their backgrounds; category meaning always has an
+        icon + label, and the Distraction bar segment is striped (as in the P11 charts).
+      </li>
+      <li>
+        Mockup only: sample data, nothing works. See REVIEW.md for the reasoning behind each change.
+      </li>
+    </ul>
+  </body>
+</html>

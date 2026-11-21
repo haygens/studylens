@@ -99,6 +99,8 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - Prove normal builds have no E2E-only code (after both builds): `npm run check:builds -w extension`
 - Icons (after editing `extension/assets/icon.svg`): `npm run icons -w extension`
 - Store screenshots → `docs/store/screenshots/`: `npm run screenshots -w extension`
+- UX review screenshots (every screen, real size) → `docs/ux-review/screens/`:
+  `npm run build:e2e -w extension; node extension/scripts/ux-review-shots.mjs`
 - Firefox add-on ID `studylens@haygens.github.io` (in `extension/wxt.config.ts`) must NEVER change.
 - Lint: `npm run lint`
 - Format: `npm run format` — check only: `npm run format:check`
