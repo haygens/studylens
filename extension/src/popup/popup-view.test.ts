@@ -14,23 +14,20 @@ const MIN = 60_000;
 const ready: StartFormState = {
   gate: 'open',
   goal: 'Problem set 3',
-  minutes: 25,
-  testSeconds: null,
+  lengthOk: true,
   busy: false,
 };
 
 describe('startBlockReason', () => {
   it('is null when the session can start', () => {
     expect(startBlockReason(ready)).toBeNull();
-    expect(startBlockReason({ ...ready, minutes: 0, testSeconds: 30 })).toBeNull();
   });
 
   it('explains every reason the Start button is disabled', () => {
     expect(startBlockReason({ ...ready, gate: 'blocked' })).toMatch(/research notice/);
     expect(startBlockReason({ ...ready, gate: 'loading' })).toMatch(/Loading/);
     expect(startBlockReason({ ...ready, goal: '   ' })).toMatch(/Write what you’ll work on/);
-    expect(startBlockReason({ ...ready, minutes: 2 })).toMatch(/5 to 180 minutes/);
-    expect(startBlockReason({ ...ready, minutes: 2.5 })).toMatch(/5 to 180 minutes/);
+    expect(startBlockReason({ ...ready, lengthOk: false })).toMatch(/5 to 180 minutes/);
     expect(startBlockReason({ ...ready, busy: true })).toMatch(/Starting/);
   });
 

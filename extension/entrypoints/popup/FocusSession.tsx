@@ -13,6 +13,7 @@ import {
   MIN_CUSTOM_MINUTES,
   PRESET_MINUTES,
   formatCountdown,
+  isValidDuration,
   remainingMs,
   type ActiveSession,
   type FocusSession as FinishedSession,
@@ -106,7 +107,9 @@ function StartForm() {
   const seconds = __STUDYLENS_E2E__ && testSeconds ? Number(testSeconds) : null;
 
   const minutes = choice === 'custom' ? Number(custom) : choice;
-  const reason = startBlockReason({ gate, goal, minutes, testSeconds: seconds, busy });
+  // `seconds` is always null outside the E2E build, so this compiles to isValidDuration(minutes).
+  const lengthOk = seconds !== null || isValidDuration(minutes);
+  const reason = startBlockReason({ gate, goal, lengthOk, busy });
   const canStart = reason === null;
   const reasonId = useId();
 

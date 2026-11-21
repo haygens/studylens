@@ -7,7 +7,6 @@ import { formatCheckIn } from '../sessions/check-in';
 import {
   MAX_CUSTOM_MINUTES,
   MIN_CUSTOM_MINUTES,
-  isValidDuration,
   normalizeGoal,
   type FocusSession,
 } from '../sessions/session';
@@ -16,9 +15,8 @@ export interface StartFormState {
   /** The research notice is unanswered ('blocked') or still loading. */
   gate: 'loading' | 'blocked' | 'open';
   goal: string;
-  minutes: number;
-  /** E2E build only: a test length in seconds replaces the minutes. */
-  testSeconds: number | null;
+  /** Whether the chosen length is allowed (whole minutes in range). */
+  lengthOk: boolean;
   busy: boolean;
 }
 
@@ -31,7 +29,7 @@ export function startBlockReason(s: StartFormState): string | null {
   if (s.gate === 'blocked')
     return 'First choose “Keep on” or “Turn off” in the research notice above.';
   if (normalizeGoal(s.goal) === null) return 'Write what you’ll work on to start.';
-  if (s.testSeconds === null && !isValidDuration(s.minutes)) {
+  if (!s.lengthOk) {
     return `Pick a length from ${MIN_CUSTOM_MINUTES} to ${MAX_CUSTOM_MINUTES} minutes.`;
   }
   if (s.busy) return 'Starting…';
