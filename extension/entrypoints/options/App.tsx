@@ -1,11 +1,12 @@
 /**
  * Options page with four tabs: Site categories (P3), Insights (local dashboard, P11), Settings
- * (pause tracking, research interventions — P8) and My Data (P6). The tab lives in the URL hash
+ * (pause tracking, research interventions — P8, study mode — P13c) and My Data (P6). The tab lives in the URL hash
  * (`options.html#my-data`), so the popup can link straight to My Data.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '../popup/ErrorBoundary';
 import ResearchCard from '@/src/ui/ResearchCard';
+import StudyModeCard from '@/src/ui/StudyModeCard';
 import ThemePicker from '@/src/ui/ThemePicker';
 import FeedbackLink from '@/src/ui/FeedbackLink';
 import { feedbackLink } from '@/src/ui/feedback';
@@ -103,6 +104,9 @@ export default function App() {
           </ErrorBoundary>
           <ErrorBoundary name="Research setting">
             <ResearchCard />
+          </ErrorBoundary>
+          <ErrorBoundary name="Study mode">
+            <StudyModeCard />
           </ErrorBoundary>
           {feedbackLink() && (
             <section className="sl-card" style={{ marginTop: 16 }} aria-labelledby="sl-feedback">

@@ -2,6 +2,8 @@
  * End-to-end: the Insights tab (P11) renders from seeded local data — trends, time of day, and the
  * per-condition table, including the "not enough data yet" message for a sparse condition.
  */
+import { NO_ATTEMPTS } from '../src/interventions/attempts';
+import { NEW_SESSION_FIELDS } from '../src/sessions/session';
 import type { Page } from '@playwright/test';
 import type { CheckIn, SessionCondition } from '@studylens/shared';
 import type { FocusSession } from '../src/sessions/session';
@@ -41,6 +43,8 @@ function session(
     intentionShown: 0,
     intentionContinued: 0,
     intentionTurnedBack: 0,
+    ...NO_ATTEMPTS,
+    ...NEW_SESSION_FIELDS,
   };
 }
 

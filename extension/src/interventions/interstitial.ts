@@ -6,7 +6,9 @@
  * already on it — the same moments that count as distraction visits) sends the tab to the
  * extension's interstitial page first. The page's `mode` decides what it shows:
  * - `friction`:  a short countdown, then "Continue to <site>".
- * - `intention`: a "What did you come here for?" box; "Continue" enables once something is typed.
+ * - `intention`: a "What did you come here for?" box; "Continue" enables once 3+ characters are
+ *   typed and 10 seconds have passed (the same wait as friction, P13c).
+ * Control sessions log a distraction attempt at the same moment, without showing anything (P13c).
  *
  * Privacy: the full target URL is only ever carried in the interstitial page's own address so that
  * "Continue" can return there. Nothing in this module's saved state holds a URL: only site names
@@ -30,10 +32,17 @@ export function modeFor(condition: SessionCondition | null): InterstitialMode | 
   return isInterstitialMode(condition) ? condition : null;
 }
 
+/**
+ * Equal time cost (P13c): both helper pages make the user wait at least this long before
+ * "Continue" works, so friction and intention differ only in what they ask, not in time.
+ */
+export const HELPER_MIN_SECONDS = 10;
 /** Friction: length of the countdown before "Continue" appears. */
-export const FRICTION_COUNTDOWN_SECONDS = 10;
-/** Intention: "Continue" enables once the answer has this many non-space characters. */
+export const FRICTION_COUNTDOWN_SECONDS = HELPER_MIN_SECONDS;
+/** Intention: "Continue" enables once the answer has this many non-space characters… */
 export const INTENTION_MIN_CHARS = 3;
+/** …and at least this many seconds have passed (the same constant as friction). */
+export const INTENTION_MIN_SECONDS = HELPER_MIN_SECONDS;
 /** After "Continue", that site gets no interstitial again for this long (in the same session). */
 export const GRACE_MINUTES = 5;
 export const GRACE_MS = GRACE_MINUTES * 60_000;
@@ -48,6 +57,21 @@ export const BACK_WINDOW_MS = 15_000;
 /** True once the intention answer has at least INTENTION_MIN_CHARS non-space characters. */
 export function intentionReady(text: string): boolean {
   return text.replace(/\s/g, '').length >= INTENTION_MIN_CHARS;
+}
+
+/** Intention (P13c): "Continue" works once 3+ characters are typed AND the wait is over. */
+export function intentionCanContinue(text: string, secondsLeft: number): boolean {
+  return intentionReady(text) && secondsLeft <= 0;
+}
+
+/** Why Continue is still disabled: the characters, the seconds left, or both. */
+export function intentionHint(typed: boolean, secondsLeft: number): string {
+  const wait = `${secondsLeft} second${secondsLeft === 1 ? '' : 's'}`;
+  if (!typed && secondsLeft > 0) {
+    return `Type a few words (at least ${INTENTION_MIN_CHARS} letters). You can continue in ${wait}.`;
+  }
+  if (!typed) return `Type a few words (at least ${INTENTION_MIN_CHARS} letters) to continue.`;
+  return `You can continue in ${wait}.`;
 }
 
 /**
@@ -163,12 +187,19 @@ export type InterstitialDecision =
   /** `state`: save this, or null to leave the stored state as it is. */
   | { action: 'none'; state: InterstitialState | null }
   | { action: 'redirect'; mode: InterstitialMode; site: string; state: InterstitialState }
+  /**
+   * Control session (P13c): the same trigger point as a redirect, but nothing is shown: only a
+   * distraction attempt (`visited`) is logged. The site then gets the same grace period it would
+   * get after "Continue", so attempts are counted the same way in every condition.
+   */
+  | { action: 'attempt'; site: string; state: InterstitialState }
   /** Going back from the interstitial page passed through the site: go back once more. */
   | { action: 'go-back'; state: InterstitialState };
 
 /**
- * What to do when a tab is entered. The interstitial shows only when all of these hold:
- * a session is running with condition `friction` or `intention`, tracking isn't paused, the page
+ * What to do when a tab is entered. The interstitial shows (or, in control, an attempt is logged)
+ * only when all of these hold: a session is running with condition `friction` or `intention`
+ * (or `control`: attempt only), tracking isn't paused, the page
  * is a trackable site labeled Distraction, the user is *entering* it (the previous active site was
  * a different site), it isn't in its grace period, and this isn't a duplicate event for a redirect
  * just made. The rules are the same for both modes.
@@ -194,7 +225,8 @@ export function decideInterstitial(
 
   const { session } = ctx;
   const mode = modeFor(session?.condition ?? null);
-  if (!entry.hostname || !site || !session || !mode) return none;
+  const control = session?.condition === 'control';
+  if (!entry.hostname || !site || !session || (!mode && !control)) return none;
   if (ctx.paused || categoryOf(entry.hostname, ctx.rules) !== 'distraction') return none;
   const previousSite = entry.previousHostname ? siteKey(entry.previousHostname, ctx.rules) : null;
   if (previousSite === site) return none; // Still on the same site: not entering it.
@@ -211,12 +243,9 @@ export function decideInterstitial(
   ) {
     return none;
   }
-  return {
-    action: 'redirect',
-    mode,
-    site,
-    state: { ...current, lastRedirect: { tabId: entry.tabId, site, at: ctx.now } },
-  };
+  const marked = { ...current, lastRedirect: { tabId: entry.tabId, site, at: ctx.now } };
+  if (!mode) return { action: 'attempt', site, state: startGrace(marked, site, ctx.now) };
+  return { action: 'redirect', mode, site, state: marked };
 }
 
 // --- The interstitial page's address ----------------------------------------------------------

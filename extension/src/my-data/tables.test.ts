@@ -1,14 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NEW_SESSION_FIELDS } from '../sessions/session';
 import type { FocusSession } from '../sessions/session';
 import {
   activeSession,
   activityByDay,
+  describeAttempts,
   describeCheckIn,
   formatClock,
   formatDay,
   formatDuration,
   formatMinutes,
   recordingNow,
+  researchInfo,
   sessionRows,
   siteLabels,
   REMOVED,
@@ -96,6 +100,8 @@ const finished = (over: Partial<FocusSession>): FocusSession => ({
   intentionShown: 0,
   intentionContinued: 0,
   intentionTurnedBack: 0,
+  ...NO_ATTEMPTS,
+  ...NEW_SESSION_FIELDS,
   checkIn: null,
   ...over,
 });
@@ -165,6 +171,10 @@ describe('sessionRows', () => {
       condition: 'None (research interventions not active)',
       friction: '—',
       intention: '—',
+      number: '—',
+      mode: 'Solo',
+      attempts: '0',
+      labels: '—',
     });
     expect(rows[0]).toMatchObject({
       actual: '10 min (ended early)',
@@ -255,6 +265,58 @@ describe('retention (P12) in My Data', () => {
       intention: '—',
       distractionVisits: 1,
       condition: 'Friction (short countdown)',
+    });
+  });
+});
+
+describe('research instrumentation (P13c) in My Data', () => {
+  it('describes distraction attempts', () => {
+    expect(describeAttempts({ distractionAttempts: null, attempts: [] })).toBe(
+      '— (not logged before v0.4.0)',
+    );
+    expect(describeAttempts({ distractionAttempts: 0, attempts: [] })).toBe('0');
+    expect(
+      describeAttempts({
+        distractionAttempts: 3,
+        attempts: [
+          { at: 1, condition: 'friction', outcome: 'continued', dwellSeconds: 11 },
+          { at: 2, condition: 'friction', outcome: 'turned_back', dwellSeconds: 4 },
+          { at: 3, condition: 'friction', outcome: null, dwellSeconds: null },
+        ],
+      }),
+    ).toBe('3 · 1 continued · 1 turned back · 7.5 s on the helper page on average');
+  });
+
+  it('shows the participant ID, label-set version and study mode changes', () => {
+    const t = new Date(2026, 10, 23, 9, 5, 3).getTime();
+    expect(
+      researchInfo({
+        'research:participant-id': 'p-0a1b2c3d4e5f',
+        'categories:version': 4,
+        'study:label-lock': {
+          locked: true,
+          changes: [
+            { locked: true, at: t },
+            { locked: false, at: t + 60_000 },
+            { locked: true, at: t + 120_000 },
+          ],
+        },
+      }),
+    ).toEqual({
+      participantId: 'p-0a1b2c3d4e5f',
+      labelSetVersion: 4,
+      locked: true,
+      lockChanges: [
+        'On · Mon, Nov 23, 2026 9:07:03 AM',
+        'Off · Mon, Nov 23, 2026 9:06:03 AM',
+        'On · Mon, Nov 23, 2026 9:05:03 AM',
+      ],
+    });
+    expect(researchInfo({})).toEqual({
+      participantId: null,
+      labelSetVersion: 1,
+      locked: false,
+      lockChanges: [],
     });
   });
 });

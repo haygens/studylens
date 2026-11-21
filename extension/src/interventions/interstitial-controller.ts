@@ -9,6 +9,7 @@
  * Nothing here ever receives what the user typed on the intention page.
  */
 import type { KeyValueStore } from '../storage/activity-store';
+import type { ActiveSession } from '../sessions/session';
 import { isTrackingPaused } from '../storage/activity-store';
 import { loadRules } from '../storage/categories-store';
 import { INTERSTITIAL_STATE_KEY, loadInterstitialState } from '../storage/interstitial-store';
@@ -19,6 +20,7 @@ import {
   saveSessions,
 } from '../storage/sessions-store';
 import { siteKey } from '../categories/rules';
+import { logAttempt, resolveAttempt } from './attempts';
 import { trackableHostname } from '../tracker/hostname';
 import {
   addCount,
@@ -78,12 +80,21 @@ export async function checkTab(
         type: 'go-back',
         fallbackUrl: interstitialDoneUrl(deps.pageUrl, decision.state.sessionId),
       };
+    case 'attempt':
+      // Control (P13c): log the attempt only; the site loads as usual.
+      if (!session) return { type: 'none' };
+      await deps.store.set({
+        [ACTIVE_SESSION_KEY]: logAttempt(session, decision.site, 'control', now),
+        [INTERSTITIAL_STATE_KEY]: decision.state,
+      });
+      return { type: 'none' };
     case 'redirect': {
       // decideInterstitial only redirects during a running session, with a trackable URL.
       if (!session || !tab.url) return { type: 'none' };
-      // Count and state in one write, so "shown" is never counted without its redirect state.
+      // Count, attempt and state in one write, so "shown" is never counted without its state.
+      const shown = addCount(session, countName(decision.mode, 'shown'));
       await deps.store.set({
-        [ACTIVE_SESSION_KEY]: addCount(session, countName(decision.mode, 'shown')),
+        [ACTIVE_SESSION_KEY]: logAttempt(shown, decision.site, decision.mode, now),
         [INTERSTITIAL_STATE_KEY]: decision.state,
       });
       return {
@@ -118,14 +129,17 @@ export async function recordChoice(
   const site = siteKey(hostname, rules);
   const writes: Record<string, unknown> = {};
 
+  // The count, and the attempt's outcome + dwell time (P13c).
+  const update = <T extends ActiveSession>(s: T): T =>
+    resolveAttempt(addCount(s, name), site, choice, now);
   if (active?.id === sessionId) {
-    writes[ACTIVE_SESSION_KEY] = addCount(active, name);
+    writes[ACTIVE_SESSION_KEY] = update(active);
   } else {
     const history = await loadSessions(deps.store);
     if (history.some((s) => s.id === sessionId)) {
       await saveSessions(
         deps.store,
-        history.map((s) => (s.id === sessionId ? addCount(s, name) : s)),
+        history.map((s) => (s.id === sessionId ? update(s) : s)),
       );
     }
   }

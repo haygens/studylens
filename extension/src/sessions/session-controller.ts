@@ -24,6 +24,14 @@ import {
   ACTIVE_SESSION_KEY,
   saveSessions,
 } from '../storage/sessions-store';
+import {
+  LABEL_LOCK_KEY,
+  LABEL_VERSION_KEY,
+  SESSION_COUNTER_KEY,
+  asLabelLock,
+  asLabelSetVersion,
+  nextSessionNumber,
+} from '../storage/research-store';
 import type { Segment } from '../tracker/tracker';
 import {
   badgeText,
@@ -78,18 +86,30 @@ export async function startSession(
   const created = createSession(goal, minutes, now, deps.newId(), testSeconds);
   if (typeof created === 'string') return { ok: false, error: created };
   // A check-in still waiting is skipped: only the latest session is ever asked about.
-  const skipped = applyAutoSkips(await loadSessions(deps.store), now, true);
+  const history = await loadSessions(deps.store);
+  const skipped = applyAutoSkips(history, now, true);
   if (skipped) await saveSessions(deps.store, skipped);
   // Research condition (P8). The session and the shortened block are saved in one write, so a
   // condition is used up exactly when a session really starts.
-  const [settings, block] = await Promise.all([
+  const [settings, block, research] = await Promise.all([
     loadInterventionSettings(deps.store),
     loadBlock(deps.store),
+    deps.store.get([SESSION_COUNTER_KEY, LABEL_LOCK_KEY, LABEL_VERSION_KEY]),
   ]);
   const assignment = assignCondition(settings, block, deps.random);
-  const session: ActiveSession = { ...created, condition: assignment.condition };
+  // Research instrumentation (P13c): session order, label-set version and study mode.
+  const sessionNumber = nextSessionNumber(research[SESSION_COUNTER_KEY], history.length);
+  const session: ActiveSession = {
+    ...created,
+    condition: assignment.condition,
+    mode: 'solo',
+    sessionNumber,
+    labelSetVersion: asLabelSetVersion(research[LABEL_VERSION_KEY]),
+    labelsLocked: asLabelLock(research[LABEL_LOCK_KEY]).locked,
+  };
   await deps.store.set({
     [ACTIVE_SESSION_KEY]: session,
+    [SESSION_COUNTER_KEY]: sessionNumber,
     ...(assignment.block && { [BLOCK_KEY]: assignment.block }),
   });
   await deps.effects.scheduleAlarms(session);

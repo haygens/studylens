@@ -176,7 +176,7 @@ test('friction: switching into a tab already on a Distraction site shows the cou
 /** A string that appears nowhere else, to search storage for. */
 const TYPED = 'my-very-private-answer-TYPED-XYZ';
 
-test('intention: prompt before a Distraction site; Continue needs 3 characters; grace period; nothing typed is stored', async ({
+test('intention: prompt before a Distraction site; Continue needs 3 characters (and 10 s); grace period; nothing typed is stored', async ({
   context,
   background,
   openOptions,
@@ -203,7 +203,8 @@ test('intention: prompt before a Distraction site; Continue needs 3 characters; 
     await expect(continueButton).toBeDisabled();
   }
   await box.fill('a b c');
-  await expect(continueButton).toBeEnabled();
+  // Equal time cost (P13c): Continue also waits for the 10 seconds (see research.e2e.ts).
+  await expect(continueButton).toBeEnabled({ timeout: 15_000 });
   await box.fill('ab');
   await expect(continueButton).toBeDisabled();
   await box.fill(TYPED);
@@ -292,7 +293,9 @@ test('intention: My Data shows the counts for the finished session', async ({
   const site = await setup({ context, background, openOptions, openPopup }, 'intention');
   await visit(site, YOUTUBE);
   await site.getByLabel(QUESTION).fill('quick check');
-  await site.getByRole('button', { name: 'Continue to youtube.com' }).click();
+  const continueButton = site.getByRole('button', { name: 'Continue to youtube.com' });
+  await expect(continueButton).toBeEnabled({ timeout: 15_000 });
+  await continueButton.click();
   await expect(site).toHaveURL(YOUTUBE);
   await expect.poll(() => intentionCounts(background)).toEqual([1, 1, 0]);
 

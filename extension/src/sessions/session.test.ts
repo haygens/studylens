@@ -39,6 +39,13 @@ describe('session helpers', () => {
       intentionShown: 0,
       intentionContinued: 0,
       intentionTurnedBack: 0,
+      // Research instrumentation (P13c): numbers are filled in when the session starts.
+      distractionAttempts: 0,
+      attempts: [],
+      mode: 'solo',
+      sessionNumber: null,
+      labelSetVersion: null,
+      labelsLocked: false,
     });
     expect(createSession('', 25, T0, 'id')).toBe('invalid-goal');
     expect(createSession('Read', 200, T0, 'id')).toBe('invalid-duration');

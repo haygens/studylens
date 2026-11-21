@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NEW_SESSION_FIELDS } from './session';
 import { STATE_KEY, dayKey, memoryStore } from '../storage/activity-store';
 import { RULES_KEY } from '../storage/categories-store';
 import { ENABLED_KEY } from '../storage/interventions-store';
@@ -128,6 +130,12 @@ describe('session controller', () => {
       intentionShown: 0,
       intentionContinued: 0,
       intentionTurnedBack: 0,
+      ...NO_ATTEMPTS,
+      // P13c: the first session on this device, labels at version 1, study mode off.
+      mode: 'solo',
+      sessionNumber: 1,
+      labelSetVersion: 1,
+      labelsLocked: false,
       checkIn: null,
     });
     expect(await loadSessions(t.store)).toEqual([done]);
@@ -168,6 +176,8 @@ describe('session controller', () => {
       intentionShown: 0,
       intentionContinued: 0,
       intentionTurnedBack: 0,
+      ...NO_ATTEMPTS,
+      ...NEW_SESSION_FIELDS,
     };
     const t = setup({ [ACTIVE_SESSION_KEY]: active });
     expect(await reconcileSession(t.deps, T0 + 20 * MIN)).toBeNull();

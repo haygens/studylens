@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NEW_SESSION_FIELDS } from './session';
 import {
   CHECK_IN_EXPIRY_MS,
   applyAutoSkips,
@@ -31,6 +33,8 @@ function session(id: string, endMin: number, checkIn: FocusSession['checkIn'] = 
     intentionShown: 0,
     intentionContinued: 0,
     intentionTurnedBack: 0,
+    ...NO_ATTEMPTS,
+    ...NEW_SESSION_FIELDS,
     checkIn,
   };
   return s;
@@ -50,6 +54,8 @@ const active: ActiveSession = {
   intentionShown: 0,
   intentionContinued: 0,
   intentionTurnedBack: 0,
+  ...NO_ATTEMPTS,
+  ...NEW_SESSION_FIELDS,
 };
 
 describe('pendingCheckIn', () => {

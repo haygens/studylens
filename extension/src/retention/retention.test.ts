@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NEW_SESSION_FIELDS } from '../sessions/session';
 import type { CategoryRule } from '../categories/rules';
 import { buildInsights } from '../insights/insights';
 import { NO_COUNTS } from '../interventions/interstitial';
@@ -49,6 +51,8 @@ function session(id: string, end: number, extra: Partial<FocusSession> = {}): Fo
     distractionVisits: 2,
     checkIn: { goalCompleted: 'yes', focusRating: 4, answeredAt: end + MIN },
     ...NO_COUNTS,
+    ...NO_ATTEMPTS,
+    ...NEW_SESSION_FIELDS,
     frictionShown: 3,
     frictionContinued: 1,
     ...extra,
@@ -185,6 +189,8 @@ describe('planRetention', () => {
       intentionShown: 0,
       intentionContinued: 0,
       intentionTurnedBack: 0,
+      ...NO_ATTEMPTS,
+      ...NEW_SESSION_FIELDS,
     });
     expect(edge).toMatchObject({ goal: 'Goal edge', frictionShown: 3 });
     expect(recent).toMatchObject({ goal: 'Goal new' });
@@ -196,6 +202,31 @@ describe('planRetention', () => {
       frictionShown: 3,
       frictionContinued: 1,
     });
+  });
+
+  it('after 30 days, distraction attempts keep their numbers but lose the site name (P13c)', () => {
+    const attempts = [
+      { site: 'youtube.com', at: 1, condition: 'friction', outcome: 'continued', dwellSeconds: 11 },
+      { site: 'reddit.com', at: 2, condition: 'friction', outcome: null, dwellSeconds: null },
+    ];
+    const plan = planRetention(
+      {
+        'sessions:history': [
+          session('old', at(10, 18, 10), {
+            distractionAttempts: 2,
+            attempts,
+          } as Partial<FocusSession>),
+        ],
+      },
+      NOW,
+    );
+    const [old] = plan.set['sessions:history'] as Record<string, unknown>[];
+    expect(old).toMatchObject({ distractionAttempts: 2, compacted: true });
+    expect(old?.attempts).toEqual([
+      { at: 1, condition: 'friction', outcome: 'continued', dwellSeconds: 11 },
+      { at: 2, condition: 'friction', outcome: null, dwellSeconds: null },
+    ]);
+    expect(JSON.stringify(plan.set)).not.toMatch(/youtube|reddit/);
   });
 
   it('only stamps the run time when there is nothing to do', () => {

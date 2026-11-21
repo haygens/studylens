@@ -2,11 +2,12 @@
  * Focus session types and pure helpers (P4). No browser APIs here.
  *
  * The goal text is personal, so session records never leave the device (privacy rule 1).
- * Anything shared later (P17) is built from `SessionSummary` in packages/shared, which has no goal
+ * Anything shared later (only after IRB approval) is built from `SessionSummary` in packages/shared, which has no goal
  * and no domains.
  */
-import type { CheckIn, SessionCondition, SiteCategory } from '@studylens/shared';
+import type { CheckIn, SessionCondition, SessionMode, SiteCategory } from '@studylens/shared';
 import { NO_COUNTS, type InterventionCounts } from '../interventions/interstitial';
+import { NO_ATTEMPTS, type AttemptFields } from '../interventions/attempts';
 
 export const PRESET_MINUTES = [25, 50] as const;
 export const MIN_CUSTOM_MINUTES = 5;
@@ -20,7 +21,7 @@ const MINUTE_MS = 60_000;
  * (P10) counts are updated while it runs and stay on the finished session (0 unless the condition
  * matches).
  */
-export interface ActiveSession extends InterventionCounts {
+export interface ActiveSession extends InterventionCounts, AttemptFields {
   id: string;
   goal: string;
   plannedMinutes: number;
@@ -34,7 +35,29 @@ export interface ActiveSession extends InterventionCounts {
    * Never shown when starting a session; My Data shows it.
    */
   condition: SessionCondition | null;
+  /** P13c: `solo` for every session until group sessions exist (P18b). */
+  mode: SessionMode;
+  /**
+   * P13c: session order on this device (1, 2, 3, …), given when the session starts. Null for
+   * sessions from before v0.4.0 (their order is their position in the history).
+   */
+  sessionNumber: number | null;
+  /** P13c: label-set version when the session started; null before v0.4.0. */
+  labelSetVersion: number | null;
+  /** P13c: true if study mode (labels locked) was on when the session started. */
+  labelsLocked: boolean;
 }
+
+/** P13c fields as they are before the session is started (filled in by startSession). */
+export const NEW_SESSION_FIELDS = {
+  mode: 'solo',
+  sessionNumber: null,
+  labelSetVersion: null,
+  labelsLocked: false,
+} as const satisfies Pick<
+  ActiveSession,
+  'mode' | 'sessionNumber' | 'labelSetVersion' | 'labelsLocked'
+>;
 
 /** A finished session, as stored on the device. */
 export interface FocusSession extends ActiveSession {
@@ -94,6 +117,8 @@ export function createSession(
       plannedEnd: now + testSeconds * 1000,
       condition: null,
       ...NO_COUNTS,
+      ...NO_ATTEMPTS,
+      ...NEW_SESSION_FIELDS,
     };
   }
   if (!isValidDuration(minutes)) return 'invalid-duration';
@@ -105,6 +130,8 @@ export function createSession(
     plannedEnd: now + minutes * MINUTE_MS,
     condition: null,
     ...NO_COUNTS,
+    ...NO_ATTEMPTS,
+    ...NEW_SESSION_FIELDS,
   };
 }
 

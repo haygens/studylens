@@ -49,6 +49,24 @@ export const STORAGE_KEYS = {
   welcome: 'onboarding:welcome',
   /** `true` after updating from a version without themes, until the popup hint is dismissed. */
   themesHint: 'onboarding:themes-hint',
+  /**
+   * Research instrumentation (P13c): the number given to the last focus session started on this
+   * device (session order). Removed by "Delete everything", so numbering starts again at 1.
+   */
+  sessionCounter: 'sessions:counter',
+  /**
+   * A random participant ID made on this device on first run, used only in the research CSV
+   * export. Not linked to anything (no account, no device details). "Delete everything" removes
+   * it; a new one is made afterwards.
+   */
+  participantId: 'research:participant-id',
+  /**
+   * Study mode (P13c): `{ locked, changes: [{ locked, at }] }`. While locked, site labels can't be
+   * edited. Every switch on/off is recorded with its time.
+   */
+  labelLock: 'study:label-lock',
+  /** Label-set version (P13c): goes up by one every time the site labels change. */
+  labelSetVersion: 'categories:version',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

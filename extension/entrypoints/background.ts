@@ -21,6 +21,7 @@ import { deleteEverything } from '@/src/my-data/delete-all';
 import { installPlan } from '@/src/onboarding/onboarding';
 import { applyInstallPlan } from '@/src/storage/onboarding-store';
 import { runRetentionIfDue } from '@/src/retention/retention';
+import { ensureParticipantId, randomParticipantId } from '@/src/storage/research-store';
 import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
   endSessionEarly,
@@ -278,4 +279,7 @@ export default defineBackground(() => {
   void enqueue(() => reconcileSession(sessionDeps, Date.now())).catch(() => undefined);
   // Retention (P12): run now if it is overdue (e.g. the browser was closed for days).
   cleanUpIfDue();
+  // Research CSV (P13c): a random participant ID, made once on this device (and again after
+  // "Delete everything"). Stays local; it appears only in the research CSV the user downloads.
+  void enqueue(() => ensureParticipantId(localStore, randomParticipantId)).catch(() => undefined);
 });

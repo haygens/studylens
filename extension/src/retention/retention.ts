@@ -8,7 +8,7 @@
  *   the raw records are deleted. Records that cross local midnight are split, so each part counts
  *   toward the week of its own day.
  * - Finished sessions that ended more than RETENTION_DAYS before today are kept (Insights needs
- *   them) but compacted: only the goal text is removed. Every numeric field (condition, check-in,
+ *   them) but compacted: the goal text and attempt site names are removed. Every numeric field (condition, check-in,
  *   minutes, distraction visits, friction/intention counts) stays, for Insights and P20 results.
  *
  * Safe to run twice and safe to interrupt. Step 1 is ONE `storage.set` (atomic in both Firefox
@@ -18,6 +18,7 @@
  * simply removed, so nothing is lost or counted twice. The background runs this through its task
  * queue, so no other write to these keys happens at the same time.
  */
+import { withoutSites } from '../interventions/attempts';
 import type { SiteCategory } from '@studylens/shared';
 import { categoryOf, siteKey } from '../categories/rules';
 import type { FocusSession } from '../sessions/session';
@@ -106,7 +107,8 @@ export function mergeWeeklyTotals(
  * All numbers are kept, including the friction/intention counts (needed for P20 results).
  */
 export function compactSession(session: FocusSession): FocusSession {
-  return { ...session, goal: '', compacted: true };
+  // P13c: attempts keep their numbers, but lose the site name.
+  return { ...session, goal: '', attempts: withoutSites(session.attempts), compacted: true };
 }
 
 export interface RetentionPlan {

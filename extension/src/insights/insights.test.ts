@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NEW_SESSION_FIELDS } from '../sessions/session';
 import type { CheckIn, SessionCondition } from '@studylens/shared';
 import type { CategoryRule } from '../categories/rules';
 import { NO_COUNTS } from '../interventions/interstitial';
@@ -49,6 +51,8 @@ function session(
     distractionVisits: opts.visits ?? 0,
     checkIn: opts.checkIn ?? null,
     ...NO_COUNTS,
+    ...NO_ATTEMPTS,
+    ...NEW_SESSION_FIELDS,
   };
 }
 

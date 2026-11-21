@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NEW_SESSION_FIELDS } from '../sessions/session';
 import type { FocusSession } from '../sessions/session';
 import {
   categoryTotals,
@@ -88,6 +90,8 @@ describe('lastSessionSummary', () => {
     intentionShown: 0,
     intentionContinued: 0,
     intentionTurnedBack: 0,
+    ...NO_ATTEMPTS,
+    ...NEW_SESSION_FIELDS,
   };
 
   it('is one short line', () => {

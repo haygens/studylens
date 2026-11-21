@@ -7,12 +7,15 @@ import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
 import CategoryChip from '@/src/ui/CategoryChip';
 import { exportFileName, exportJson } from '@/src/my-data/export';
+import { researchCsv, researchFileName } from '@/src/my-data/research-csv';
+import { ensureParticipantId, randomParticipantId } from '@/src/storage/research-store';
 import {
   activeSession,
   activityByDay,
   formatClock,
   formatMinutes,
   recordingNow,
+  researchInfo,
   sessionRows,
   siteLabels,
   weeklyTotals,
@@ -76,8 +79,8 @@ export function useAllData() {
   return { state, retry };
 }
 
-function download(text: string, fileName: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+function download(text: string, fileName: string, type = 'application/json') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
@@ -208,6 +211,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
   const labels = siteLabels(stored);
   const running = activeSession(stored);
   const now = recordingNow(stored);
+  const research = researchInfo(stored);
 
   return (
     <>
@@ -325,9 +329,12 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
           </p>
         ) : (
           <div style={tableWrap}>
-            <table style={{ ...table, marginTop: 8, minWidth: 1180 }} aria-label="Focus sessions">
+            <table style={{ ...table, marginTop: 8, minWidth: 1560 }} aria-label="Focus sessions">
               <thead>
                 <tr>
+                  <th style={head} title="Session order on this device">
+                    #
+                  </th>
                   <th style={head}>Started</th>
                   <th style={head}>Goal</th>
                   <th style={head}>Planned</th>
@@ -340,11 +347,19 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
                   <th style={head}>Condition</th>
                   <th style={head}>Friction countdowns</th>
                   <th style={head}>Intention prompts</th>
+                  <th style={head} title="Times a Distraction site was opened during the session">
+                    Distraction attempts
+                  </th>
+                  <th style={head}>Mode</th>
+                  <th style={head} title="Label-set version when the session started">
+                    Labels
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {sessions.map((s) => (
                   <tr key={s.id}>
+                    <td style={nowrap}>{s.number}</td>
                     <td style={nowrap}>{s.date}</td>
                     <td style={{ ...cell, minWidth: 140, maxWidth: 240 }}>{s.goal}</td>
                     <td style={nowrap}>{s.planned}</td>
@@ -357,6 +372,9 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
                     <td style={{ ...cell, minWidth: 150 }}>{s.condition}</td>
                     <td style={{ ...cell, minWidth: 130 }}>{s.friction}</td>
                     <td style={{ ...cell, minWidth: 130 }}>{s.intention}</td>
+                    <td style={{ ...cell, minWidth: 170 }}>{s.attempts}</td>
+                    <td style={nowrap}>{s.mode}</td>
+                    <td style={nowrap}>{s.labels}</td>
                   </tr>
                 ))}
               </tbody>
@@ -388,6 +406,29 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
               ))}
             </tbody>
           </table>
+        )}
+      </section>
+
+      <section style={card}>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Research settings</h2>
+        <p style={{ fontSize: 'var(--sl-fs-body)', marginBottom: 0 }}>
+          Participant ID (random, made on this device, used only in the research CSV):{' '}
+          <code>{research.participantId ?? 'not made yet'}</code>
+          <br />
+          Label-set version: {research.labelSetVersion} (goes up by one every time your site labels
+          change)
+          <br />
+          Study mode (labels locked): {research.locked ? 'on' : 'off'}
+        </p>
+        {research.lockChanges.length > 0 && (
+          <ul
+            style={{ ...muted, margin: '6px 0 0', paddingLeft: 20 }}
+            aria-label="Study mode changes"
+          >
+            {research.lockChanges.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
         )}
       </section>
     </>
@@ -424,13 +465,36 @@ export default function MyData() {
           }}
         >
           Export my data (JSON)
+        </button>{' '}
+        <button
+          type="button"
+          disabled={state.status !== 'ready'}
+          onClick={() => {
+            if (state.status !== 'ready') return;
+            const stored = state.data;
+            void ensureParticipantId(localStore, randomParticipantId).then((id) => {
+              const now = Date.now();
+              download(researchCsv(stored, id), researchFileName(now), 'text/csv');
+            });
+          }}
+        >
+          Export for research (CSV)
         </button>
+        <p style={muted}>
+          The research CSV has one row per finished focus session, with numbers only: a random
+          participant ID made on this device, session number, mode, condition, the start date and
+          hour, minutes, distraction visits and attempts, helper-page choices and time, your
+          check-in answers, and the label-set version.{' '}
+          <strong>No goal text and no site names.</strong> It is only downloaded to your computer;
+          StudyLens sends nothing.
+        </p>
         <p style={{ ...muted, marginBottom: 0 }}>
           <strong>How long data is kept:</strong> detailed activity records are kept for 30 days.
           After that, once a day, they are combined into weekly totals (time per site and label) and
           the detailed records are deleted automatically. Focus sessions are kept so Insights keeps
-          working, but after 30 days their goal text is removed. Their numbers (minutes, visits,
-          check-in answers, condition, and helper-page counts) are kept.
+          working, but after 30 days their goal text and the site names in their distraction
+          attempts are removed. Their numbers (minutes, visits, attempts, check-in answers,
+          condition, session number, and helper-page counts and times) are kept.
         </p>
       </section>
 

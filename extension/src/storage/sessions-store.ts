@@ -6,8 +6,9 @@
  * - `sessions:active`  — the running session, or null. Only one session at a time.
  * - `sessions:history` — finished sessions, oldest first.
  */
-import { isCheckIn, isSessionCondition } from '@studylens/shared';
+import { isCheckIn, isSessionCondition, isSessionMode } from '@studylens/shared';
 import { countsOf } from '../interventions/interstitial';
+import { attemptFieldsOf } from '../interventions/attempts';
 import type { ActiveSession, FocusSession } from '../sessions/session';
 import type { KeyValueStore } from './activity-store';
 import { STORAGE_KEYS } from './keys';
@@ -45,6 +46,20 @@ function conditionOf(value: unknown) {
   return isSessionCondition(value) ? value : null;
 }
 
+const positiveInt = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : null;
+
+/** P13c fields; sessions from before v0.4.0 get `solo`, no attempts count, no numbers. */
+function researchFieldsOf(v: Record<string, unknown>) {
+  return {
+    ...attemptFieldsOf(v),
+    mode: isSessionMode(v.mode) ? v.mode : ('solo' as const),
+    sessionNumber: positiveInt(v.sessionNumber),
+    labelSetVersion: positiveInt(v.labelSetVersion),
+    labelsLocked: v.labelsLocked === true,
+  };
+}
+
 /**
  * Valid sessions only. A missing or malformed check-in counts as not answered yet; missing
  * intervention counts (sessions before P9/P10) count as 0.
@@ -54,6 +69,7 @@ export function asHistory(value: unknown): FocusSession[] {
   return value.filter(isFocusSession).map(({ compacted, ...s }) => ({
     ...s,
     ...countsOf(s),
+    ...researchFieldsOf(s as unknown as Record<string, unknown>),
     condition: conditionOf(s.condition),
     checkIn: isCheckIn(s.checkIn) ? s.checkIn : null,
     // Retention (P12): compacted sessions have no goal text; everything else is kept.
@@ -64,7 +80,12 @@ export function asHistory(value: unknown): FocusSession[] {
 /** The stored active session, or null. Accepts sessions saved by v0.1 (no condition field). */
 export function asActiveSession(value: unknown): ActiveSession | null {
   return isActiveSession(value)
-    ? { ...value, ...countsOf(value), condition: conditionOf(value.condition) }
+    ? {
+        ...value,
+        ...countsOf(value),
+        ...researchFieldsOf(value as unknown as Record<string, unknown>),
+        condition: conditionOf(value.condition),
+      }
     : null;
 }
 

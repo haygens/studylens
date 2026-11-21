@@ -4,7 +4,8 @@
  * session. Both modes show the site and the session goal, and "Back to studying" works right away.
  * - friction:  a 10-second countdown, then "Continue to <site>".
  * - intention: "What did you come here for?"; "Continue to <site>" enables once at least
- *   3 non-space characters are typed. No countdown.
+ *   3 non-space characters are typed AND 10 seconds have passed (the same wait as friction, so
+ *   both helpers cost the same time — P13c). A small hint shows the seconds left.
  *
  * Privacy: the full target address is only in this page's own address (so Continue can go
  * there). It is never stored, logged or sent: the background gets only the mode, session id and
@@ -22,8 +23,10 @@ import {
   FRICTION_COUNTDOWN_SECONDS,
   choiceMessage,
   interstitialDoneUrl,
+  intentionCanContinue,
+  intentionHint,
   intentionReady,
-  INTENTION_MIN_CHARS,
+  INTENTION_MIN_SECONDS,
   parseInterstitialPage,
   type InterstitialChoice,
   type InterstitialPage,
@@ -285,7 +288,9 @@ function Intention({ info }: { info: PromptPage }) {
     if (box.current) box.current.value = '';
   };
   const { busy, onContinue, onBack } = useChoices(info, clear);
-  const ready = intentionReady(answer);
+  const left = useSecondsLeft(INTENTION_MIN_SECONDS);
+  const typed = intentionReady(answer);
+  const ready = intentionCanContinue(answer, left);
   const hintId = useId();
   useTitle(`StudyLens — before ${info.hostname}`);
 
@@ -342,7 +347,7 @@ function Intention({ info }: { info: PromptPage }) {
         </button>
         {!ready && (
           <p id={hintId} role="note" className="sl-wait">
-            Type a few words (at least {INTENTION_MIN_CHARS} letters) to continue.
+            {intentionHint(typed, left)}
           </p>
         )}
       </div>

@@ -12,6 +12,8 @@ import { asRules } from '../storage/categories-store';
 import { asWeeklyTotals } from '../retention/retention';
 import { STORAGE_KEYS, dayOfKey } from '../storage/keys';
 import { asActiveSession, asHistory } from '../storage/sessions-store';
+import { meanDwellSeconds, type AttemptFields } from '../interventions/attempts';
+import { asLabelLock, asLabelSetVersion, asParticipantId } from '../storage/research-store';
 
 /** "9:05:03 AM" in local time (fixed format so it doesn't depend on browser locale). */
 export function formatClock(time: number): string {
@@ -153,8 +155,30 @@ export const describeFriction = (s: Counted) => describeCounts(s, 'friction');
 /** Intention counts (P10) in words. Only counts: what the user typed is never stored. */
 export const describeIntention = (s: Counted) => describeCounts(s, 'intention');
 
+/**
+ * Distraction attempts (P13c) in words: "3 · 1 continued · 2 turned back · 4.2 s on the helper
+ * page on average". Sessions from before v0.4.0 didn't log attempts.
+ */
+export function describeAttempts(s: AttemptFields): string {
+  if (s.distractionAttempts === null) return '— (not logged before v0.4.0)';
+  const parts = [String(s.distractionAttempts)];
+  for (const outcome of ['visited', 'continued', 'turned_back'] as const) {
+    const n = s.attempts.filter((a) => a.outcome === outcome).length;
+    if (n > 0) parts.push(`${n} ${outcome.replace('_', ' ')}`);
+  }
+  const dwell = meanDwellSeconds(s.attempts);
+  if (dwell !== null) parts.push(`${dwell} s on the helper page on average`);
+  return parts.join(' · ');
+}
+
 export interface SessionRow {
   id: string;
+  /** Session order on this device (P13c); "—" before v0.4.0. */
+  number: string;
+  mode: string;
+  attempts: string;
+  /** Label-set version, and whether study mode was on: "v3 (locked)". */
+  labels: string;
   date: string;
   goal: string;
   planned: string;
@@ -175,6 +199,13 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
   return asHistory(stored[STORAGE_KEYS.sessionHistory])
     .map((s: FocusSession) => ({
       id: s.id,
+      number: s.sessionNumber === null ? '—' : String(s.sessionNumber),
+      mode: s.mode === 'solo' ? 'Solo' : 'Group',
+      attempts: describeAttempts(s),
+      labels:
+        s.labelSetVersion === null
+          ? '—'
+          : `v${s.labelSetVersion}${s.labelsLocked ? ' (locked)' : ''}`,
       date: `${formatDay(s.start)} ${formatClock(s.start)}`,
       goal: s.compacted ? REMOVED : s.goal,
       planned: formatMinutes(s.plannedMinutes),
@@ -234,4 +265,26 @@ export function weeklyTotals(stored: Record<string, unknown>): WeeklyGroup[] {
   return [...groups.values()]
     .sort((a, b) => b.week.localeCompare(a.week))
     .map(({ ms, ...g }) => ({ ...g, total: formatDuration(ms) }));
+}
+
+export interface ResearchInfo {
+  /** Random participant ID for the research CSV, or null if none was made yet. */
+  participantId: string | null;
+  labelSetVersion: number;
+  locked: boolean;
+  /** Every study-mode switch, newest first: "On · Mon, Nov 23, 2026 9:05:03 AM". */
+  lockChanges: string[];
+}
+
+/** Research instrumentation settings (P13c) for the My Data page. */
+export function researchInfo(stored: Record<string, unknown>): ResearchInfo {
+  const lock = asLabelLock(stored[STORAGE_KEYS.labelLock]);
+  return {
+    participantId: asParticipantId(stored[STORAGE_KEYS.participantId]),
+    labelSetVersion: asLabelSetVersion(stored[STORAGE_KEYS.labelSetVersion]),
+    locked: lock.locked,
+    lockChanges: lock.changes
+      .map((c) => `${c.locked ? 'On' : 'Off'} · ${formatDay(c.at)} ${formatClock(c.at)}`)
+      .reverse(),
+  };
 }

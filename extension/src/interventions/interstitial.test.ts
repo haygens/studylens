@@ -101,11 +101,6 @@ describe('decideInterstitial: when to show the page', () => {
     ['a page that is not a website', enter(null), ctx()],
     ['no running session', enter('youtube.com'), ctx({ session: null })],
     [
-      'a control session',
-      enter('youtube.com'),
-      ctx({ session: { id: 's1', condition: 'control' } }),
-    ],
-    [
       'an opted-out session',
       enter('youtube.com'),
       ctx({ session: { id: 's1', condition: 'opted-out' } }),

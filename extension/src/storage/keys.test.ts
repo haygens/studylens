@@ -27,6 +27,7 @@ import { runRetention } from '../retention/retention';
 import { saveTheme } from './theme-store';
 import { installPlan } from '../onboarding/onboarding';
 import { applyInstallPlan, dismissThemesHint, finishWelcome } from './onboarding-store';
+import { ensureParticipantId, setLabelLock } from './research-store';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
@@ -88,6 +89,10 @@ async function useEverything(store: FullStore) {
   await setInterventionsEnabled(store, true);
   await answerNotice(store, true);
   await setOptedOut(store, false);
+  // Research instrumentation (P13c): participant ID, study mode on and off again.
+  await ensureParticipantId(store, () => 'p-0123456789ab');
+  await setLabelLock(store, true, T0 - MIN);
+  await setLabelLock(store, false, T0 - MIN / 2);
   // Theme (P13b).
   await saveTheme(store, 'ocean');
   // Onboarding (P13b): welcome page and the "New: themes!" hint.

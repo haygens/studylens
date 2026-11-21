@@ -89,3 +89,26 @@ export type SiteCategory = (typeof SITE_CATEGORIES)[number];
 export function isSiteCategory(value: unknown): value is SiteCategory {
   return typeof value === 'string' && (SITE_CATEGORIES as readonly string[]).includes(value);
 }
+
+/**
+ * How a session was run (P13c). Every session so far is `solo`; `group` is for live group focus
+ * sessions (P18b). Group sessions are excluded from the main intervention analysis.
+ */
+export const SESSION_MODES = ['solo', 'group'] as const;
+export type SessionMode = (typeof SESSION_MODES)[number];
+
+export function isSessionMode(value: unknown): value is SessionMode {
+  return typeof value === 'string' && (SESSION_MODES as readonly string[]).includes(value);
+}
+
+/**
+ * What happened after a distraction attempt (P13c): in control sessions the site simply loaded
+ * (`visited`); with friction or intention the user pressed Continue (`continued`) or Back to
+ * studying (`turned_back`).
+ */
+export const ATTEMPT_OUTCOMES = ['visited', 'continued', 'turned_back'] as const;
+export type AttemptOutcome = (typeof ATTEMPT_OUTCOMES)[number];
+
+export function isAttemptOutcome(value: unknown): value is AttemptOutcome {
+  return typeof value === 'string' && (ATTEMPT_OUTCOMES as readonly string[]).includes(value);
+}
