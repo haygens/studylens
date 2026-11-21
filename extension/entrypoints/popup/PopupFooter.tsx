@@ -1,5 +1,6 @@
-/** Popup footer (P13b): My Data link and the privacy promise. */
+/** Popup footer (P13b): My Data, "Send feedback" (only once FEEDBACK_URL is set), privacy. */
 import { browser } from 'wxt/browser';
+import FeedbackLink from '@/src/ui/FeedbackLink';
 import { ShieldIcon } from '@/src/ui/icons';
 
 function openMyData() {
@@ -15,6 +16,7 @@ export default function PopupFooter() {
         <ShieldIcon />
         My Data
       </button>
+      <FeedbackLink />
       <span className="sl-muted">Your data stays on this device</span>
     </footer>
   );

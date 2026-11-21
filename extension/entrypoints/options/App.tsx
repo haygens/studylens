@@ -7,6 +7,8 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '../popup/ErrorBoundary';
 import ResearchCard from '@/src/ui/ResearchCard';
 import ThemePicker from '@/src/ui/ThemePicker';
+import FeedbackLink from '@/src/ui/FeedbackLink';
+import { feedbackLink } from '@/src/ui/feedback';
 import Insights from './Insights';
 import MyData, { PauseCard } from './MyData';
 import SiteCategories from './SiteCategories';
@@ -102,6 +104,18 @@ export default function App() {
           <ErrorBoundary name="Research setting">
             <ResearchCard />
           </ErrorBoundary>
+          {feedbackLink() && (
+            <section className="sl-card" style={{ marginTop: 16 }} aria-labelledby="sl-feedback">
+              <h2 id="sl-feedback" style={{ margin: '0 0 4px', fontSize: 'var(--sl-fs-h2)' }}>
+                Feedback
+              </h2>
+              <p className="sl-muted" style={{ margin: '0 0 8px' }}>
+                Tell us what works and what doesn’t. The form opens in a new tab; StudyLens sends
+                nothing by itself.
+              </p>
+              <FeedbackLink />
+            </section>
+          )}
         </main>
       ) : (
         <ErrorBoundary name="Site categories">
