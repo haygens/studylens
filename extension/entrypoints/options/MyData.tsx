@@ -49,7 +49,11 @@ const head: CSSProperties = {
   borderTop: 'none',
   color: 'var(--sl-muted)',
   fontWeight: 600,
+  whiteSpace: 'nowrap',
+  overflowWrap: 'normal',
 };
+/** Short values that must never break mid-word (dates, minutes, counts). */
+const nowrap: CSSProperties = { ...cell, whiteSpace: 'nowrap', overflowWrap: 'normal' };
 const tableWrap: CSSProperties = { overflowX: 'auto' };
 
 export function useAllData() {
@@ -304,18 +308,25 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
 
       <section style={card}>
         <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Focus sessions</h2>
+        {sessions.length > 0 && (
+          <p style={{ ...muted, margin: '4px 0 0' }}>
+            Newest first. Scroll sideways inside the table to see every column.
+          </p>
+        )}
         {sessions.length === 0 ? (
           <p style={muted}>No finished focus sessions.</p>
         ) : (
           <div style={tableWrap}>
-            <table style={{ ...table, marginTop: 8 }} aria-label="Focus sessions">
+            <table style={{ ...table, marginTop: 8, minWidth: 1180 }} aria-label="Focus sessions">
               <thead>
                 <tr>
                   <th style={head}>Started</th>
                   <th style={head}>Goal</th>
                   <th style={head}>Planned</th>
                   <th style={head}>Actual</th>
-                  <th style={head}>Study / neutral / distraction</th>
+                  <th style={head} title="Minutes on Study / Neutral / Distraction sites">
+                    Study / neutral / distraction
+                  </th>
                   <th style={head}>Distraction visits</th>
                   <th style={head}>Check-in</th>
                   <th style={head}>Condition</th>
@@ -326,18 +337,18 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
               <tbody>
                 {sessions.map((s) => (
                   <tr key={s.id}>
-                    <td style={cell}>{s.date}</td>
-                    <td style={cell}>{s.goal}</td>
-                    <td style={cell}>{s.planned}</td>
-                    <td style={cell}>{s.actual}</td>
-                    <td style={cell}>
+                    <td style={nowrap}>{s.date}</td>
+                    <td style={{ ...cell, minWidth: 140, maxWidth: 240 }}>{s.goal}</td>
+                    <td style={nowrap}>{s.planned}</td>
+                    <td style={nowrap}>{s.actual}</td>
+                    <td style={nowrap}>
                       {s.minutes.study} / {s.minutes.neutral} / {s.minutes.distraction}
                     </td>
-                    <td style={cell}>{s.distractionVisits}</td>
-                    <td style={cell}>{s.checkIn}</td>
-                    <td style={cell}>{s.condition}</td>
-                    <td style={cell}>{s.friction}</td>
-                    <td style={cell}>{s.intention}</td>
+                    <td style={nowrap}>{s.distractionVisits}</td>
+                    <td style={{ ...cell, minWidth: 150 }}>{s.checkIn}</td>
+                    <td style={{ ...cell, minWidth: 150 }}>{s.condition}</td>
+                    <td style={{ ...cell, minWidth: 130 }}>{s.friction}</td>
+                    <td style={{ ...cell, minWidth: 130 }}>{s.intention}</td>
                   </tr>
                 ))}
               </tbody>

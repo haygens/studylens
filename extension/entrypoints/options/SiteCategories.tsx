@@ -47,6 +47,14 @@ const row: CSSProperties = {
 };
 const grow: CSSProperties = { flex: '1 1 200px', minWidth: 0, overflowWrap: 'anywhere' };
 const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-small)' };
+const emptyBox: CSSProperties = {
+  ...muted,
+  fontSize: 'var(--sl-fs-body)',
+  padding: '10px 12px',
+  borderRadius: 'var(--sl-radius-sm)',
+  border: '1px dashed var(--sl-input-border)',
+  background: 'var(--sl-bg)',
+};
 
 function minutes(ms: number): string {
   const m = Math.round(ms / 60_000);
@@ -219,95 +227,230 @@ export default function SiteCategories() {
   return (
     <main style={page}>
       <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Site categories</h1>
-      <p style={muted}>
-        Label sites as study, neutral, or distraction. A label for youtube.com also covers its
-        subdomains (m.youtube.com); a more specific label like docs.google.com beats google.com.
-        Unlabeled sites count as neutral. Your labels are stored only on this device.
+      <p style={{ ...muted, fontSize: 'var(--sl-fs-body)' }}>
+        Tell StudyLens which sites help you study and which distract you. Your labels stay on this
+        device.
       </p>
+      <details style={{ ...muted, marginTop: 4 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>How labels work</summary>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+          <li>A label for youtube.com also covers its subdomains (m.youtube.com).</li>
+          <li>A more specific label wins: docs.google.com beats google.com.</li>
+          <li>Sites without a label count as Neutral.</li>
+          <li>Focus helpers only appear on sites you labeled Distraction.</li>
+        </ul>
+      </details>
 
-      <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Your labels</h2>
-        <form
-          onSubmit={addRule}
-          style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}
-        >
-          <input
-            aria-label="New site"
-            placeholder="e.g. youtube.com"
-            value={newDomain}
-            onChange={(e) => setNewDomain(e.target.value)}
-            style={{ flex: '1 1 200px', minWidth: 0 }}
-          />
-          <CategorySelect label="New site category" value={newCategory} onChange={setNewCategory} />
-          <button type="submit">Add</button>
-        </form>
-        {addError && <div style={{ ...muted, color: 'var(--sl-distraction)' }}>{addError}</div>}
-        {rules.length === 0 ? (
-          <p style={muted}>No labels yet. Add one above or accept a suggestion below.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
-            {rules.map((rule) => (
-              <RuleRow
-                key={`${rule.domain}:${rule.category}`}
-                rule={rule}
-                onSave={saveRule}
-                onRemove={(domain) => commit(removeRule(rules, domain))}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section style={card}>
-        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Sites you visited recently</h2>
-        <p style={muted}>Unlabeled sites from the last {RECENT_DAYS} days, most time first.</p>
-        {recent.length === 0 ? (
-          <p style={muted}>Nothing unlabeled. 🎉</p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {recent.slice(0, RECENT_LIMIT).map((site) => (
-              <li key={site.site} style={row}>
-                <span style={grow}>
-                  {site.site} <span style={muted}>· {minutes(site.ms)}</span>
-                </span>
-                <QuickButtons
-                  onPick={(category) => commit(upsertRule(rules, { domain: site.site, category }))}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)', flex: 1 }}>Suggestions</h2>
-          {suggestions.length > 0 && (
-            <button
-              type="button"
-              onClick={() => commit(suggestions.reduce((list, s) => upsertRule(list, s), rules))}
-            >
-              Accept all
-            </button>
-          )}
-        </div>
-        <p style={muted}>Common sites. Nothing is labeled until you click Accept.</p>
-        {suggestions.length === 0 ? (
-          <p style={muted}>No more suggestions.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {suggestions.map((s) => (
-              <li key={s.domain} style={row}>
-                <span style={grow}>{s.domain}</span>
-                <CategoryChip category={s.category} />
-                <button type="button" onClick={() => commit(upsertRule(rules, s))}>
-                  Accept
+      {rules.length === 0 ? (
+        <>
+          <section style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)', flex: 1 }}>
+                {rules.length === 0 ? 'Quick start: common sites' : 'Suggestions'}
+              </h2>
+              {suggestions.length > 0 && (
+                <button
+                  type="button"
+                  className="sl-btn-primary"
+                  onClick={() =>
+                    commit(suggestions.reduce((list, s) => upsertRule(list, s), rules))
+                  }
+                >
+                  Accept all
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              )}
+            </div>
+            <p style={muted}>Common sites. Nothing is labeled until you click Accept.</p>
+            {suggestions.length === 0 ? (
+              <p style={muted}>You’ve used all the suggestions.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {suggestions.map((s) => (
+                  <li key={s.domain} style={row}>
+                    <span style={grow}>{s.domain}</span>
+                    <CategoryChip category={s.category} />
+                    <button type="button" onClick={() => commit(upsertRule(rules, s))}>
+                      Accept
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section style={card}>
+            <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Your labels</h2>
+            <form
+              onSubmit={addRule}
+              style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}
+            >
+              <input
+                aria-label="New site"
+                placeholder="e.g. youtube.com"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                style={{ flex: '1 1 200px', minWidth: 0 }}
+              />
+              <CategorySelect
+                label="New site category"
+                value={newCategory}
+                onChange={setNewCategory}
+              />
+              <button type="submit" className="sl-btn-primary">
+                Add
+              </button>
+            </form>
+            {addError && <div style={{ ...muted, color: 'var(--sl-distraction)' }}>{addError}</div>}
+            {rules.length === 0 ? (
+              <p style={emptyBox}>
+                No labels yet. Type a site above, or accept the common sites in Quick start.
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
+                {rules.map((rule) => (
+                  <RuleRow
+                    key={`${rule.domain}:${rule.category}`}
+                    rule={rule}
+                    onSave={saveRule}
+                    onRemove={(domain) => commit(removeRule(rules, domain))}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section style={card}>
+            <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Sites you visited recently</h2>
+            <p style={muted}>Unlabeled sites from the last {RECENT_DAYS} days, most time first.</p>
+            {recent.length === 0 ? (
+              <p style={emptyBox}>
+                {(data?.totals.length ?? 0) === 0
+                  ? 'Nothing here yet. Browse for a bit, and the sites you visit will show up here so you can label them with one click.'
+                  : 'Every site you visited recently has a label. Nice!'}
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {recent.slice(0, RECENT_LIMIT).map((site) => (
+                  <li key={site.site} style={row}>
+                    <span style={grow}>
+                      {site.site} <span style={muted}>· {minutes(site.ms)}</span>
+                    </span>
+                    <QuickButtons
+                      onPick={(category) =>
+                        commit(upsertRule(rules, { domain: site.site, category }))
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      ) : (
+        <>
+          <section style={card}>
+            <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Your labels</h2>
+            <form
+              onSubmit={addRule}
+              style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}
+            >
+              <input
+                aria-label="New site"
+                placeholder="e.g. youtube.com"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                style={{ flex: '1 1 200px', minWidth: 0 }}
+              />
+              <CategorySelect
+                label="New site category"
+                value={newCategory}
+                onChange={setNewCategory}
+              />
+              <button type="submit" className="sl-btn-primary">
+                Add
+              </button>
+            </form>
+            {addError && <div style={{ ...muted, color: 'var(--sl-distraction)' }}>{addError}</div>}
+            {rules.length === 0 ? (
+              <p style={emptyBox}>
+                No labels yet. Type a site above, or accept the common sites in Quick start.
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
+                {rules.map((rule) => (
+                  <RuleRow
+                    key={`${rule.domain}:${rule.category}`}
+                    rule={rule}
+                    onSave={saveRule}
+                    onRemove={(domain) => commit(removeRule(rules, domain))}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section style={card}>
+            <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Sites you visited recently</h2>
+            <p style={muted}>Unlabeled sites from the last {RECENT_DAYS} days, most time first.</p>
+            {recent.length === 0 ? (
+              <p style={emptyBox}>
+                {(data?.totals.length ?? 0) === 0
+                  ? 'Nothing here yet. Browse for a bit, and the sites you visit will show up here so you can label them with one click.'
+                  : 'Every site you visited recently has a label. Nice!'}
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {recent.slice(0, RECENT_LIMIT).map((site) => (
+                  <li key={site.site} style={row}>
+                    <span style={grow}>
+                      {site.site} <span style={muted}>· {minutes(site.ms)}</span>
+                    </span>
+                    <QuickButtons
+                      onPick={(category) =>
+                        commit(upsertRule(rules, { domain: site.site, category }))
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)', flex: 1 }}>
+                {rules.length === 0 ? 'Quick start: common sites' : 'Suggestions'}
+              </h2>
+              {suggestions.length > 0 && (
+                <button
+                  type="button"
+                  className="sl-btn-primary"
+                  onClick={() =>
+                    commit(suggestions.reduce((list, s) => upsertRule(list, s), rules))
+                  }
+                >
+                  Accept all
+                </button>
+              )}
+            </div>
+            <p style={muted}>Common sites. Nothing is labeled until you click Accept.</p>
+            {suggestions.length === 0 ? (
+              <p style={muted}>You’ve used all the suggestions.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {suggestions.map((s) => (
+                  <li key={s.domain} style={row}>
+                    <span style={grow}>{s.domain}</span>
+                    <CategoryChip category={s.category} />
+                    <button type="button" onClick={() => commit(upsertRule(rules, s))}>
+                      Accept
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
     </main>
   );
 }

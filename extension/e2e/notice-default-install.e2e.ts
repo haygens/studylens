@@ -23,7 +23,7 @@ function sendFrom(page: Page, message: object): Promise<unknown> {
   );
 }
 
-test('default install: the notice explains all three conditions and must be answered before a session starts', async ({
+test('default install: the short notice explains the helpers and must be answered before a session starts', async ({
   openPopup,
   background,
 }) => {
@@ -33,10 +33,12 @@ test('default install: the notice explains all three conditions and must be answ
 
   const notice = popup.getByRole('dialog', { name: 'Research interventions' });
   await expect(notice).toBeVisible();
-  await expect(notice.getByText('Nothing changes')).toBeVisible();
-  await expect(notice.getByText('A short wait:')).toBeVisible();
-  await expect(notice.getByText('A question:')).toBeVisible();
+  // The short notice (P13b): what the helpers are, in a few words, with a link to the details.
+  await expect(notice.getByText('New: focus helpers')).toBeVisible();
+  await expect(notice.getByText(/a short wait/)).toBeVisible();
+  await expect(notice.getByText(/What did you come here for\?/)).toBeVisible();
   await expect(notice.getByText(/never saves what you type/)).toBeVisible();
+  await expect(notice.getByRole('button', { name: 'Learn more' })).toBeVisible();
   await expect(notice.getByRole('button', { name: 'Keep on' })).toBeVisible();
   await expect(notice.getByRole('button', { name: 'Turn off' })).toBeVisible();
 

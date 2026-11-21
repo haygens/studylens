@@ -23,6 +23,7 @@ import {
   choiceMessage,
   interstitialDoneUrl,
   intentionReady,
+  INTENTION_MIN_CHARS,
   parseInterstitialPage,
   type InterstitialChoice,
   type InterstitialPage,
@@ -34,6 +35,7 @@ import {
   asActiveSession,
   asHistory,
 } from '@/src/storage/sessions-store';
+import { BackIcon, BoltIcon, SparkleIcon } from '@/src/ui/icons';
 
 type PromptPage = Extract<InterstitialPage, { kind: 'prompt' }>;
 
@@ -61,13 +63,6 @@ const button: CSSProperties = {
   fontSize: 'var(--sl-fs-h3)',
   padding: '8px 16px',
   cursor: 'pointer',
-};
-const primary: CSSProperties = {
-  ...button,
-  background: 'var(--sl-primary)',
-  borderColor: 'var(--sl-primary)',
-  color: 'var(--sl-on-primary)',
-  boxShadow: 'var(--sl-btn-shadow)',
 };
 const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-body)' };
 
@@ -177,13 +172,16 @@ function Card({
   children,
 }: {
   info: PromptPage;
-  heading: string;
+  heading: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <main style={card}>
-      <p style={{ ...muted, margin: 0 }}>StudyLens · focus session</p>
-      <h1 style={{ fontSize: 'var(--sl-fs-h2)', margin: '8px 0 0', overflowWrap: 'anywhere' }}>
+    <main style={card} className="sl-pop-in">
+      <p className="sl-row" style={{ ...muted, margin: 0, justifyContent: 'center', gap: 8 }}>
+        <img src="/icon/32.png" alt="" width={22} height={22} className="sl-logo" />
+        StudyLens · focus session
+      </p>
+      <h1 style={{ fontSize: 'var(--sl-fs-h1)', margin: '10px 0 0', overflowWrap: 'anywhere' }}>
         {heading}
       </h1>
       <Goal sessionId={info.sessionId} />
@@ -192,32 +190,73 @@ function Card({
   );
 }
 
+/** The site name, in the theme's Distraction color (with the bolt icon, never color alone). */
+function Host({ name }: { name: string }) {
+  return (
+    <span className="sl-text-distraction" style={{ whiteSpace: 'nowrap' }}>
+      <BoltIcon /> {name}
+    </span>
+  );
+}
+
 function BackButton({ busy, onBack }: { busy: boolean; onBack: () => void }) {
   return (
-    <button type="button" style={primary} disabled={busy} onClick={onBack}>
+    <button
+      type="button"
+      className="sl-btn-primary sl-btn-big"
+      disabled={busy}
+      onClick={onBack}
+      style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}
+    >
+      <BackIcon />
       Back to studying
     </button>
   );
 }
 
+const RING_RADIUS = 46;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+
 function Friction({ info }: { info: PromptPage }) {
   const left = useSecondsLeft(FRICTION_COUNTDOWN_SECONDS);
   const { busy, onContinue, onBack } = useChoices(info);
+  const waitId = useId();
   useTitle(`StudyLens — a moment before ${info.hostname}`);
 
   return (
-    <Card info={info} heading={`A moment before ${info.hostname}`}>
-      <p
-        role="timer"
-        aria-label="Seconds left"
-        style={{
-          fontSize: 'var(--sl-fs-timer)',
-          fontWeight: 700,
-          margin: '16px 0',
-          color: 'var(--sl-primary)',
-        }}
-      >
-        {left}
+    <Card
+      info={info}
+      heading={
+        <>
+          A moment before <Host name={info.hostname} />
+        </>
+      }
+    >
+      <div className="sl-ring" style={{ width: 120, height: 120, margin: '16px auto 4px' }}>
+        <svg viewBox="0 0 110 110" aria-hidden="true">
+          <circle className="sl-ring-track" cx="55" cy="55" r={RING_RADIUS} />
+          <circle
+            className="sl-ring-fill"
+            style={{ stroke: 'var(--sl-friction-ring)' }}
+            cx="55"
+            cy="55"
+            r={RING_RADIUS}
+            strokeDasharray={RING_LENGTH}
+            strokeDashoffset={RING_LENGTH * (left / FRICTION_COUNTDOWN_SECONDS)}
+            transform="rotate(-90 55 55)"
+          />
+        </svg>
+        <p
+          role="timer"
+          aria-label="Seconds left"
+          className="sl-ring-text"
+          style={{ margin: 0, fontSize: 44, fontWeight: 800, color: 'var(--sl-friction)' }}
+        >
+          {left}
+        </p>
+      </div>
+      <p style={{ ...muted, margin: '0 0 16px', fontSize: 'var(--sl-fs-h3)' }}>
+        Take a breath. Do you still need this site?
       </p>
       <div style={{ display: 'grid', gap: 10 }}>
         <BackButton busy={busy} onBack={onBack} />
@@ -226,7 +265,7 @@ function Friction({ info }: { info: PromptPage }) {
             Continue to {info.hostname}
           </button>
         ) : (
-          <p style={{ ...muted, margin: 0 }}>
+          <p id={waitId} className="sl-wait" role="note">
             You can continue to {info.hostname} in {left} second{left === 1 ? '' : 's'}.
           </p>
         )}
@@ -247,6 +286,7 @@ function Intention({ info }: { info: PromptPage }) {
   };
   const { busy, onContinue, onBack } = useChoices(info, clear);
   const ready = intentionReady(answer);
+  const hintId = useId();
   useTitle(`StudyLens — before ${info.hostname}`);
 
   useEffect(() => {
@@ -258,9 +298,16 @@ function Intention({ info }: { info: PromptPage }) {
   }, []);
 
   return (
-    <Card info={info} heading={`Before you open ${info.hostname}`}>
+    <Card
+      info={info}
+      heading={
+        <>
+          Before you open <Host name={info.hostname} />
+        </>
+      }
+    >
       <div style={{ display: 'grid', gap: 10, textAlign: 'left' }}>
-        <label htmlFor={id} style={{ fontSize: 'var(--sl-fs-h2)', fontWeight: 600 }}>
+        <label htmlFor={id} style={{ fontSize: 'var(--sl-fs-h1)', fontWeight: 750 }}>
           What did you come here for?
         </label>
         <input
@@ -284,9 +331,20 @@ function Intention({ info }: { info: PromptPage }) {
       </div>
       <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
         <BackButton busy={busy} onBack={onBack} />
-        <button type="button" style={button} disabled={busy || !ready} onClick={onContinue}>
+        <button
+          type="button"
+          style={button}
+          disabled={busy || !ready}
+          aria-describedby={ready ? undefined : hintId}
+          onClick={onContinue}
+        >
           Continue to {info.hostname}
         </button>
+        {!ready && (
+          <p id={hintId} role="note" className="sl-wait">
+            Type a few words (at least {INTENTION_MIN_CHARS} letters) to continue.
+          </p>
+        )}
       </div>
     </Card>
   );
@@ -295,10 +353,16 @@ function Intention({ info }: { info: PromptPage }) {
 function Done({ sessionId }: { sessionId: string }) {
   useTitle('StudyLens — back to studying');
   return (
-    <main style={card}>
-      <h1 style={{ fontSize: 'var(--sl-fs-h2)', margin: 0 }}>Back to studying</h1>
+    <main style={card} className="sl-pop-in">
+      <p style={{ fontSize: 40, margin: 0, color: 'var(--sl-celebrate)' }} aria-hidden="true">
+        <SparkleIcon />
+      </p>
+      <h1 style={{ fontSize: 'var(--sl-fs-h1)', margin: '4px 0 0' }}>Back to studying</h1>
+      <p style={{ color: 'var(--sl-celebrate)', fontWeight: 700, margin: '6px 0 0' }}>Nice save!</p>
       <Goal sessionId={sessionId} />
-      <p style={muted}>You can close this tab.</p>
+      <button type="button" style={button} onClick={() => window.close()}>
+        Close this tab
+      </button>
     </main>
   );
 }

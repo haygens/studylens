@@ -1,12 +1,21 @@
 /**
- * One-time notice about research interventions (P8, on by default from v0.2.0), shown when the
+ * One-time notice about research interventions (P8, on by default from v0.2.0; shortened in
+ * P13b, with the full explanation on the Settings tab and the welcome page), shown when the
  * popup opens while the feature is on. It keeps showing every time the popup opens until the user
  * presses "Keep on" or "Turn off": closing the popup without choosing doesn't count as seen, and no
  * focus session can start until then (the Start button waits, and the background refuses too).
  */
 import { useState } from 'react';
+import { browser } from 'wxt/browser';
+import { SparkleIcon } from '@/src/ui/icons';
 import { shouldShowNotice } from '@/src/storage/interventions-store';
 import { useInterventions } from '@/src/ui/use-interventions';
+
+function openSettings() {
+  void browser.tabs
+    .create({ url: `${browser.runtime.getURL('/options.html')}#settings` })
+    .then(() => window.close());
+}
 
 export default function InterventionsNotice() {
   const { state, answerNotice, saveError } = useInterventions();
@@ -26,51 +35,33 @@ export default function InterventionsNotice() {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-label="Research interventions"
-      style={{
-        marginTop: 10,
-        padding: 10,
-        borderRadius: 6,
-        background: 'var(--sl-primary-soft)',
-        border: '1px solid var(--sl-primary)',
-        fontSize: 'var(--sl-fs-small)',
-        display: 'grid',
-        gap: 6,
-      }}
-    >
-      <strong style={{ fontSize: 'var(--sl-fs-small)' }}>New: research interventions</strong>
+    <div role="dialog" aria-label="Research interventions" className="sl-banner sl-banner-info">
+      <strong className="sl-row" style={{ gap: 6 }}>
+        <SparkleIcon />
+        New: focus helpers
+      </strong>
       <span>
-        StudyLens is testing which focus helpers work. Each focus session now gets one of these at
-        random, and you won’t know which in advance:
+        To learn what helps students focus, each session may get a helper at random: a short wait or
+        a question (“What did you come here for?”) before sites you labeled Distraction. StudyLens
+        never saves what you type, and nothing leaves this device.
       </span>
-      <ul style={{ margin: 0, paddingLeft: 18 }}>
-        <li>
-          <strong>Nothing changes</strong> (the comparison group).
-        </li>
-        <li>
-          <strong>A short wait:</strong> opening a site you labeled Distraction shows a 10-second
-          countdown first.
-        </li>
-        <li>
-          <strong>A question:</strong> opening a site you labeled Distraction first asks “What did
-          you come here for?” StudyLens never saves what you type.
-        </li>
-      </ul>
-      <span>
-        Only the helper’s name and a few counts are saved, on this device only. Nothing is sent
-        anywhere. You can turn this off anytime on the My Data page. Choose one to start a session:
-      </span>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" onClick={() => choose(true)}>
+      <div className="sl-row">
+        <button type="button" className="sl-btn-primary" onClick={() => choose(true)}>
           Keep on
         </button>
         <button type="button" onClick={() => choose(false)}>
           Turn off
         </button>
+        <button
+          type="button"
+          className="sl-link"
+          style={{ marginLeft: 'auto' }}
+          onClick={openSettings}
+        >
+          Learn more
+        </button>
       </div>
-      {saveError && <span style={{ color: 'var(--sl-distraction)' }}>{saveError}</span>}
+      {saveError && <span className="sl-error">{saveError}</span>}
     </div>
   );
 }

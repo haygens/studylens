@@ -1,16 +1,47 @@
 /**
- * Popup "Today" section: today's minutes per site (registrable domain) with its category, plus a
- * link to edit site categories. Refreshes every 2 seconds while the popup is open.
+ * Popup "Today" section: today's time per category as one striped bar, then minutes per site
+ * (registrable domain) with its category chip, plus a link to label sites. Refreshes every
+ * 2 seconds while the popup is open.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
+import { SITE_CATEGORIES } from '@studylens/shared';
 import { localStore } from '@/src/background/browser-adapter';
 import { CATEGORY_LABELS } from '@/src/categories/display';
-import CategoryChip from '@/src/ui/CategoryChip';
 import { loadTodaySnapshot, type TodaySnapshot, type LoadState } from '@/src/popup/popup-data';
+import { categoryTotals, formatWholeMinutes } from '@/src/popup/popup-view';
+import CategoryChip, { CATEGORY_ICONS } from '@/src/ui/CategoryChip';
 import { LoadError, Loading } from './LoadStatus';
 
-const cell = { padding: '2px 12px 2px 0' } as const;
+const MAX_SITES = 6;
+
+function DayBar({ snap }: { snap: TodaySnapshot }) {
+  const totals = categoryTotals(snap.sites);
+  const all = totals.study + totals.neutral + totals.distraction;
+  const summary = SITE_CATEGORIES.map(
+    (c) => `${CATEGORY_LABELS[c]} ${formatWholeMinutes(totals[c])}`,
+  ).join(', ');
+  return (
+    <>
+      <div className="sl-daybar" role="img" aria-label={`Today: ${summary}`}>
+        {SITE_CATEGORIES.filter((c) => totals[c] > 0).map((c) => (
+          <span key={c} className={`sl-fill sl-fill-${c}`} style={{ flex: totals[c] / all }} />
+        ))}
+      </div>
+      <div className="sl-legend" aria-hidden="true">
+        {SITE_CATEGORIES.map((c) => {
+          const Icon = CATEGORY_ICONS[c];
+          return (
+            <span key={c} className={`sl-row sl-text-${c}`} style={{ gap: 3 }}>
+              <Icon />
+              {CATEGORY_LABELS[c]} <b>{formatWholeMinutes(totals[c]).replace(' min', 'm')}</b>
+            </span>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 export default function TodayActivity() {
   const [load, setLoad] = useState<LoadState<TodaySnapshot>>({ status: 'loading' });
@@ -28,8 +59,22 @@ export default function TodayActivity() {
   const snap = load.status === 'ready' ? load.data : null;
 
   return (
-    <section style={{ marginTop: 16, borderTop: '1px solid var(--sl-border)', paddingTop: 8 }}>
-      <h2 style={{ margin: '0 0 4px', fontSize: 'var(--sl-fs-body)' }}>Today</h2>
+    <section className="sl-card sl-stack" aria-labelledby="sl-today">
+      <div className="sl-row-between">
+        <h2 id="sl-today" className="sl-card-title">
+          Today
+        </h2>
+        <button
+          type="button"
+          className="sl-link"
+          onClick={() => {
+            void browser.runtime.openOptionsPage();
+            window.close();
+          }}
+        >
+          Label sites
+        </button>
+      </div>
       {load.status === 'loading' && <Loading />}
       {load.status === 'error' && (
         <LoadError
@@ -42,55 +87,59 @@ export default function TodayActivity() {
         />
       )}
       {snap && (
-        <div
-          style={{ fontSize: 'var(--sl-fs-small)', margin: '4px 0 8px', color: 'var(--sl-muted)' }}
-        >
-          {snap.paused
-            ? 'Tracking paused'
-            : `Now: ${snap.current ?? '(not tracking)'}${
-                snap.currentCategory ? ` (${CATEGORY_LABELS[snap.currentCategory]})` : ''
-              }`}
+        <div className="sl-row sl-muted" style={{ flexWrap: 'wrap', gap: 6 }}>
+          {snap.paused ? (
+            'Paused. Showing what was recorded earlier today.'
+          ) : snap.current ? (
+            <>
+              Now: <span style={{ color: 'var(--sl-ink)' }}>{snap.current}</span>
+              {snap.currentCategory && <CategoryChip category={snap.currentCategory} />}
+            </>
+          ) : (
+            'Now: not on a website'
+          )}
         </div>
       )}
       {snap && snap.sites.length === 0 && (
-        <div style={{ fontSize: 'var(--sl-fs-small)' }}>Nothing tracked today.</div>
+        <div className="sl-empty">
+          <strong>Nothing tracked today.</strong>
+          <span className="sl-muted">
+            Browse as usual. The sites you visit show up here, so you can see where your time goes.
+          </span>
+        </div>
       )}
       {snap && snap.sites.length > 0 && (
-        <table
-          style={{ fontSize: 'var(--sl-fs-small)', borderCollapse: 'collapse', width: '100%' }}
-        >
-          <thead>
-            <tr style={{ textAlign: 'left', color: 'var(--sl-muted)' }}>
-              <th style={cell}>Site</th>
-              <th style={cell}>Category</th>
-              <th style={{ ...cell, paddingRight: 0, textAlign: 'right' }}>Minutes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {snap.sites.map((s) => (
-              <tr key={s.site} title={s.hostnames.join(', ')}>
-                <td style={cell}>{s.site}</td>
-                <td style={cell}>
-                  <CategoryChip category={s.category} />
-                </td>
-                <td style={{ ...cell, paddingRight: 0, textAlign: 'right' }}>
-                  {(s.ms / 60_000).toFixed(1)}
-                </td>
+        <>
+          <DayBar snap={snap} />
+          <table className="sl-table sl-sites" aria-label="Sites today">
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Category</th>
+                <th style={{ textAlign: 'right' }}>Time</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {snap.sites.slice(0, MAX_SITES).map((s) => (
+                <tr key={s.site} title={s.hostnames.join(', ')}>
+                  <td className="sl-site">{s.site}</td>
+                  <td>
+                    <CategoryChip category={s.category} />
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {formatWholeMinutes(s.ms)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {snap.sites.length > MAX_SITES && (
+            <p className="sl-muted sl-small" style={{ margin: 0 }}>
+              + {snap.sites.length - MAX_SITES} more on the My Data page
+            </p>
+          )}
+        </>
       )}
-      <button
-        type="button"
-        style={{ marginTop: 8, fontSize: 'var(--sl-fs-small)' }}
-        onClick={() => {
-          void browser.runtime.openOptionsPage();
-          window.close();
-        }}
-      >
-        Edit site categories…
-      </button>
     </section>
   );
 }

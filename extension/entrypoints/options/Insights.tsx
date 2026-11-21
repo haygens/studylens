@@ -28,6 +28,13 @@ const card: CSSProperties = {
   marginTop: 16,
 };
 const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-small)' };
+const emptyBox: CSSProperties = {
+  color: 'var(--sl-muted)',
+  padding: '10px 12px',
+  borderRadius: 'var(--sl-radius-sm)',
+  border: '1px dashed var(--sl-input-border)',
+  background: 'var(--sl-bg)',
+};
 const table: CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
@@ -184,7 +191,10 @@ function TimeOfDay({ bands }: { bands: InsightsData['timeOfDay'] }) {
         session started. Only sessions with an answered check-in count.
       </p>
       {!anyRated ? (
-        <p>No rated sessions yet. Answer the check-in after a focus session to see this.</p>
+        <p style={emptyBox}>
+          No rated sessions yet. Answer the quick check-in after a focus session to find your best
+          time of day.
+        </p>
       ) : (
         <table style={table}>
           <thead>
@@ -342,7 +352,10 @@ export default function Insights() {
           session.
         </p>
         {data.days.every((d) => d.focusMinutes + d.studyMinutes + d.distractionMinutes === 0) ? (
-          <p>No focus sessions or labeled browsing in the last {TREND_DAYS} days yet.</p>
+          <p style={emptyBox}>
+            No focus sessions or labeled browsing in the last {TREND_DAYS} days yet. Start a session
+            from the StudyLens button in your toolbar, and your trends will grow here.
+          </p>
         ) : (
           <>
             <FocusTrend days={data.days} />

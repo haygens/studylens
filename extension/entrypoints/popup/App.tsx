@@ -1,16 +1,22 @@
-import { appTitle } from '@/src/title';
 import ErrorBoundary from './ErrorBoundary';
 import FocusSession from './FocusSession';
 import InterventionsNotice from './InterventionsNotice';
+import PopupFooter from './PopupFooter';
 import TodayActivity from './TodayActivity';
-import TrackingStatus from './TrackingStatus';
+import { PausedBanner, TrackingPill } from './TrackingStatus';
 
 export default function App() {
   return (
-    <main style={{ padding: 16, width: 300 }}>
-      <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>{appTitle()}</h1>
+    <main className="sl-popup">
+      <header className="sl-pop-head">
+        <img src="/icon/48.png" alt="" width={28} height={28} className="sl-logo" />
+        <h1 className="sl-brand">StudyLens</h1>
+        <ErrorBoundary name="Tracking">
+          <TrackingPill />
+        </ErrorBoundary>
+      </header>
       <ErrorBoundary name="Tracking">
-        <TrackingStatus />
+        <PausedBanner />
       </ErrorBoundary>
       <ErrorBoundary name="Research notice">
         <InterventionsNotice />
@@ -21,6 +27,7 @@ export default function App() {
       <ErrorBoundary name="Today">
         <TodayActivity />
       </ErrorBoundary>
+      <PopupFooter />
     </main>
   );
 }

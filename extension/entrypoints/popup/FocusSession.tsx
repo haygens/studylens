@@ -3,7 +3,7 @@
  * its own: it reads the active session from storage, follows storage changes, and asks the
  * background script to start or end sessions.
  */
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
@@ -13,8 +13,6 @@ import {
   MIN_CUSTOM_MINUTES,
   PRESET_MINUTES,
   formatCountdown,
-  isValidDuration,
-  normalizeGoal,
   remainingMs,
   type ActiveSession,
   type FocusSession as FinishedSession,
@@ -22,7 +20,9 @@ import {
 import { loadSessionView, type LoadState, type SessionView } from '@/src/popup/popup-data';
 import { ACTIVE_SESSION_KEY, SESSION_HISTORY_KEY } from '@/src/storage/sessions-store';
 import { E2E_BUILD_MARKER, MAX_TEST_SECONDS } from '@/src/e2e/test-seconds';
-import { formatCheckIn } from '@/src/sessions/check-in';
+import { lastSessionSummary, sessionProgress, startBlockReason } from '@/src/popup/popup-view';
+import { CheckIcon, InfoIcon, PauseIcon } from '@/src/ui/icons';
+import { useTrackingPaused } from '@/src/ui/use-tracking-paused';
 import { shouldShowNotice } from '@/src/storage/interventions-store';
 import { useInterventions } from '@/src/ui/use-interventions';
 import CheckIn from './CheckIn';
@@ -95,7 +95,6 @@ function useNoticeGate(): 'loading' | 'blocked' | 'open' {
 
 function StartForm() {
   const gate = useNoticeGate();
-  const noticeBlocks = gate !== 'open';
   const [goal, setGoal] = useState('');
   const [choice, setChoice] = useState<number | 'custom'>(25);
   const [custom, setCustom] = useState('30');
@@ -107,11 +106,9 @@ function StartForm() {
   const seconds = __STUDYLENS_E2E__ && testSeconds ? Number(testSeconds) : null;
 
   const minutes = choice === 'custom' ? Number(custom) : choice;
-  const canStart =
-    normalizeGoal(goal) !== null &&
-    (seconds !== null || isValidDuration(minutes)) &&
-    !busy &&
-    !noticeBlocks;
+  const reason = startBlockReason({ gate, goal, minutes, testSeconds: seconds, busy });
+  const canStart = reason === null;
+  const reasonId = useId();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -134,8 +131,13 @@ function StartForm() {
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} style={{ display: 'grid', gap: 8 }}>
-      <label style={{ display: 'grid', gap: 4, fontSize: 'var(--sl-fs-small)' }}>
+    <form
+      onSubmit={(e) => void onSubmit(e)}
+      className="sl-card sl-stack"
+      aria-label="Start a focus session"
+    >
+      <h2 className="sl-card-title">Ready to focus?</h2>
+      <label className="sl-field">
         What will you work on?
         <input
           type="text"
@@ -146,46 +148,50 @@ function StartForm() {
           onChange={(e) => setGoal(e.target.value)}
         />
       </label>
-      <fieldset style={{ border: 'none', padding: 0, margin: 0, fontSize: 'var(--sl-fs-small)' }}>
-        <legend style={{ marginBottom: 4 }}>How long?</legend>
-        {PRESET_MINUTES.map((m) => (
-          <label key={m} style={{ marginRight: 10 }}>
+      <fieldset className="sl-field">
+        <legend>How long?</legend>
+        <div className="sl-seg">
+          {PRESET_MINUTES.map((m) => (
+            <label key={m}>
+              <input
+                type="radio"
+                name="duration"
+                checked={choice === m}
+                onChange={() => setChoice(m)}
+              />
+              <span>{m} min</span>
+            </label>
+          ))}
+          <label>
             <input
               type="radio"
               name="duration"
-              checked={choice === m}
-              onChange={() => setChoice(m)}
-            />{' '}
-            {m} min
+              checked={choice === 'custom'}
+              onChange={() => setChoice('custom')}
+            />
+            <span>Custom</span>
           </label>
-        ))}
-        <label>
-          <input
-            type="radio"
-            name="duration"
-            checked={choice === 'custom'}
-            onChange={() => setChoice('custom')}
-          />{' '}
-          Custom
-        </label>
+        </div>
         {choice === 'custom' && (
-          <div style={{ marginTop: 6 }}>
+          <label className="sl-row" style={{ marginTop: 8, fontWeight: 400 }}>
             <input
               type="number"
               min={MIN_CUSTOM_MINUTES}
               max={MAX_CUSTOM_MINUTES}
               step={1}
               value={custom}
-              style={{ width: 70 }}
+              style={{ width: 80 }}
+              aria-label="Custom length in minutes"
               onChange={(e) => setCustom(e.target.value)}
-            />{' '}
+            />
             minutes ({MIN_CUSTOM_MINUTES}–{MAX_CUSTOM_MINUTES})
-          </div>
+          </label>
         )}
       </fieldset>
       {__STUDYLENS_E2E__ && (
         <label
-          style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-warn)' }}
+          className="sl-small"
+          style={{ color: 'var(--sl-warn)' }}
           data-testid={E2E_BUILD_MARKER}
         >
           Test length in seconds (E2E build only){' '}
@@ -199,28 +205,39 @@ function StartForm() {
           />
         </label>
       )}
-      <button type="submit" disabled={!canStart}>
+      <button
+        type="submit"
+        className="sl-btn-primary sl-btn-big"
+        disabled={!canStart}
+        aria-describedby={reason ? reasonId : undefined}
+      >
         Start focus session
       </button>
-      {gate === 'blocked' && (
-        <div role="note" style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>
-          {ERROR_TEXT['notice-unanswered']}
-        </div>
+      {reason && gate !== 'loading' && !busy && (
+        <p role="note" id={reasonId} className="sl-hint">
+          <InfoIcon />
+          {reason}
+        </p>
       )}
       {error && (
-        <div style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
+        <p role="alert" className="sl-error" style={{ margin: 0 }}>
           {error}
-        </div>
+        </p>
       )}
     </form>
   );
 }
+
+const RING_RADIUS = 52;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 function RunningSession({ session }: { session: ActiveSession }) {
   const now = useNow();
   const left = remainingMs(session, now);
   const timeUp = left === 0;
   const [busy, setBusy] = useState(false);
+  const { state: paused } = useTrackingPaused();
+  const progress = sessionProgress(session.plannedEnd - session.start, left);
 
   // Countdown reached zero while the popup is open: nudge the background in case the alarm is
   // late. It ends the session at its planned time either way.
@@ -228,33 +245,45 @@ function RunningSession({ session }: { session: ActiveSession }) {
     if (timeUp) void send({ type: 'session:check' }).catch(() => undefined);
   }, [timeUp]);
 
+  const ends = new Date(session.plannedEnd).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>Focusing on</div>
-      <div style={{ fontSize: 'var(--sl-fs-h3)', fontWeight: 600, overflowWrap: 'anywhere' }}>
-        {session.goal}
+    <section className="sl-card sl-run" aria-label="Focus session">
+      <p className="sl-eyebrow">Focusing on</p>
+      <p className="sl-goal">{session.goal}</p>
+      <div className="sl-ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle className="sl-ring-track" cx="60" cy="60" r={RING_RADIUS} />
+          <circle
+            className="sl-ring-fill"
+            cx="60"
+            cy="60"
+            r={RING_RADIUS}
+            strokeDasharray={RING_LENGTH}
+            strokeDashoffset={RING_LENGTH * (1 - progress)}
+            transform="rotate(-90 60 60)"
+          />
+        </svg>
+        <div className="sl-ring-text" aria-live="off">
+          <span className="sl-time">{formatCountdown(left)}</span>
+          <span className="sl-muted sl-small">of {Math.round(session.plannedMinutes)} min</span>
+        </div>
       </div>
-      <div
-        style={{
-          fontSize: 'var(--sl-fs-timer)',
-          fontVariantNumeric: 'tabular-nums',
-          textAlign: 'center',
-        }}
-        aria-live="off"
-      >
-        {formatCountdown(left)}
-      </div>
-      <div
-        style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)', textAlign: 'center' }}
-      >
-        {session.plannedMinutes} min session · ends at{' '}
-        {new Date(session.plannedEnd).toLocaleTimeString([], {
-          hour: 'numeric',
-          minute: '2-digit',
-        })}
-      </div>
+      <p className="sl-muted" style={{ margin: 0 }}>
+        Ends at {ends} · {progress >= 0.5 ? 'past halfway, keep going!' : 'you can do this!'}
+      </p>
+      {paused.status === 'ready' && paused.data && (
+        <p className="sl-hint" style={{ justifyContent: 'center' }}>
+          <PauseIcon />
+          Tracking is paused: sites aren&apos;t recorded.
+        </p>
+      )}
       <button
         type="button"
+        className="sl-btn-quiet"
         disabled={busy}
         onClick={() => {
           setBusy(true);
@@ -265,22 +294,18 @@ function RunningSession({ session }: { session: ActiveSession }) {
       >
         End early
       </button>
-    </div>
+    </section>
   );
 }
 
 function LastSession({ session }: { session: FinishedSession }) {
-  const mins = session.minutesByCategory;
-  const actual = Math.round((session.actualEnd - session.start) / 60_000);
-  const checkIn = formatCheckIn(session.checkIn);
   return (
-    <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)', marginTop: 10 }}>
-      Last session: {actual} of {session.plannedMinutes} min
-      {session.endedEarly ? ' (ended early)' : ''} · study {mins.study} · neutral {mins.neutral} ·
-      distraction {mins.distraction} min · {session.distractionVisits} distraction visit
-      {session.distractionVisits === 1 ? '' : 's'}
-      {checkIn && ` · ${checkIn}`}
-    </div>
+    <p className="sl-last">
+      <span className="sl-last-badge" aria-hidden="true">
+        <CheckIcon />
+      </span>
+      {lastSessionSummary(session)}
+    </p>
   );
 }
 
@@ -293,16 +318,12 @@ export default function FocusSession() {
   const { active, last, pending } = state.data;
   // A check-in waiting for an answer comes first, before the Start form (P5).
   if (pending) {
-    return (
-      <section style={{ marginTop: 12 }}>
-        <CheckIn key={pending.id} session={pending} onClosed={reload} />
-      </section>
-    );
+    return <CheckIn key={pending.id} session={pending} onClosed={reload} />;
   }
   return (
-    <section style={{ marginTop: 12 }}>
+    <>
       {active ? <RunningSession session={active} /> : <StartForm />}
       {!active && last && <LastSession session={last} />}
-    </section>
+    </>
   );
 }

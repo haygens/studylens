@@ -3,7 +3,7 @@
  * check-in is waiting. Answers go to the background script, which validates and saves them on
  * the session; the popup then reloads from storage and shows the Start form again.
  */
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { browser } from 'wxt/browser';
 import {
   FOCUS_RATINGS,
@@ -14,6 +14,10 @@ import {
 import { FOCUS_LABELS, GOAL_LABELS } from '@/src/sessions/check-in';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
 import type { FocusSession } from '@/src/sessions/session';
+import { checkInBlockReason } from '@/src/popup/popup-view';
+import { CheckIcon, CrossIcon, HalfIcon, InfoIcon, ShieldIcon } from '@/src/ui/icons';
+
+const GOAL_ICONS = { yes: CheckIcon, partly: HalfIcon, no: CrossIcon } as const;
 
 const ERROR_TEXT: Record<string, string> = {
   'not-pending': 'This check-in is no longer open.',
@@ -23,19 +27,6 @@ const ERROR_TEXT: Record<string, string> = {
 
 async function send(message: SessionMessage): Promise<SessionReply> {
   return (await browser.runtime.sendMessage(message)) as SessionReply;
-}
-
-function choiceStyle(selected: boolean): CSSProperties {
-  return {
-    flex: 1,
-    padding: '6px 0',
-    fontSize: 'var(--sl-fs-small)',
-    border: `1px solid ${selected ? 'var(--sl-primary)' : 'var(--sl-border)'}`,
-    background: selected ? 'var(--sl-primary-soft)' : 'var(--sl-bg)',
-    fontWeight: selected ? 600 : 400,
-    borderRadius: 6,
-    cursor: 'pointer',
-  };
 }
 
 export default function CheckIn({
@@ -79,41 +70,44 @@ export default function CheckIn({
     });
   }
 
+  const reason = checkInBlockReason(goal !== null, rating !== null);
+  const reasonId = useId();
+
   return (
-    <form onSubmit={onSubmit} style={{ display: 'grid', gap: 10 }} aria-label="Session check-in">
+    <form onSubmit={onSubmit} className="sl-card sl-stack" aria-label="Session check-in">
       <div>
-        <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>
+        <div className="sl-muted">
           Session over{session.endedEarly ? ' (ended early)' : ''}. Your goal was
         </div>
-        <div style={{ fontSize: 'var(--sl-fs-h3)', fontWeight: 600, overflowWrap: 'anywhere' }}>
+        <div className="sl-goal" style={{ textAlign: 'left' }}>
           {session.goal}
         </div>
       </div>
 
-      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={{ fontSize: 'var(--sl-fs-small)', marginBottom: 4 }}>
-          Did you finish your goal?
-        </legend>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {GOAL_COMPLETED_VALUES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={goal === value}
-              style={choiceStyle(goal === value)}
-              onClick={() => setGoal(value)}
-            >
-              {GOAL_LABELS[value]}
-            </button>
-          ))}
+      <fieldset className="sl-field">
+        <legend>Did you finish your goal?</legend>
+        <div className="sl-row" style={{ gap: 6 }}>
+          {GOAL_COMPLETED_VALUES.map((value) => {
+            const Icon = GOAL_ICONS[value];
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={goal === value}
+                className={`sl-pick${value === 'yes' ? ' sl-pick-yes' : ''}`}
+                onClick={() => setGoal(value)}
+              >
+                <Icon />
+                {GOAL_LABELS[value]}
+              </button>
+            );
+          })}
         </div>
       </fieldset>
 
-      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={{ fontSize: 'var(--sl-fs-small)', marginBottom: 4 }}>
-          How focused were you?
-        </legend>
-        <div style={{ display: 'flex', gap: 6 }}>
+      <fieldset className="sl-field">
+        <legend>How focused were you?</legend>
+        <div className="sl-row" style={{ gap: 6 }}>
           {FOCUS_RATINGS.map((value) => (
             <button
               key={value}
@@ -121,29 +115,27 @@ export default function CheckIn({
               aria-pressed={rating === value}
               aria-label={`${value} – ${FOCUS_LABELS[value]}`}
               title={FOCUS_LABELS[value]}
-              style={choiceStyle(rating === value)}
+              className="sl-pick"
               onClick={() => setRating(value)}
             >
               {value}
             </button>
           ))}
         </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: 'var(--sl-fs-small)',
-            color: 'var(--sl-muted)',
-            marginTop: 2,
-          }}
-        >
+        <div className="sl-row-between sl-muted sl-small" style={{ fontWeight: 400 }}>
           <span>1 = {FOCUS_LABELS[1]}</span>
           <span>5 = {FOCUS_LABELS[5]}</span>
         </div>
       </fieldset>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="submit" disabled={!goal || !rating || busy} style={{ flex: 1 }}>
+      <div className="sl-row">
+        <button
+          type="submit"
+          className="sl-btn-primary"
+          disabled={reason !== null || busy}
+          aria-describedby={reason ? reasonId : undefined}
+          style={{ flex: 1 }}
+        >
           Save
         </button>
         <button
@@ -154,14 +146,21 @@ export default function CheckIn({
           Skip
         </button>
       </div>
-      {error && (
-        <div style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
-          {error}
-        </div>
+      {reason && (
+        <p role="note" id={reasonId} className="sl-hint">
+          <InfoIcon />
+          {reason}
+        </p>
       )}
-      <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>
+      {error && (
+        <p role="alert" className="sl-error" style={{ margin: 0 }}>
+          {error}
+        </p>
+      )}
+      <p className="sl-hint">
+        <ShieldIcon />
         Your answers stay on this device.
-      </div>
+      </p>
     </form>
   );
 }
