@@ -1133,3 +1133,89 @@ Disk space: C: 2.47 GB free, M: 14.02 GB free.
 
 Next piece (from PLAN.md): P13 — Edge submit once verified (0.3.0 zip); upload 0.3.0 to AMO; then
 P14 — Recruit friends.
+
+## Handoff — 2026-11-21 (Plan update: IRB-first; P13c research instrumentation — v0.4.0 built, not uploaded)
+
+Done:
+
+- **Plan update** (`55d4825`, separate commit): no research data from other people until IRB
+  approval (with Dr. Su); before Dec 7 friends give usability feedback only, and the study is
+  presented as design + preregistration draft + hs's own N=1 pilot. P17 (research upload) removed.
+  New/rewritten pieces: P13c, P14 (usability only), P15 backend + Turso, P16 group join (random
+  device ID + display name + group code, optional host permission asked only on first join/create),
+  P18 passive study groups, P18b live group sessions _(stretch)_, P19 reliability _(partly
+  stretch)_, P19b preregistration draft + analysis script. Research section: design fixes, analysis
+  plan (mixed-effects, participant random effect, session order, ≥5 solo sessions per condition per
+  person, labels frozen, hypotheses not shared, OSF preregistration, group sessions excluded).
+  CLAUDE.md research summary updated.
+- **P13c** (`965c7c6`, `ae0ffc2`):
+  1. **Distraction attempts** logged at the same trigger point in every condition. Control logs
+     `visited` (no page; the site gets the same 5-min grace period as after Continue).
+     Friction/intention log the attempt when the page opens; Continue/Back set `continued` /
+     `turned_back` + dwell seconds (0.1 s), also if the session ended while the page was open. Per
+     session: `distractionAttempts` count + compact `attempts` list (site group, time, condition,
+     outcome, dwell; max 200 entries, count keeps going). `distractionVisits` kept. Retention
+     removes attempt site names after 30 days.
+  2. **Equal time cost:** intention Continue needs 3+ characters AND 10 s (`HELPER_MIN_SECONDS`,
+     shared with friction). A hint shows what's missing and the seconds left.
+  3. **Session order:** `sessionNumber` (key `sessions:counter`). After the update, numbering
+     continues after the sessions already in history.
+  4. **Mode:** `mode: 'solo'` on every session (old sessions read as solo).
+  5. **Study mode:** Settings → "Lock my site labels (study mode)" (key `study:label-lock` with
+     on/off times). While on, `saveRules` refuses, and Site categories shows a message + disables
+     every control. Label-set version (key `categories:version`, +1 on each real change) and
+     `labelsLocked` are stored on each session.
+  6. **Research CSV:** My Data → "Export for research (CSV)", 22 columns (requested ones +
+     `checkin_status`, `labels_locked`), random local participant ID (`research:participant-id`,
+     `p-` + 12 hex, made on first run). No goal text, hostnames, URLs or exact times. Every column
+     is in `docs/research/codebook.md` (a unit test checks the codebook matches the code).
+  7. New keys in `keys.ts`; PRIVACY.md, README, My Data and Research card wording,
+     `docs/store/release-notes-0.4.0.md`. No new permissions; `data_collection_permissions`
+     still `none`.
+  8. Tests: see below. The study-mode checkbox now updates right away (E2E found it lagging
+     behind the save).
+  9. **Version 0.4.0. Zips (not uploaded), built from `ae0ffc2`:**
+     - `M:\Projects\studylens\extension\.output\studylens-0.4.0-edge.zip` (SHA-256 `21c6be53…1b01d902`)
+     - `M:\Projects\studylens\extension\.output\studylens-0.4.0-firefox.zip` (SHA-256 `6a7067ab…baaad8`)
+     - `M:\Projects\studylens\extension\.output\studylens-0.4.0-sources.zip` (SHA-256 `f06820b2…4bd1452`)
+     - Sources zip unzipped into a clean `M:\temp\studylens-verify-0.4.0`, `npm ci` +
+       `build:firefox`: all 21 files identical SHA-256. Folder deleted.
+     - addons-linter 10.16.0 temporarily in `M:\temp\addons-linter-tmp` (30 MB), then deleted:
+       0 errors, 0 notices, 2 warnings (React DOM `innerHTML`, same as before).
+     - Manifests: version 0.4.0, permissions `storage, tabs, idle, alarms` only, no host
+       permissions, Firefox ID unchanged.
+
+Changed files (main): `packages/shared/src/types.ts`, `extension/src/interventions/{attempts,
+interstitial,interstitial-controller}.ts`, `extension/src/storage/{research-store,categories-store,
+sessions-store,keys}.ts`, `extension/src/sessions/{session,session-controller}.ts`,
+`extension/src/my-data/{research-csv,tables}.ts`, `extension/src/retention/retention.ts`,
+`extension/src/ui/{StudyModeCard.tsx,use-label-lock.ts,ResearchCard.tsx}`,
+`extension/entrypoints/{background.ts,interstitial/App.tsx,options/App.tsx,options/MyData.tsx,
+options/SiteCategories.tsx}`, `extension/e2e/{research,interstitial,insights}.e2e.ts`, unit tests,
+`extension/package.json`, `extension/scripts/smoke-edge.mjs`, `package-lock.json`, `PRIVACY.md`,
+`README.md`, `CLAUDE.md`, `docs/PLAN.md`, `docs/LOG.md`, `docs/research/codebook.md`,
+`docs/store/release-notes-0.4.0.md`.
+
+Tests: unit 694 passed (`npm test`, all workspaces). New unit tests cover attempt logging in all 3
+conditions, dwell time, the 10 s + 3 characters rule, session numbering, mode, label lock + version,
+participant ID, retention of attempts, and the CSV columns + no-PII checks. E2E 41/41 in local Edge
+(new: intention 10 s rule, study mode lock, research CSV export). smoke:edge 11 passed, 0 failed,
+1 skipped ("visiting a stub site records it in Today" skips when the PC has had no keyboard/mouse
+input for 60 s, which was the case during the automated run). Lint, format check, typecheck,
+Firefox/Edge/web builds, check:builds clean. CI: **both jobs passed** (`check`, `e2e`) on `ae0ffc2`.
+
+Problems / open questions:
+
+- Each session did **not** keep a label snapshot before this (the prompt assumed it did). P13c
+  stores the label-set version + locked flag per session instead. Should we also store the label
+  list per version (domains only, local) so the pilot can show which labels were used?
+- "Delete everything" also resets the participant ID and session numbering (the device then counts
+  as a new participant). Fine for the N=1 pilot; to revisit before any IRB study.
+- smoke:edge's activity check needs a real person at the PC. Re-run `npm run smoke:edge` while
+  using the computer to get 12/12.
+- Edge account verification is still pending (P13). Upload 0.4.0 to AMO/Edge when ready.
+
+Disk space: C: 3.66 GB free, M: 14.09 GB free.
+
+Next piece (from PLAN.md): P14 — Recruit friends (usability only); also P13 Edge submit once
+verified; P19b preregistration draft can start using the codebook.

@@ -55,14 +55,14 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
       buttons, session-complete moment, 13 px+ text), readable My Data table, friendly empty states,
       visible focus, feedback link behind `FEEDBACK_URL` (hidden until the Microsoft Form exists).
       Screenshots: `docs/ux-review/after/<theme>/`. 0.3.0 zips built, not uploaded.
-- [ ] **P13c. Research instrumentation (v0.4.0)** — log distraction _attempts_ in every condition
+- [x] **P13c. Research instrumentation (v0.4.0)** — log distraction _attempts_ in every condition
       (incl. control) at the same trigger point, with outcome (control `visited`; friction/intention
       `continued` / `turned_back`) and dwell seconds on the helper page; equal time cost (intention
       Continue needs 3+ characters **and** 10 s, same constant as friction); per-device session
       sequence number; session `mode` field (`solo` for now); study mode ("Lock my site labels")
       with lock on/off times + label-set version on each session; "Export for research (CSV)" on My
       Data with a random local participant ID, documented in `docs/research/codebook.md`. No new
-      permissions.
+      permissions. Done 2026-11-21: 0.4.0 zips built, not uploaded.
 - [ ] **P14. Recruit friends (usability only)** — share install links, collect **usability feedback**
       through the anonymous form. **No research data from other people is collected until IRB
       approval** (with Dr. Su). Friends' sessions stay on their own devices.
