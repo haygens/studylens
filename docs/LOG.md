@@ -1082,7 +1082,9 @@ Problems / open questions:
   now runs only in Edge (locally, passing) and is skipped in CI; the install/update rules are
   unit-tested in CI. CI E2E failures now also show as GitHub annotations (`github` reporter).
 
-Disk space: C: 3.16 GB free, M: 14.02 GB free.
+Disk space: C: 1.64 GB free, M: 14.02 GB free. (C: went from 3.16 to 1.64 GB during the session: the
+growth is in hs's own Edge profile, Spotify, Firefox and OneDrive caches, not StudyLens output,
+which stays on M:. Nothing was deleted.)
 
 Next piece (from PLAN.md): P13 — Edge submit once verified (0.3.0 zip); upload 0.3.0 to AMO when
 ready; then P14 — Recruit friends.
