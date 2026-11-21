@@ -123,6 +123,11 @@ try {
   });
   const sw = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const base = `chrome-extension://${new URL(sw.url()).host}`;
+  // A new install opens the welcome page (P13b). Close it so it can't take focus, and use the
+  // default Sunrise theme for every store picture.
+  const isWelcome = (page) => page.url().includes('/welcome.html');
+  await expect.poll(() => context.pages().some(isWelcome), { timeout: 15_000 }).toBe(true);
+  await context.pages().find(isWelcome).close();
   const storage = (items) => sw.evaluate((i) => globalThis.chrome.storage.local.set(i), items);
 
   /** Saves a 1280x800 screenshot of `page`, after checking no test-only text is visible. */
@@ -141,8 +146,9 @@ try {
     await frame.setContent(`<!doctype html>
       <style>
         body { margin: 0; height: 800px; display: flex; align-items: center; justify-content: center;
-               gap: 64px; background: #eef2fb; font-family: system-ui, sans-serif; color: #1f2328; }
-        img { height: auto; max-height: 720px; width: 600px; object-fit: contain; object-position: top;
+               gap: 64px; background: linear-gradient(160deg, #fff7ed, #fdf2f8 55%, #eef2ff);
+               font-family: system-ui, sans-serif; color: #1e1b3a; }
+        img { height: 720px; width: auto; max-width: 600px; object-fit: contain; object-position: top;
               background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(31, 35, 40, .18); }
         p { font-size: 34px; font-weight: 600; max-width: 420px; line-height: 1.3; margin: 0; }
       </style>
@@ -206,6 +212,7 @@ try {
     ...sampleData(),
     'interventions:enabled': true,
     'interventions:notice-seen': true,
+    'onboarding:welcome': 'done', // set up already: no "Finish setting up" hint in the pictures
     'interventions:block': ['control'],
   });
 
@@ -229,6 +236,7 @@ try {
   await expect(popup.getByText('Did you finish your goal?')).toBeVisible({ timeout: 60_000 });
   await popup.getByRole('button', { name: 'Yes' }).click();
   await popup.getByRole('button', { name: '4 – mostly focused' }).click();
+  await popup.waitForTimeout(800); // let the session-complete card finish fading in
   await capturePopup(popup, '6-check-in.png', 'A quick check-in when your session ends');
   await popup.getByRole('button', { name: 'Save' }).click();
   await popup.close();
@@ -309,10 +317,11 @@ try {
   await art.setContent(`<!doctype html>
     <style>
       body { margin: 0; width: 440px; height: 280px; display: flex; align-items: center; gap: 24px;
-             padding: 0 32px; box-sizing: border-box; background: #eef2fb;
-             font-family: system-ui, sans-serif; color: #1f2328; }
+             padding: 0 32px; box-sizing: border-box;
+             background: linear-gradient(160deg, #fff7ed, #fdf2f8 55%, #eef2ff);
+             font-family: system-ui, sans-serif; color: #1e1b3a; }
       h1 { font-size: 40px; margin: 0 0 8px; }
-      p { font-size: 18px; line-height: 1.3; margin: 0; color: #424a53; }
+      p { font-size: 18px; line-height: 1.3; margin: 0; color: #5b5675; }
     </style>
     <img src="${iconSrc}" width="112" height="112">
     <div><h1>StudyLens</h1><p>Focus sessions for students. Your data stays on your device.</p></div>`);

@@ -99,8 +99,12 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - Prove normal builds have no E2E-only code (after both builds): `npm run check:builds -w extension`
 - Icons (after editing `extension/assets/icon.svg`): `npm run icons -w extension`
 - Store screenshots → `docs/store/screenshots/`: `npm run screenshots -w extension`
-- UX review screenshots (every screen, real size) → `docs/ux-review/screens/`:
-  `npm run build:e2e -w extension; node extension/scripts/ux-review-shots.mjs`
+- UX screenshots of every screen, real size, per theme → `docs/ux-review/after/<theme>/`:
+  `npm run build:e2e -w extension; node extension/scripts/ux-review-shots.mjs sunrise` (or `ocean`,
+  `pastel`; no theme = the old v0.2.0 set in `docs/ux-review/screens/`)
+- Themes: tokens in `extension/src/ui/themes.ts` (every color must come from there; unit tests check
+  WCAG AA for every pair in `theme-pairs.ts`). Feedback form link: `FEEDBACK_URL` in
+  `extension/src/ui/feedback.ts` (empty = hidden).
 - Firefox add-on ID `studylens@haygens.github.io` (in `extension/wxt.config.ts`) must NEVER change.
 - Lint: `npm run lint`
 - Format: `npm run format` — check only: `npm run format:check`

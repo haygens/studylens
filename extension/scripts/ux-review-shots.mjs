@@ -1,6 +1,9 @@
 /**
- * UX review screenshots (P13b prep): every screen at normal size, saved to docs/ux-review/screens/.
- * Run: `npm run build:e2e -w extension; node extension/scripts/ux-review-shots.mjs`
+ * UX review screenshots: every screen at normal size.
+ * - Before P13b (v0.2.0): `node extension/scripts/ux-review-shots.mjs` → docs/ux-review/screens/
+ * - After P13b, per theme: `node extension/scripts/ux-review-shots.mjs sunrise` (or ocean, pastel)
+ *   → docs/ux-review/after/<theme>/. The run picks that theme first, like a user would.
+ * Build first: `npm run build:e2e -w extension`.
  *
  * Same setup as screenshots.mjs: the E2E build in installed Edge (headless), a throwaway profile
  * in TEMP (on M:), local stub pages only, nothing touches the internet. The popup is captured at
@@ -14,7 +17,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const EXTENSION_DIR = fileURLToPath(new URL('../.output/edge-mv3-e2e', import.meta.url));
-const OUT_DIR = fileURLToPath(new URL('../../docs/ux-review/screens/', import.meta.url));
+const THEME = process.argv[2];
+if (THEME && !['sunrise', 'ocean', 'pastel'].includes(THEME)) {
+  throw new Error(`Unknown theme "${THEME}". Use sunrise, ocean or pastel.`);
+}
+const REL_DIR = THEME ? `docs/ux-review/after/${THEME}` : 'docs/ux-review/screens';
+const OUT_DIR = fileURLToPath(new URL(`../../${REL_DIR}/`, import.meta.url));
 const SITES = {
   'en.wikipedia.org': 'Wikipedia',
   'www.khanacademy.org': 'Khan Academy',
@@ -100,14 +108,14 @@ try {
 
   async function shot(page, name, options = {}) {
     await page.screenshot({ path: path.join(OUT_DIR, name), ...options });
-    console.log(`✓ docs/ux-review/screens/${name}`);
+    console.log(`✓ ${REL_DIR}/${name}`);
   }
 
   /** The popup at its real size: the page cropped to the popup's own box. */
   async function popupShot(popup, name) {
     await popup.addStyleTag({ content: HIDE_TEST_FIELD });
     await popup.locator('main').screenshot({ path: path.join(OUT_DIR, name) });
-    console.log(`✓ docs/ux-review/screens/${name}`);
+    console.log(`✓ ${REL_DIR}/${name}`);
   }
 
   async function openPopup() {
@@ -146,6 +154,23 @@ try {
     }
   }
 
+  // --- Welcome page (P13b): opens by itself on install. -------------------------------------------
+  const isWelcome = (page) => page.url().includes('/welcome.html');
+  await expect.poll(() => context.pages().some(isWelcome), { timeout: 15_000 }).toBe(true);
+  const welcome = context.pages().find(isWelcome);
+  if (THEME) {
+    await welcome.setViewportSize({ width: 1280, height: 800 });
+    await welcome.getByRole('radio', { name: new RegExp(THEME, 'i') }).check();
+    await expect(welcome.locator('html')).toHaveAttribute('data-theme', THEME);
+    await shot(welcome, 'welcome-01-look.png', { fullPage: true });
+    await welcome.getByRole('button', { name: 'Next' }).click();
+    await shot(welcome, 'welcome-02-sites.png', { fullPage: true });
+    await welcome.getByRole('button', { name: 'Skip' }).click();
+    await shot(welcome, 'welcome-03-helpers.png', { fullPage: true });
+  }
+  // Closed before answering, so the popup shows the research notice ("fresh install").
+  await welcome.close();
+
   // --- First run: nothing labeled, research notice unanswered. ---------------------------------
   let popup = await openPopup();
   await expect(popup.getByRole('dialog', { name: 'Research interventions' })).toBeVisible();
@@ -153,7 +178,7 @@ try {
   await popup
     .getByRole('dialog', { name: 'Research interventions' })
     .screenshot({ path: path.join(OUT_DIR, 'popup-02-research-notice.png') });
-  console.log('✓ docs/ux-review/screens/popup-02-research-notice.png');
+  console.log(`✓ ${REL_DIR}/popup-02-research-notice.png`);
   await popup.close();
 
   const options = await context.newPage();
@@ -200,6 +225,7 @@ try {
   ]);
   popup = await openPopup();
   await expect(popup.getByText('Did you finish your goal?')).toBeVisible({ timeout: 60_000 });
+  await popup.waitForTimeout(800); // let the session-complete card finish fading in
   await popupShot(popup, 'popup-05-check-in.png');
   await popup.getByRole('button', { name: 'Yes' }).click();
   await popup.getByRole('button', { name: '4 – mostly focused' }).click();
@@ -288,6 +314,19 @@ try {
   await expect(options.getByRole('heading', { name: 'My Data', level: 1 })).toBeVisible();
   await options.evaluate(() => globalThis.scrollTo(0, 0));
   await shot(options, 'options-06-my-data.png', { fullPage: true });
+
+  // The welcome page's last screen (the research question was answered in the popup).
+  if (THEME) {
+    const again = await context.newPage();
+    await again.setViewportSize({ width: 1280, height: 800 });
+    await again.goto(`${base}/welcome.html`);
+    await again.getByRole('button', { name: 'Next' }).click();
+    await again.getByRole('button', { name: 'Skip' }).click();
+    await again.getByRole('button', { name: 'Finish' }).click();
+    await expect(again.getByRole('heading', { name: 'You’re all set!' })).toBeVisible();
+    await shot(again, 'welcome-04-done.png', { fullPage: true });
+    await again.close();
+  }
 
   // Keyboard focus check: Tab through the popup and record what has a visible focus ring.
   popup = await openPopup();
