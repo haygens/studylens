@@ -37,6 +37,14 @@ function setVersion(dir: string, version: string) {
   writeFileSync(file, JSON.stringify(manifest));
 }
 
+const CHANNEL = process.env.E2E_CHANNEL ?? (process.env.CI ? 'chromium' : 'msedge');
+
+// Playwright's Chromium (used in CI) doesn't bring an unpacked extension back after
+// runtime.reload(), so the update can only be simulated in Edge, where it is run locally
+// (`npm run test:e2e`). The install/update rules themselves are unit-tested in
+// src/onboarding/onboarding.test.ts, in CI too.
+test.skip(CHANNEL !== 'msedge', 'needs Edge: Chromium does not reload unpacked extensions');
+
 test('update from 0.2.0: no welcome page, a "New: themes!" hint that links to Settings', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'studylens-upgrade-'));
   const ext = path.join(root, 'ext');
@@ -45,7 +53,7 @@ test('update from 0.2.0: no welcome page, a "New: themes!" hint that links to Se
   let context: BrowserContext | undefined;
   try {
     context = await chromium.launchPersistentContext(path.join(root, 'profile'), {
-      channel: process.env.E2E_CHANNEL ?? (process.env.CI ? 'chromium' : 'msedge'),
+      channel: CHANNEL,
       headless: true,
       args: [
         `--disable-extensions-except=${ext}`,

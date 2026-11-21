@@ -1066,7 +1066,7 @@ sessions, notice), `extension/scripts/{smoke-edge,screenshots,ux-review-shots}.m
 `extension/package.json`, `package-lock.json`, `PRIVACY.md`, `README.md`, `CLAUDE.md`,
 `docs/PLAN.md`, `docs/LOG.md`, `docs/store/*`, `docs/ux-review/after/**`.
 
-Tests: unit 649 passed (30 files). E2E 37/37 in local Edge. smoke:edge 12/12 (incl. same files
+Tests: unit 649 passed (30 files). E2E 37/37 in local Edge (36 + 1 skipped in CI's Chromium). smoke:edge 12/12 (incl. same files
 as the 0.3.0 Edge zip). Lint, format check, typecheck, Firefox/Edge/web builds, check:builds clean.
 
 Problems / open questions:
@@ -1077,6 +1077,10 @@ Problems / open questions:
   until they finish it (by design).
 - Edge account verification still pending; then submit `studylens-0.3.0-edge.zip` (P13).
 - Firefox build shows Vite's ">500 kB chunk" notice (React in one shared chunk). Harmless.
+- CI: the upgrade E2E test failed in CI's Playwright Chromium (an unpacked extension doesn't come
+  back after `runtime.reload()` there; restarting the browser doesn't fire an "update" either). It
+  now runs only in Edge (locally, passing) and is skipped in CI; the install/update rules are
+  unit-tested in CI. CI E2E failures now also show as GitHub annotations (`github` reporter).
 
 Disk space: C: 3.16 GB free, M: 14.02 GB free.
 
