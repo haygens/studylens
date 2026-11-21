@@ -1,6 +1,6 @@
 # StudyLens Privacy Policy
 
-_Effective: November 18, 2026 · Applies to StudyLens version 0.2.0 for Firefox and Microsoft Edge (and
+_Effective: November 21, 2026 · Applies to StudyLens version 0.3.0 for Firefox and Microsoft Edge (and
 earlier)_
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
@@ -27,6 +27,8 @@ label.
   its page was shown, how many times you pressed "Continue", and how many times "Back to studying"
   (just these numbers), plus which sites (domain names only) are in their 5-minute "not again"
   period. See "Research interventions" below.
+- **From version 0.3.0:** your chosen theme (Sunrise, Ocean or Pastel), whether you have finished
+  the welcome page, and whether the "New: themes!" hint was dismissed. These are settings only.
 - **Weekly totals** of activity older than 30 days (time per week, site, and label), and the time
   the daily cleanup last ran. See "Retention" below.
 
@@ -53,10 +55,10 @@ are not told the condition when you start a session; the My Data page shows it f
 - The condition is stored with the session, **only on your device**. Nothing is sent anywhere.
 - You can turn research interventions off at any time on the My Data page (or the Settings tab).
   Sessions after that are marked `opted-out` and get no helper.
-- The feature is **on by default from version 0.2.0**. Before your first focus session (or your
-  next one, if you used version 0.1.0), the popup shows a notice that explains the three conditions,
-  with "Keep on" and "Turn off" buttons. It keeps showing each time the popup opens until you press
-  one of them, and no focus session can start until you do.
+- The feature is **on by default from version 0.2.0**. Before your first focus session you choose
+  "Keep on" or "Turn off": on the welcome page that opens after installing (from version 0.3.0),
+  or in a short notice in the popup. The popup notice keeps showing until you press one of them,
+  and no focus session can start until you do.
 - **When the helpers appear:** when you open a site you labeled Distraction during a friction or
   intention session (or switch to a tab that is already on one), StudyLens sends that tab to its
   own page first, which shows the site's domain and your session goal. "Back to studying" works
@@ -79,8 +81,16 @@ are not told the condition when you start a session; the My Data page shows it f
 ## Where your data lives
 
 All of the above is stored **only on your device**, in the extension's local storage
-(`browser.storage.local`). StudyLens version 0.2.0 has no server, no account, and makes no network
-requests: nothing is uploaded, synced, or shared, and the developer cannot see your data.
+(`browser.storage.local`). StudyLens version 0.3.0 has no server, no account, and makes no network
+requests: nothing is uploaded, synced, or shared, and the developer cannot see your data. The
+themes use only fonts already on your computer; no web fonts or other files are downloaded.
+
+## Feedback link
+
+From version 0.3.0, the popup and the Settings tab may show a **"Send feedback"** link (it only
+appears once the feedback form exists). It opens a Microsoft Forms page in a new tab. StudyLens
+sends nothing to it and fills nothing in for you: the form only receives what you choose to type
+there, under Microsoft's privacy statement. Using it is entirely optional.
 
 ## Retention
 
@@ -104,7 +114,7 @@ requests: nothing is uploaded, synced, or shared, and the developer cannot see y
 - **Export** everything as one JSON file.
 - **Delete everything** (you type DELETE to confirm). This also stops a running session without a
   check-in. If tracking was paused, it stays paused; if research interventions were turned off,
-  they stay off.
+  they stay off. The theme goes back to the default (Sunrise).
 - **Turn research interventions off** (version 0.2.0 and later), on the My Data page or the
   Settings tab.
 
@@ -116,7 +126,7 @@ StudyLens contains no ads, analytics, or third-party trackers, and never sells o
 
 Later versions may add **optional, off-by-default** features: study groups (members would see only
 daily focus totals such as "focused 2h 15m", never sites) and research participation (anonymous
-session summaries, never domains). None of these exist in version 0.2.0. Before any of them ships,
+session summaries, never domains). None of these exist in version 0.3.0. Before any of them ships,
 this policy will be updated, and the extension will ask for your explicit consent and show a
 preview before anything leaves your device.
 

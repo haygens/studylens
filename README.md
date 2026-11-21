@@ -9,14 +9,19 @@ focused you felt. You decide which sites count as study or distraction.
 StudyLens is also a student research project asking **which focus interventions actually help
 students study**. From version 0.2.0, each focus session gets one of three conditions at random:
 nothing changes, a 10-second countdown before sites you labeled Distraction, or a "What did you
-come here for?" question before them. A one-time notice explains this before your first session,
-and you can turn it off anytime. It all stays on your device; nothing is shared.
+come here for?" question before them. The welcome page (or a short popup notice) explains this
+before your first session, and you can turn it off anytime. It all stays on your device; nothing is
+shared.
+
+From version 0.3.0 StudyLens has three themes to choose from (Sunrise, Ocean and Pastel) and a short
+welcome page after installing. Every theme passes WCAG AA contrast, and Study / Neutral /
+Distraction always have an icon and a label, never just a color.
 
 **Install:** [Install for Firefox](https://addons.mozilla.org/en-US/firefox/addon/studylens/)
 
 ## Privacy in one minute
 
-- **Local-first:** everything is stored only in your browser. Version 0.2.0 has no server and makes
+- **Local-first:** everything is stored only in your browser. Version 0.3.0 has no server and makes
   no network requests.
 - **Domains only:** it records `youtube.com`, never full addresses, search terms, page titles, page
   content, or keystrokes. What you type in the "What did you come here for?" box is never stored.
@@ -111,7 +116,7 @@ npm run build:firefox -w extension
 - The built add-on is in **`extension/.output/firefox-mv3/`**. Its files should match the uploaded
   add-on's files.
 - To make the uploadable zip instead: `npm run zip:firefox -w extension` →
-  `extension/.output/studylens-0.2.0-firefox.zip` (it also writes the sources zip next to it).
+  `extension/.output/studylens-0.3.0-firefox.zip` (it also writes the sources zip next to it).
 
 **What the build does:** [WXT](https://wxt.dev) (which uses Vite) bundles the TypeScript + React
 source in `extension/` and the shared types in `packages/shared/`. No code is downloaded at

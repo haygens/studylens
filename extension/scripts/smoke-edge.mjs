@@ -3,7 +3,7 @@
  * Run: `npm run smoke:edge -w extension` (builds the normal Edge build first).
  *
  * Loads the REAL production build (`.output/edge-mv3`, the files that go into
- * `studylens-0.2.0-edge.zip`) in the installed Microsoft Edge (channel `msedge`, headless). No
+ * `studylens-0.3.0-edge.zip`) in the installed Microsoft Edge (channel `msedge`, headless). No
  * browser is downloaded. The profile is a throwaway folder in TEMP (on M:) and is deleted
  * afterwards. All http(s) requests get tiny local stub pages or are blocked: nothing touches the
  * internet.
@@ -103,7 +103,7 @@ const buildFiles = filesIn(EXTENSION_DIR);
 
 await check(`manifest: version ${VERSION}, MV3, service worker`, () => {
   expect(manifest.version).toBe(VERSION);
-  expect(manifest.version).toBe('0.2.0');
+  expect(manifest.version).toBe('0.3.0');
   expect(manifest.manifest_version).toBe(3);
   expect(manifest.background?.service_worker).toBeTruthy();
   expect(manifest.browser_specific_settings).toBeUndefined();
