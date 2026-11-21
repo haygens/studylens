@@ -23,9 +23,9 @@ export default function TrackingStatus() {
         background: 'none',
         border: 'none',
         padding: 0,
-        color: '#0969da',
+        color: 'var(--sl-primary)',
         cursor: 'pointer',
-        fontSize: 12,
+        fontSize: 'var(--sl-fs-small)',
         textDecoration: 'underline',
       }}
     >
@@ -39,20 +39,20 @@ export default function TrackingStatus() {
   const paused = state.status === 'ready' && state.data;
 
   return (
-    <div style={{ marginTop: 10, fontSize: 12 }}>
+    <div style={{ marginTop: 10, fontSize: 'var(--sl-fs-small)' }}>
       {paused ? (
         <div
           role="status"
           style={{
             padding: 8,
             borderRadius: 6,
-            background: '#fff8c5',
-            border: '1px solid #d4a72c',
+            background: 'var(--sl-warn-soft)',
+            border: '1px solid var(--sl-warn-border)',
             display: 'grid',
             gap: 6,
           }}
         >
-          <strong style={{ fontSize: 13 }}>Tracking paused</strong>
+          <strong style={{ fontSize: 'var(--sl-fs-small)' }}>Tracking paused</strong>
           <span>StudyLens isn't recording any sites. A running session keeps its timer.</span>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button type="button" onClick={() => setPaused(false)}>
@@ -67,14 +67,14 @@ export default function TrackingStatus() {
             type="button"
             disabled={state.status === 'loading'}
             onClick={() => setPaused(true)}
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 'var(--sl-fs-small)' }}
           >
             Pause tracking
           </button>
           {myDataLink}
         </div>
       )}
-      {saveError && <div style={{ color: '#cf222e', marginTop: 4 }}>{saveError}</div>}
+      {saveError && <div style={{ color: 'var(--sl-distraction)', marginTop: 4 }}>{saveError}</div>}
     </div>
   );
 }

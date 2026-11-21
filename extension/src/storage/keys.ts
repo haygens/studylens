@@ -40,6 +40,11 @@ export const STORAGE_KEYS = {
   weeklyTotals: 'totals:weekly',
   /** Retention (P12): when the daily cleanup last ran (epoch ms). */
   retentionLastRun: 'retention:last-run',
+  /**
+   * The chosen look (P13b): `sunrise`, `ocean` or `pastel`. A setting; "Delete everything"
+   * removes it, which resets it to the default (Sunrise).
+   */
+  theme: 'ui:theme',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

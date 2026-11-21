@@ -33,14 +33,14 @@ export default function InterventionsNotice() {
         marginTop: 10,
         padding: 10,
         borderRadius: 6,
-        background: '#ddf4ff',
-        border: '1px solid #54aeff',
-        fontSize: 12,
+        background: 'var(--sl-primary-soft)',
+        border: '1px solid var(--sl-primary)',
+        fontSize: 'var(--sl-fs-small)',
         display: 'grid',
         gap: 6,
       }}
     >
-      <strong style={{ fontSize: 13 }}>New: research interventions</strong>
+      <strong style={{ fontSize: 'var(--sl-fs-small)' }}>New: research interventions</strong>
       <span>
         StudyLens is testing which focus helpers work. Each focus session now gets one of these at
         random, and you won’t know which in advance:
@@ -70,7 +70,7 @@ export default function InterventionsNotice() {
           Turn off
         </button>
       </div>
-      {saveError && <span style={{ color: '#cf222e' }}>{saveError}</span>}
+      {saveError && <span style={{ color: 'var(--sl-distraction)' }}>{saveError}</span>}
     </div>
   );
 }

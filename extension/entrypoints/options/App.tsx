@@ -6,6 +6,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '../popup/ErrorBoundary';
 import ResearchCard from '@/src/ui/ResearchCard';
+import ThemePicker from '@/src/ui/ThemePicker';
 import Insights from './Insights';
 import MyData, { PauseCard } from './MyData';
 import SiteCategories from './SiteCategories';
@@ -28,16 +29,15 @@ const nav: CSSProperties = {
   margin: '0 auto',
   padding: '16px 16px 0',
   display: 'flex',
-  gap: 4,
-  borderBottom: '1px solid #d0d7de',
-  fontFamily: 'system-ui, sans-serif',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: 6,
 };
 
 const page: CSSProperties = {
   maxWidth: 720,
   margin: '0 auto',
   padding: '24px 16px',
-  fontFamily: 'system-ui, sans-serif',
   lineHeight: 1.4,
 };
 
@@ -57,18 +57,16 @@ export default function App() {
   return (
     <>
       <nav style={nav} aria-label="StudyLens settings">
+        <span className="sl-row" style={{ marginRight: 12, fontWeight: 750 }}>
+          <img src="/icon/32.png" alt="" width={26} height={26} className="sl-logo" />
+          <span style={{ fontSize: 'var(--sl-fs-h3)' }}>StudyLens</span>
+        </span>
         {TABS.map((t) => (
           <a
             key={t.id}
             href={`#${t.id}`}
             aria-current={tab === t.id ? 'page' : undefined}
-            style={{
-              padding: '8px 12px',
-              textDecoration: 'none',
-              color: tab === t.id ? '#1f2328' : '#57606a',
-              fontWeight: tab === t.id ? 600 : 400,
-              borderBottom: tab === t.id ? '2px solid #0969da' : '2px solid transparent',
-            }}
+            className="sl-tab"
           >
             {t.label}
           </a>
@@ -88,7 +86,16 @@ export default function App() {
         </main>
       ) : tab === 'settings' ? (
         <main style={page}>
-          <h1 style={{ margin: 0, fontSize: 24 }}>Settings</h1>
+          <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Settings</h1>
+          <section className="sl-card" style={{ marginTop: 16 }} aria-labelledby="sl-look">
+            <h2 id="sl-look" style={{ margin: '0 0 4px', fontSize: 'var(--sl-fs-h2)' }}>
+              Look
+            </h2>
+            <p className="sl-muted" style={{ margin: '0 0 12px' }}>
+              Pick a theme. It changes every StudyLens page right away.
+            </p>
+            <ThemePicker />
+          </section>
           <ErrorBoundary name="Tracking setting">
             <PauseCard />
           </ErrorBoundary>

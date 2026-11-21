@@ -2,7 +2,10 @@
 
 export function Loading() {
   return (
-    <div role="status" style={{ fontSize: 12, color: '#57606a', marginTop: 12 }}>
+    <div
+      role="status"
+      style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)', marginTop: 12 }}
+    >
       Loading...
     </div>
   );
@@ -23,16 +26,16 @@ export function LoadError({
       style={{
         marginTop: 12,
         padding: 8,
-        fontSize: 12,
-        color: '#cf222e',
-        border: '1px solid #cf222e',
+        fontSize: 'var(--sl-fs-small)',
+        color: 'var(--sl-distraction)',
+        border: '1px solid var(--sl-distraction)',
         borderRadius: 6,
         overflowWrap: 'anywhere',
       }}
     >
       <strong>{what} could not load.</strong>
       <div style={{ margin: '4px 0' }}>{message}</div>
-      <button type="button" style={{ fontSize: 12 }} onClick={onRetry}>
+      <button type="button" style={{ fontSize: 'var(--sl-fs-small)' }} onClick={onRetry}>
         Retry
       </button>
     </div>

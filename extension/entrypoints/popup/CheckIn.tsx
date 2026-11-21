@@ -29,9 +29,9 @@ function choiceStyle(selected: boolean): CSSProperties {
   return {
     flex: 1,
     padding: '6px 0',
-    fontSize: 13,
-    border: `1px solid ${selected ? '#0969da' : '#d0d7de'}`,
-    background: selected ? '#ddf4ff' : '#f6f8fa',
+    fontSize: 'var(--sl-fs-small)',
+    border: `1px solid ${selected ? 'var(--sl-primary)' : 'var(--sl-border)'}`,
+    background: selected ? 'var(--sl-primary-soft)' : 'var(--sl-bg)',
     fontWeight: selected ? 600 : 400,
     borderRadius: 6,
     cursor: 'pointer',
@@ -82,16 +82,18 @@ export default function CheckIn({
   return (
     <form onSubmit={onSubmit} style={{ display: 'grid', gap: 10 }} aria-label="Session check-in">
       <div>
-        <div style={{ fontSize: 13, color: '#57606a' }}>
+        <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>
           Session over{session.endedEarly ? ' (ended early)' : ''}. Your goal was
         </div>
-        <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }}>
+        <div style={{ fontSize: 'var(--sl-fs-h3)', fontWeight: 600, overflowWrap: 'anywhere' }}>
           {session.goal}
         </div>
       </div>
 
       <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={{ fontSize: 13, marginBottom: 4 }}>Did you finish your goal?</legend>
+        <legend style={{ fontSize: 'var(--sl-fs-small)', marginBottom: 4 }}>
+          Did you finish your goal?
+        </legend>
         <div style={{ display: 'flex', gap: 6 }}>
           {GOAL_COMPLETED_VALUES.map((value) => (
             <button
@@ -108,7 +110,9 @@ export default function CheckIn({
       </fieldset>
 
       <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={{ fontSize: 13, marginBottom: 4 }}>How focused were you?</legend>
+        <legend style={{ fontSize: 'var(--sl-fs-small)', marginBottom: 4 }}>
+          How focused were you?
+        </legend>
         <div style={{ display: 'flex', gap: 6 }}>
           {FOCUS_RATINGS.map((value) => (
             <button
@@ -128,8 +132,8 @@ export default function CheckIn({
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: 11,
-            color: '#57606a',
+            fontSize: 'var(--sl-fs-small)',
+            color: 'var(--sl-muted)',
             marginTop: 2,
           }}
         >
@@ -150,8 +154,14 @@ export default function CheckIn({
           Skip
         </button>
       </div>
-      {error && <div style={{ color: '#cf222e', fontSize: 12 }}>{error}</div>}
-      <div style={{ fontSize: 11, color: '#57606a' }}>Your answers stay on this device.</div>
+      {error && (
+        <div style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
+          {error}
+        </div>
+      )}
+      <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>
+        Your answers stay on this device.
+      </div>
     </form>
   );
 }

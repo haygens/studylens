@@ -7,12 +7,14 @@ import { LoadError } from '../../entrypoints/popup/LoadStatus';
 import { useInterventions } from './use-interventions';
 
 const card: CSSProperties = {
-  border: '1px solid #d0d7de',
-  borderRadius: 8,
+  background: 'var(--sl-surface)',
+  border: 'var(--sl-border-w) solid var(--sl-border)',
+  borderRadius: 'var(--sl-radius)',
+  boxShadow: 'var(--sl-card-shadow)',
   padding: 16,
   marginTop: 16,
 };
-const muted: CSSProperties = { color: '#57606a', fontSize: 13 };
+const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-small)' };
 
 export default function ResearchCard() {
   const { state, setParticipating, saveError, retry } = useInterventions();
@@ -24,7 +26,7 @@ export default function ResearchCard() {
 
   return (
     <section style={card} aria-label="Research interventions">
-      <h2 style={{ margin: 0, fontSize: 18 }}>Research interventions</h2>
+      <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Research interventions</h2>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
         <input
           type="checkbox"
@@ -63,7 +65,11 @@ export default function ResearchCard() {
           sessions get no helper, whatever this setting says.
         </p>
       )}
-      {saveError && <p style={{ color: '#cf222e', fontSize: 13 }}>{saveError}</p>}
+      {saveError && (
+        <p style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
+          {saveError}
+        </p>
+      )}
     </section>
   );
 }

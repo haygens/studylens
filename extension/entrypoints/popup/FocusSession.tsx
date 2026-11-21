@@ -135,7 +135,7 @@ function StartForm() {
 
   return (
     <form onSubmit={(e) => void onSubmit(e)} style={{ display: 'grid', gap: 8 }}>
-      <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+      <label style={{ display: 'grid', gap: 4, fontSize: 'var(--sl-fs-small)' }}>
         What will you work on?
         <input
           type="text"
@@ -146,7 +146,7 @@ function StartForm() {
           onChange={(e) => setGoal(e.target.value)}
         />
       </label>
-      <fieldset style={{ border: 'none', padding: 0, margin: 0, fontSize: 13 }}>
+      <fieldset style={{ border: 'none', padding: 0, margin: 0, fontSize: 'var(--sl-fs-small)' }}>
         <legend style={{ marginBottom: 4 }}>How long?</legend>
         {PRESET_MINUTES.map((m) => (
           <label key={m} style={{ marginRight: 10 }}>
@@ -184,7 +184,10 @@ function StartForm() {
         )}
       </fieldset>
       {__STUDYLENS_E2E__ && (
-        <label style={{ fontSize: 12, color: '#9a6700' }} data-testid={E2E_BUILD_MARKER}>
+        <label
+          style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-warn)' }}
+          data-testid={E2E_BUILD_MARKER}
+        >
           Test length in seconds (E2E build only){' '}
           <input
             type="number"
@@ -200,11 +203,15 @@ function StartForm() {
         Start focus session
       </button>
       {gate === 'blocked' && (
-        <div role="note" style={{ fontSize: 12, color: '#57606a' }}>
+        <div role="note" style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>
           {ERROR_TEXT['notice-unanswered']}
         </div>
       )}
-      {error && <div style={{ color: '#cf222e', fontSize: 12 }}>{error}</div>}
+      {error && (
+        <div style={{ color: 'var(--sl-distraction)', fontSize: 'var(--sl-fs-small)' }}>
+          {error}
+        </div>
+      )}
     </form>
   );
 }
@@ -223,15 +230,23 @@ function RunningSession({ session }: { session: ActiveSession }) {
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ fontSize: 13, color: '#57606a' }}>Focusing on</div>
-      <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }}>{session.goal}</div>
+      <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)' }}>Focusing on</div>
+      <div style={{ fontSize: 'var(--sl-fs-h3)', fontWeight: 600, overflowWrap: 'anywhere' }}>
+        {session.goal}
+      </div>
       <div
-        style={{ fontSize: 36, fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}
+        style={{
+          fontSize: 'var(--sl-fs-timer)',
+          fontVariantNumeric: 'tabular-nums',
+          textAlign: 'center',
+        }}
         aria-live="off"
       >
         {formatCountdown(left)}
       </div>
-      <div style={{ fontSize: 12, color: '#57606a', textAlign: 'center' }}>
+      <div
+        style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)', textAlign: 'center' }}
+      >
         {session.plannedMinutes} min session · ends at{' '}
         {new Date(session.plannedEnd).toLocaleTimeString([], {
           hour: 'numeric',
@@ -259,7 +274,7 @@ function LastSession({ session }: { session: FinishedSession }) {
   const actual = Math.round((session.actualEnd - session.start) / 60_000);
   const checkIn = formatCheckIn(session.checkIn);
   return (
-    <div style={{ fontSize: 12, color: '#57606a', marginTop: 10 }}>
+    <div style={{ fontSize: 'var(--sl-fs-small)', color: 'var(--sl-muted)', marginTop: 10 }}>
       Last session: {actual} of {session.plannedMinutes} min
       {session.endedEarly ? ' (ended early)' : ''} · study {mins.study} · neutral {mins.neutral} ·
       distraction {mins.distraction} min · {session.distractionVisits} distraction visit

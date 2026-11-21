@@ -24,6 +24,7 @@ import {
 import { saveRules } from './categories-store';
 import { answerNotice, setInterventionsEnabled, setOptedOut } from './interventions-store';
 import { runRetention } from '../retention/retention';
+import { saveTheme } from './theme-store';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
@@ -85,6 +86,8 @@ async function useEverything(store: FullStore) {
   await setInterventionsEnabled(store, true);
   await answerNotice(store, true);
   await setOptedOut(store, false);
+  // Theme (P13b).
+  await saveTheme(store, 'ocean');
   // Sessions and check-ins (P4, P5): one answered, one ended early, one running.
   await startSession(d, 'First', 25, T0);
   await reconcileSession(d, T0 + 25 * MIN);

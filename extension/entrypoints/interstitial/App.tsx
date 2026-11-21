@@ -41,31 +41,35 @@ const page: CSSProperties = {
   minHeight: '100vh',
   display: 'grid',
   placeItems: 'center',
-  background: '#f6f8fa',
-  fontFamily: 'system-ui, sans-serif',
-  color: '#1f2328',
+  background: 'linear-gradient(160deg, var(--sl-helper-bg), var(--sl-helper-bg-2))',
+  color: 'var(--sl-ink)',
   padding: 16,
   boxSizing: 'border-box',
 };
 const card: CSSProperties = {
-  background: '#fff',
-  border: '1px solid #d0d7de',
-  borderRadius: 12,
+  background: 'var(--sl-surface)',
+  border: 'var(--sl-border-w) solid var(--sl-border)',
+  borderRadius: 'calc(var(--sl-radius) + 4px)',
+  boxShadow: 'var(--sl-shadow)',
   padding: 32,
   maxWidth: 440,
   width: '100%',
   textAlign: 'center',
   boxSizing: 'border-box',
 };
-const button: CSSProperties = { fontSize: 15, padding: '8px 16px', cursor: 'pointer' };
+const button: CSSProperties = {
+  fontSize: 'var(--sl-fs-h3)',
+  padding: '8px 16px',
+  cursor: 'pointer',
+};
 const primary: CSSProperties = {
   ...button,
-  background: '#1a7f37',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 6,
+  background: 'var(--sl-primary)',
+  borderColor: 'var(--sl-primary)',
+  color: 'var(--sl-on-primary)',
+  boxShadow: 'var(--sl-btn-shadow)',
 };
-const muted: CSSProperties = { color: '#57606a', fontSize: 14 };
+const muted: CSSProperties = { color: 'var(--sl-muted)', fontSize: 'var(--sl-fs-body)' };
 
 const SEND_ATTEMPTS = 3;
 const RETRY_MS = 400;
@@ -140,7 +144,7 @@ function Goal({ sessionId }: { sessionId: string }) {
   const goal = useGoal(sessionId);
   if (!goal) return null;
   return (
-    <p style={{ fontSize: 16 }}>
+    <p style={{ fontSize: 'var(--sl-fs-h3)' }}>
       Your goal: <strong>{goal}</strong>
     </p>
   );
@@ -179,7 +183,9 @@ function Card({
   return (
     <main style={card}>
       <p style={{ ...muted, margin: 0 }}>StudyLens · focus session</p>
-      <h1 style={{ fontSize: 22, margin: '8px 0 0', overflowWrap: 'anywhere' }}>{heading}</h1>
+      <h1 style={{ fontSize: 'var(--sl-fs-h2)', margin: '8px 0 0', overflowWrap: 'anywhere' }}>
+        {heading}
+      </h1>
       <Goal sessionId={info.sessionId} />
       {children}
     </main>
@@ -204,7 +210,12 @@ function Friction({ info }: { info: PromptPage }) {
       <p
         role="timer"
         aria-label="Seconds left"
-        style={{ fontSize: 48, fontWeight: 700, margin: '16px 0', color: '#0969da' }}
+        style={{
+          fontSize: 'var(--sl-fs-timer)',
+          fontWeight: 700,
+          margin: '16px 0',
+          color: 'var(--sl-primary)',
+        }}
       >
         {left}
       </p>
@@ -249,7 +260,7 @@ function Intention({ info }: { info: PromptPage }) {
   return (
     <Card info={info} heading={`Before you open ${info.hostname}`}>
       <div style={{ display: 'grid', gap: 10, textAlign: 'left' }}>
-        <label htmlFor={id} style={{ fontSize: 18, fontWeight: 600 }}>
+        <label htmlFor={id} style={{ fontSize: 'var(--sl-fs-h2)', fontWeight: 600 }}>
           What did you come here for?
         </label>
         <input
@@ -261,13 +272,13 @@ function Intention({ info }: { info: PromptPage }) {
           autoComplete="off"
           autoFocus
           disabled={busy}
-          style={{ fontSize: 16, padding: '8px 10px' }}
+          style={{ fontSize: 'var(--sl-fs-h3)', padding: '8px 10px' }}
           onChange={(e) => setAnswer(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && ready && !busy) onContinue();
           }}
         />
-        <p style={{ ...muted, margin: 0, fontSize: 13 }}>
+        <p style={{ ...muted, margin: 0, fontSize: 'var(--sl-fs-small)' }}>
           Your answer is just for you: StudyLens never saves or sends it.
         </p>
       </div>
@@ -285,7 +296,7 @@ function Done({ sessionId }: { sessionId: string }) {
   useTitle('StudyLens — back to studying');
   return (
     <main style={card}>
-      <h1 style={{ fontSize: 22, margin: 0 }}>Back to studying</h1>
+      <h1 style={{ fontSize: 'var(--sl-fs-h2)', margin: 0 }}>Back to studying</h1>
       <Goal sessionId={sessionId} />
       <p style={muted}>You can close this tab.</p>
     </main>
@@ -301,7 +312,7 @@ export default function App() {
       {info?.kind === 'done' && <Done sessionId={info.sessionId} />}
       {!info && (
         <main style={card}>
-          <h1 style={{ fontSize: 22, margin: 0 }}>StudyLens</h1>
+          <h1 style={{ fontSize: 'var(--sl-fs-h2)', margin: 0 }}>StudyLens</h1>
           <p style={muted}>This page is missing its details. You can close this tab.</p>
         </main>
       )}
