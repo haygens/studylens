@@ -14,7 +14,8 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
-    ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
+    ? // `github` turns each failure into an annotation on the Actions run (readable without logs).
+      [['list'], ['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : [['list']],
   outputDir: 'test-results',
   use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
