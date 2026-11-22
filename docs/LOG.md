@@ -1219,3 +1219,11 @@ Disk space: C: 3.66 GB free, M: 14.09 GB free.
 
 Next piece (from PLAN.md): P14 — Recruit friends (usability only); also P13 Edge submit once
 verified; P19b preregistration draft can start using the codebook.
+
+## 2026-11-21 — Store status
+
+2026-11-21: v0.4.0 approved and live on AMO. Edge developer account verified (Authorized).
+Submitted studylens-0.4.0-edge.zip to Microsoft Edge Add-ons (Public, all markets, category
+Productivity; privacy tab: single purpose + justifications for storage, tabs, idle, alarms; no
+remote code; data usage disclosed as Web history (stored locally only); all three certifications).
+Status: In certification.
