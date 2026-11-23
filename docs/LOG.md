@@ -1304,3 +1304,26 @@ Problems / open questions:
 Disk space: C: 3.50 GB free, M: 13.99 GB free.
 
 Next piece (from PLAN.md): P15d — Backend deployment (Turso + Vercel, by hs), then P16 — Group join.
+
+## 2026-11-23 — P15 re-check + deployment steps
+
+Handoff — 2026-11-23
+
+Done:
+
+- The P15 prompt was pasted again; P15 (code) was already finished on 2026-11-22 (commits
+  `c470c87`..`2340e64`, CI green on both jobs). Nothing was rebuilt.
+- Re-verified: 768 tests pass, typecheck and format check clean.
+- Added "Deploying (P15d)" to `docs/backend.md`: step-by-step Turso database + token, Vercel
+  import with root directory `web/`, the three env vars, and a PowerShell CRON_SECRET generator.
+
+Changed files: `docs/backend.md`, `docs/LOG.md`.
+
+Tests: 768 pass (41 files).
+
+Problems / open questions: same as 2026-11-22 (optional VC++ runtime, global registration rate
+limit, daily_totals retention to decide in P18).
+
+Disk space: C: 3.15 GB free, M: 14.07 GB free.
+
+Next piece (from PLAN.md): P15d — Backend deployment (hs), then P16 — Group join.

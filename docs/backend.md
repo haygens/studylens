@@ -185,3 +185,48 @@ See `web/.env.example`. Set them in the Vercel dashboard; for local dev, in `web
 On this Windows PC the libSQL native driver needs the Microsoft Visual C++ Redistributable. Without
 it, local files automatically use Node's built-in SQLite (a one-line warning is printed). CI on
 Linux always uses the real libSQL driver (`REQUIRE_LIBSQL=1`).
+
+## Deploying (P15d — done by hs in the web dashboards)
+
+Never paste the token or secret into a chat, an issue, or a file in the repo.
+
+### (a) Turso database + auth token
+
+1. Go to https://app.turso.tech and sign up / log in (GitHub login is easiest).
+2. Click **Databases** → **Create Database**. Name: `studylens`. Pick the location closest to
+   Vercel's default function region (Washington, D.C. → an AWS **us-east-1** location). Create.
+3. Open the database. Copy its **URL** (looks like `libsql://studylens-<you>.turso.io`). This is
+   `TURSO_DATABASE_URL`. Keep it in a private note (e.g. Notepad, not saved in the repo).
+4. On the same page click **Create Token** (sometimes under the **⋯** menu or "Generate Token").
+   Expiration: **Never** (or a long period — you'd have to update Vercel when it expires).
+   Access: **Read & Write**. Copy the token — it's shown only once. This is `TURSO_AUTH_TOKEN`.
+   The app creates its own tables on first use (migrations run automatically).
+
+### (b) Import the repo into Vercel
+
+1. Go to https://vercel.com and log in with GitHub (Hobby plan).
+2. **Add New…** → **Project**. Find `studylens` under "Import Git Repository" (if it's missing,
+   click **Adjust GitHub App Permissions** and give Vercel access to it) → **Import**.
+3. **Root Directory**: click **Edit**, choose `web`, confirm. Framework Preset should say
+   **Next.js**. Leave the build/install commands on their defaults.
+4. Before clicking Deploy, open **Environment Variables** and add the three in step (c).
+5. Click **Deploy**. When it finishes, open `https://<your-project>.vercel.app/api/health` —
+   it should show `"ok":true` and `"db":"up"`.
+
+### (c) Environment variables
+
+1. Generate a CRON_SECRET in PowerShell (copies a random 64-character hex string to the
+   clipboard without printing it):
+
+   ```powershell
+   $b = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') }) | Set-Clipboard
+   ```
+
+2. In Vercel add (Key → Value), for all environments (Production, Preview, Development):
+   - `TURSO_DATABASE_URL` → the URL from (a) step 3
+   - `TURSO_AUTH_TOKEN` → the token from (a) step 4
+   - `CRON_SECRET` → paste from the clipboard (Ctrl+V)
+3. Already deployed before adding them? Project → **Settings** → **Environment Variables**, add
+   them there, then **Deployments** → the latest one → **⋯** → **Redeploy** (env changes only
+   apply to new deployments).
+4. Check the cron: Project → **Settings** → **Cron Jobs** should list `/api/cleanup` (daily).
