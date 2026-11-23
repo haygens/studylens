@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  # Fast checks: lint, format, types, unit tests, and both store builds.
+  # Fast checks: lint, format, types, unit + API tests, the web build, and both store builds.
   check:
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +22,13 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
+      # Database tests use a temporary local libSQL file (no Turso account needed).
+      # REQUIRE_LIBSQL=1 makes them fail if the real libSQL driver cannot load.
       - run: npm test
+        env:
+          REQUIRE_LIBSQL: '1'
+          STUDYLENS_TEST_DB_DIR: ${{ runner.temp }}/studylens-test-db
+      - run: npm run build -w web
       - run: npm run build:firefox -w extension
       - run: npm run build:edge -w extension
       # Proves the normal builds contain no E2E-only test code.
