@@ -74,9 +74,17 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 Not everything has to ship by Dec 7 (a moonshot may fall short). Pieces marked _(stretch)_ stay in
 the plan as the full vision; the show and tell presents whatever is done plus the design.
 
-- [ ] **P15. Backend + Turso** — `web/lib/db/` interface with stub implementation first, then Turso
-      (create the DB in the web dashboard, env vars in Vercel). API routes on Vercel; error logging
-      through the data layer.
+- [x] **P15. Backend + Turso (code)** — `web/lib/db/` `Db` interface with libSQL (Turso / local
+      file) and in-memory implementations; schema + migrations for devices, groups, memberships,
+      group sessions, participants, presence, daily totals, error logs, rate limits (no browsing
+      data, URLs, IPs or emails). API: `GET /api/health`, `POST /api/devices` (token once, hash
+      stored), `POST /api/errors` (bearer token, scrubbed), `GET /api/cleanup` (Vercel Cron,
+      `CRON_SECRET`); zod validation, JSON errors, per-device rate limits, `withErrorLogging`,
+      CORS for the extension origins. Tests on temp libSQL files, in CI. Done 2026-11-22; see
+      `docs/backend.md`. The extension still never calls the server (P16).
+- [ ] **P15d. Backend deployment** — hs creates the Turso database + token, imports the repo into
+      Vercel (root `web/`), sets `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `CRON_SECRET`; then check
+      `https://<project>.vercel.app/api/health` shows `"db":"up"` and the cron appears in Vercel.
 - [ ] **P16. Group join (no accounts)** — no email accounts. A random device ID generated locally + a
       chosen display name + a group code. The extension asks for permission to contact the StudyLens
       server **only when the user first joins or creates a group** (optional host permission requested
@@ -91,7 +99,8 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       host leaving. Group sessions get `mode: "group"`.
 - [ ] **P19. Reliability** _(partly stretch)_ — `withErrorLogging` wrapper → `error_logs` table,
       Vercel Cron cleanup (14 days, `CRON_SECRET`), optional Discord webhook alerts _(stretch)_, tests
-      in CI.
+      in CI. _(Wrapper, `error_logs`, cleanup cron and their CI tests were built in P15; left:
+      Discord alerts.)_
 - [ ] **P19b. Preregistration draft + analysis script** — OSF-style preregistration draft
       (hypotheses, design, measures, exclusions, analysis plan below) and an analysis script that
       reads the research CSV (P13c) and fits the planned models. Run it on hs's own N=1 pilot data.

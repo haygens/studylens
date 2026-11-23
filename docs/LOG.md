@@ -1250,3 +1250,57 @@ Problems / open questions: none.
 Disk space: C: 3.55 GB free, M: 14.08 GB free.
 
 Next piece (from PLAN.md): P14 — Recruit friends (usability only); P19b preregistration draft.
+
+## 2026-11-22 — P15 backend foundation (code)
+
+Handoff — 2026-11-22
+
+Done:
+
+- Data layer `web/lib/db/`: `Db` interface with a libSQL implementation (Turso in production, a
+  local file for dev/tests) and the in-memory stub. Schema as numbered migrations for devices,
+  groups, memberships, group_sessions, session_participants, device_presence, daily_totals,
+  error_logs, rate_limits. No browsing data, hostnames/URLs, IPs or emails (a test checks the
+  column names). The old research-upload methods (`addSessionSummary`) were removed (P17 is gone).
+- libSQL's Windows native driver can't load on this PC (the Visual C++ runtime is missing). Local
+  `file:` databases fall back to Node's built-in `node:sqlite` automatically (same SQL). CI forces
+  the real libSQL driver (`REQUIRE_LIBSQL=1`), and it passed there.
+- API: `GET /api/health`, `POST /api/devices` (token returned once, only its SHA-256 hash stored),
+  `POST /api/errors` (bearer token, 20/hour/device, scrubbed, no device ID stored),
+  `GET /api/cleanup` (`CRON_SECRET`). zod strict schemas, consistent JSON errors,
+  `withErrorLogging`, rate limits in the DB (registration: global 100/hour, no IPs), CORS for
+  the Edge store ID + Firefox `moz-extension://` origins (localhost/unpacked builds outside
+  production only). Shared API types in `packages/shared/src/api.ts`.
+- `web/vercel.json` (daily cron 09:00 UTC), `web/.env.example`, CI now also runs the web build.
+- Docs: `docs/backend.md`, a draft PRIVACY.md "Study groups (coming in a later version — not
+  active yet)" section, CLAUDE.md commands. PLAN: P15 (code) checked; P15d deployment added.
+- The extension is unchanged and still never calls the server.
+
+Changed files: `web/lib/db/{index,types,memory,executor,schema,migrate,retention,sql-db,contract,
+test-utils}.ts` + tests, `web/lib/api/{auth,cors,errors,handler,rate-limit,scrub,validation,
+test-helpers}.ts` + tests, `web/lib/version.ts`, `web/app/api/{health,devices,errors,cleanup}/
+route.ts` + tests, `web/package.json` (0.1.0, `@libsql/client`, `zod`), `web/vercel.json`,
+`web/.env.example`, `packages/shared/src/{api,index}.ts`, `.github/workflows/ci.yml`, `.gitignore`,
+`.prettierignore`, `eslint.config.js`, `package-lock.json`, `docs/backend.md`, `PRIVACY.md`,
+`CLAUDE.md`, `docs/PLAN.md`, `docs/LOG.md`.
+
+Tests: 768 unit/API tests pass (`npm test`; 74 new). Lint, format check, typecheck, the web build,
+both extension builds and check:builds are clean. A manual smoke test of `next start` on a local DB
+file got the expected status from every endpoint (200/201/202/401/403). CI: **both jobs passed**
+(`check`, `e2e`) on `e614542`.
+
+Problems / open questions:
+
+- Install the Microsoft Visual C++ Redistributable (x64, about 25 MB on C:) to use the real libSQL
+  driver locally? Optional; everything works without it.
+- Registration rate limit is global (no IPs stored), so a flood could block new sign-ups for up to
+  an hour. Fine for a class-sized pilot.
+- daily_totals has no retention rule yet. Decide in P18 (e.g. keep 35 days).
+- Vercel's own platform request logs include IPs (outside the app's control); mentioned in the
+  PRIVACY draft.
+- Error-message scrubbing also turns code like `browser.tabs` into `[domain]` (privacy over
+  debugging).
+
+Disk space: C: 3.50 GB free, M: 13.99 GB free.
+
+Next piece (from PLAN.md): P15d — Backend deployment (Turso + Vercel, by hs), then P16 — Group join.
