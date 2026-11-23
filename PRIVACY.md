@@ -160,14 +160,45 @@ is entirely optional.
 
 StudyLens contains no ads, analytics, or third-party trackers, and never sells or shares your data.
 
-## Future optional features
+## Study groups (coming in a later version — not active yet)
 
-Later versions may add **optional, off-by-default study groups**: you would join with a group code
-and a display name you choose (no email or account), and members would see only daily focus totals
-such as "focused 2h 15m" and who is in a session right now, never sites. StudyLens would ask the
-browser for permission to contact its server only when you first join or create a group. Research
-uploads would come only after ethics (IRB) approval. None of these exist in version 0.4.0. Before
-any of them ships, this policy will be updated, and the extension will ask for your explicit
+> **Draft.** This section describes a planned, optional feature. **It is not active in version
+> 0.4.0**: the extension does not contact any server. It will be finalized before study groups
+> ship, and the effective date above will change.
+
+Study groups will be **optional and off by default**. Nothing changes for you unless you join or
+create a group.
+
+- **Asking first.** StudyLens will ask the browser for permission to contact the StudyLens server
+  only when you first join or create a group — never at install. Before anything is sent, you
+  will see a preview of exactly what will be shared.
+- **No account.** Joining needs a group code and a display name you choose. No email, no real
+  name, no password. The server gives your browser a random device ID and a secret token; the
+  server keeps only a scrambled (hashed) copy of the token.
+- **What the server stores:** your display name, your random device ID, the groups you are in,
+  your **daily focus minutes** (for example "focused 2h 15m" — one number per day), whether you are
+  in a focus session right now, and for live group sessions: the session's length and times, your
+  status (focusing / finished / left), and — only if you choose to share it — your focus minutes
+  for that session. A live group session can have an optional goal; it is deleted 24 hours after
+  the session ends.
+- **What the server never stores:** which websites you visit, domain names, web addresses, page
+  titles, your site labels, distraction attempts, research conditions, check-in answers, your
+  session goals from solo sessions, your email, or your IP address.
+- **Who sees what:** members of a group see each other's display names, daily focus totals, and
+  who is in a session right now. Never sites.
+- **Error reports.** If something goes wrong after you have joined a group, the extension may send
+  a short error message (no personal data). The server removes anything that looks like a web
+  address, domain, email or IP address before saving it, does not link it to your device, and
+  deletes it after 14 days.
+- **Hosting.** The server runs on Vercel and the database on Turso. Like most hosting providers,
+  Vercel keeps short-lived technical request logs (which include IP addresses) for operating its
+  service; StudyLens does not read or keep them.
+- **Leaving.** You will be able to leave a group at any time, which stops sharing.
+
+## Research uploads
+
+Research uploads would come only after ethics (IRB) approval. They do not exist in version 0.4.0.
+Before they ship, this policy will be updated, and the extension will ask for your explicit
 consent and show a preview before anything leaves your device.
 
 ## Changes to this policy

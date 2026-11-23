@@ -21,8 +21,13 @@ Solo project for TCSS 490 Artifact 5 ("moonshot"). Final show and tell: **Monday
 - Extension: **WXT** framework + **React**. Targets: **Firefox (MV3)** and **Edge (Chromium MV3)**.
   Chrome/Safari are future work — don't add Chrome-only or Safari-specific code.
 - Web: **Next.js on Vercel (Hobby plan)** — React dashboard + API routes in one app.
-- Database: **Turso** — NOT set up yet. All server data access goes through `web/lib/db/` (a data layer
-  with an interface), so the backend can start with an in-memory/stub implementation.
+- Database: **Turso** (libSQL via `@libsql/client`) — code done in P15, the Turso database and Vercel
+  project are created by hs in the web dashboards. All server data access goes through the `Db`
+  interface in `web/lib/db/` (libSQL implementation + in-memory stub). Schema = numbered migrations
+  in `web/lib/db/schema.ts` (never edit a shipped one). See `docs/backend.md`.
+- On this PC the libSQL native driver can't load (no Visual C++ runtime), so local `file:` databases
+  fall back to Node's built-in `node:sqlite` automatically. CI forces real libSQL (`REQUIRE_LIBSQL=1`).
+- The extension must not call the server until P16 (optional host permission, asked at join time).
 - Tests: **Vitest**. CI: **GitHub Actions** (public repo).
 - Tooling versions: Node 24, npm 11, TypeScript 6.0.x (TS 7 not yet supported by typescript-eslint),
   ESLint 10 flat config, Prettier 3.
@@ -91,8 +96,14 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - Extension build: `npm run build:firefox -w extension` / `npm run build:edge -w extension`
   (output in `extension/.output/`)
 - Extension store zip: `npm run zip:firefox -w extension` / `npm run zip:edge -w extension`
-- Web dev: `npm run dev -w web` (http://localhost:3000, health check at `/api/health`)
-- Web build: `npm run build -w web`
+- Web dev: `npm run dev -w web` (http://localhost:3000, health check at `/api/health`).
+  Env: copy `web/.env.example` to `web/.env.local` (gitignored); `TURSO_DATABASE_URL=file:.data/dev.db`
+  for a local DB file in `web/.data/` (on M:), or leave it empty for the in-memory stub.
+- Web build: `npm run build -w web` (also runs in CI)
+- API endpoints (P15): `GET /api/health`, `POST /api/devices`, `POST /api/errors` (bearer token),
+  `GET /api/cleanup` (Vercel Cron, `CRON_SECRET`; schedule in `web/vercel.json`). Details:
+  `docs/backend.md`. Database/API tests use temp DB files in `web/.data/test/` (or
+  `STUDYLENS_TEST_DB_DIR`) and delete them afterwards.
 - Tests (all workspaces): `npm test` — watch mode: `npm run test:watch`
 - E2E tests (builds the E2E version and the normal Edge build, runs Playwright in installed Edge):
   `npm run test:e2e`
@@ -115,8 +126,8 @@ If a requested change would break one of these rules, stop and tell hs instead o
 - Lint: `npm run lint`
 - Format: `npm run format` — check only: `npm run format:check`
 - Typecheck (all workspaces): `npm run typecheck`
-- Everything CI runs: `npm run lint; npm run format:check; npm run typecheck; npm test`, both builds +
-  `check:builds`, and (separate job) `npm run test:e2e`
+- Everything CI runs: `npm run lint; npm run format:check; npm run typecheck; npm test`, the web build,
+  both extension builds + `check:builds`, and (separate job) `npm run test:e2e`
 
 ## End-of-session handoff (always print this)
 
