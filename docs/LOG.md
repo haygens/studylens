@@ -1227,3 +1227,26 @@ Submitted studylens-0.4.0-edge.zip to Microsoft Edge Add-ons (Public, all market
 Productivity; privacy tab: single purpose + justifications for storage, tabs, idle, alarms; no
 remote code; data usage disclosed as Web history (stored locally only); all three certifications).
 Status: In certification.
+
+## 2026-11-22 — Edge approved
+
+2026-11-22: v0.4.0 approved by Microsoft and live on Microsoft Edge Add-ons:
+https://microsoftedge.microsoft.com/addons/detail/studylens/phepgpemnllainhhjemgknaeedjjekad
+(store ID `phepgpemnllainhhjemgknaeedjjekad`, recorded in CLAUDE.md and
+docs/store/edge-listing.md). P13 checked off in PLAN.md. README now has "Install for Edge" next to
+"Install for Firefox".
+
+Handoff — 2026-11-22
+
+Done: P13 checked off; Edge listing link added to README; Edge store ID recorded in CLAUDE.md and
+docs/store/edge-listing.md.
+
+Changed files: README.md, CLAUDE.md, docs/PLAN.md, docs/LOG.md, docs/store/edge-listing.md
+
+Tests: docs-only change; Prettier check on the changed files passed. Test suite not re-run.
+
+Problems / open questions: none.
+
+Disk space: C: 3.55 GB free, M: 14.08 GB free.
+
+Next piece (from PLAN.md): P14 — Recruit friends (usability only); P19b preregistration draft.

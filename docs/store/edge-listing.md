@@ -4,6 +4,13 @@ Copy each field into Microsoft Partner Center (Edge program) when submitting (P1
 Microsoft account (or GitHub); the Edge developer account is free. Field limits change sometimes;
 Partner Center shows the current ones next to each field.
 
+## Store ID (for future updates)
+
+- Edge store ID: **`phepgpemnllainhhjemgknaeedjjekad`**
+- Public listing: https://microsoftedge.microsoft.com/addons/detail/studylens/phepgpemnllainhhjemgknaeedjjekad
+- Live since 2026-11-22 (v0.4.0). To update, open this product in Partner Center → Packages →
+  upload the new `studylens-<version>-edge.zip`. Do not create a new product.
+
 ## Files to upload
 
 - Package: `extension/.output/studylens-0.2.0-edge.zip` (`npm run zip:edge -w extension`). Edge

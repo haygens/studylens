@@ -1,6 +1,6 @@
 # StudyLens
 
-A privacy-respecting focus tracker for students, for **Firefox** (and soon Edge).
+A privacy-respecting focus tracker for students, for **Firefox** and **Edge**.
 
 Set a goal, start a focus session, and see how your time splits between study, neutral, and
 distraction sites. When the session ends, a two-question check-in asks whether you finished and how
@@ -17,7 +17,8 @@ From version 0.3.0 StudyLens has three themes to choose from (Sunrise, Ocean and
 welcome page after installing. Every theme passes WCAG AA contrast, and Study / Neutral /
 Distraction always have an icon and a label, never just a color.
 
-**Install:** [Install for Firefox](https://addons.mozilla.org/en-US/firefox/addon/studylens/)
+**Install:** [Install for Firefox](https://addons.mozilla.org/en-US/firefox/addon/studylens/) ·
+[Install for Edge](https://microsoftedge.microsoft.com/addons/detail/studylens/phepgpemnllainhhjemgknaeedjjekad)
 
 ## Privacy in one minute
 

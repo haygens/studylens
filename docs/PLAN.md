@@ -43,11 +43,13 @@ Each piece should fit in one or two Claude Code sessions. Check boxes as pieces 
 - [x] **P11. Local dashboard** — focus trends, best time of day, per-condition comparison (distraction
       visits, focus rating, goal completion).
 - [x] **P12. Retention job** — `alarms` daily: roll raw records >30 days into weekly totals, delete raw.
-- [ ] **P13. Edge build + submit** — verify on Edge, submit to Edge Add-ons (free, GitHub sign-in).
+- [x] **P13. Edge build + submit** — verify on Edge, submit to Edge Add-ons (free, GitHub sign-in).
       Verify = `npm run smoke:edge` (production build in installed Edge, headless) — passing.
       Status 2026-11-20: v0.2.0 is approved and live on AMO. Edge Partner Center: registered as an
       individual developer; account verification pending (verification email not received yet).
       Submit `studylens-0.2.0-edge.zip` once Microsoft verifies the account.
+      Done 2026-11-22: v0.4.0 approved and live on Microsoft Edge Add-ons
+      (https://microsoftedge.microsoft.com/addons/detail/studylens/phepgpemnllainhhjemgknaeedjjekad).
 - [x] **P13b. UI polish + onboarding (v0.3.0)** — all three directions shipped as user-selectable
       themes (Sunrise default, Ocean, Pastel; WCAG AA checked in unit tests, icons + labels for
       categories), welcome page on install (look, sites, helpers), "New: themes!" hint for upgrades,

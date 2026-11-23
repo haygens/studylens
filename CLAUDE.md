@@ -109,6 +109,9 @@ If a requested change would break one of these rules, stop and tell hs instead o
   WCAG AA for every pair in `theme-pairs.ts`). Feedback form link: `FEEDBACK_URL` in
   `extension/src/ui/feedback.ts` (set to the anonymous Microsoft Form; empty = hidden).
 - Firefox add-on ID `studylens@haygens.github.io` (in `extension/wxt.config.ts`) must NEVER change.
+- Edge Add-ons store ID: `phepgpemnllainhhjemgknaeedjjekad` (assigned by Microsoft; listing:
+  https://microsoftedge.microsoft.com/addons/detail/studylens/phepgpemnllainhhjemgknaeedjjekad).
+  Updates are uploaded as a new package to this same product in Partner Center.
 - Lint: `npm run lint`
 - Format: `npm run format` — check only: `npm run format:check`
 - Typecheck (all workspaces): `npm run typecheck`
