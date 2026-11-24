@@ -1,11 +1,11 @@
-# StudyLens backend (P15)
+# StudyLens backend (P15, P16)
 
 The backend is the Next.js app in `web/`, deployed on Vercel (Hobby), with a Turso (libSQL)
 database. It exists for **study groups** (P16, P18, P18b). **The extension does not call it yet** —
 that starts in P16, and only after the user joins or creates a group and grants the optional
 permission to contact the server.
 
-Status: deployed (P15d, 2026-11-23).
+Status: deployed (P15d, 2026-11-23). Study group endpoints added in P16.
 
 - Production URL: **https://studylens-flame.vercel.app** — health check:
   https://studylens-flame.vercel.app/api/health (returns `"ok":true` and `"db":"up"`).
@@ -96,6 +96,8 @@ generic 500.
 | 400    | `invalid_json`, `validation_failed`              |
 | 401    | `unauthorized` (with `WWW-Authenticate: Bearer`) |
 | 403    | `origin_not_allowed`                             |
+| 404    | `not_found` (unknown join code / not in group)   |
+| 409    | `group_full`, `too_many_groups`                  |
 | 413    | `payload_too_large` (bodies are max 4 KB)        |
 | 415    | `unsupported_media_type` (send JSON)             |
 | 429    | `rate_limited` (with `Retry-After` seconds)      |
@@ -111,7 +113,28 @@ generic 500.
 | `POST /api/errors`  | device token           | `{ message, context?, extensionVersion? }`   | `202 { ok: true }`                              |
 | `GET /api/cleanup`  | `Bearer <CRON_SECRET>` | —                                            | `200 { ok, errorLogsDeleted, goalsCleared, … }` |
 
-Types for these are in `packages/shared/src/api.ts`. Group endpoints come in P16/P18/P18b.
+Study groups (P16), all with the device token:
+
+| Method + path                       | Body                       | Success                                                                                   |
+| ----------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- |
+| `POST /api/groups`                  | `{ name }` (1–40 chars)    | `201 { group }` — I'm the owner; 409 `too_many_groups`                                    |
+| `POST /api/groups/join`             | `{ code }` (any case, `-`) | `201 { group }` (joined) / `200` (already in it); 404, 409 `group_full`/`too_many_groups` |
+| `GET /api/groups`                   | —                          | `200 { me: { displayName }, groups: [{ id, name, joinCode, role, joinedAt, members }] }`  |
+| `DELETE /api/groups/:id/membership` | —                          | `200 { ok: true }` (leave); 404 if not a member                                           |
+| `PATCH /api/devices/me`             | `{ displayName }`          | `200 { displayName }`                                                                     |
+| `DELETE /api/devices/me`            | —                          | `200 { ok: true }` — device, memberships, presence, totals: all gone; token dead          |
+
+`members` is `[{ displayName, role, isMe }]`, oldest member first — other members' device IDs are
+never sent. Types: `packages/shared/src/api.ts` and `groups.ts`. P18/P18b endpoints come later.
+
+**Group rules.** Join codes are 8 characters from `23456789ABCDEFGHJKMNPQRSTWXYZ` (no look-alikes
+such as 0/O or 1/I/L), made with a cryptographic random generator, case-insensitive, and shown as
+`ABCD-EFGH`. A group has at most **20** members; a device is in at most **5** groups (including
+the ones it created). Both limits are checked inside the same INSERT that adds the membership, so
+simultaneous joins can't go past them. When the owner leaves, the longest-standing member becomes
+the owner; when the last member leaves, the group (and any live sessions) is deleted. Deleting a
+device does both for each of its groups. These deletes are written out explicitly, so they work
+even if the remote database doesn't enforce foreign keys.
 
 ### Auth (no accounts)
 
@@ -125,12 +148,30 @@ Types for these are in `packages/shared/src/api.ts`. Group endpoints come in P16
 
 ### Rate limits
 
-Counted in the `rate_limits` table (fixed windows), so they work across serverless instances.
-Keys are device IDs — never IPs.
+Two kinds, both fixed one-hour windows:
 
-- `POST /api/devices`: 100 registrations per hour **in total** (there is no device yet, and we
-  don't store IPs). Trade-off: a flood could block new registrations for up to an hour.
-- `POST /api/errors`: 20 per device per hour.
+- **Per device**, counted in the `rate_limits` table, so they hold across serverless instances.
+  Keys are device IDs — never IPs.
+- **Per client address**, counted **in memory only** (`web/lib/api/client-limit.ts`). The address
+  comes from Vercel's `x-forwarded-for` (Vercel overwrites it, so clients can't fake it) and is
+  replaced by an HMAC with a random key made when the instance starts, so even memory holds no raw
+  address. Never written to the database, logs or error reports. Each serverless instance has its
+  own counters, which reset on restart: a best-effort brake on scripts, not an exact quota. Limits
+  are generous because a whole class on school Wi-Fi shares one public address. Locally there is no
+  proxy header, so every request counts as one client (`local`).
+
+| Endpoint                | Per device (database) | Per client address (memory) |
+| ----------------------- | --------------------- | --------------------------- |
+| `POST /api/devices`     | — (no device yet)     | 30 / hour                   |
+| `POST /api/groups/join` | 20 attempts / hour    | 60 attempts / hour          |
+| `POST /api/groups`      | 10 / hour             | 30 / hour                   |
+| `PATCH /api/devices/me` | 20 / hour             | —                           |
+| `POST /api/errors`      | 20 / hour             | —                           |
+
+Every join attempt counts — wrong codes too — before the code is looked at, so guessing one of
+~6.6 × 10^11 codes is hopeless. `POST /api/devices` also has a **global backstop** of 1000
+registrations per hour in the database. (This replaces P15's single global limit of 100 per hour,
+which one script could use up for everyone.)
 
 ### Error reports
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiErrorBody, RegisterDeviceResponse } from '@studylens/shared';
 import { hashToken } from '@/lib/api/auth';
-import { RATE_LIMITS } from '@/lib/api/rate-limit';
+import { CLIENT_RATE_LIMITS, RATE_LIMITS } from '@/lib/api/rate-limit';
 import { EDGE_ORIGIN, FIREFOX_ORIGIN, makeRequest, useTestDb } from '@/lib/api/test-helpers';
 import { OPTIONS, POST } from './route';
 
@@ -55,14 +55,33 @@ describe('POST /api/devices', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rate-limits registrations globally (429 + Retry-After)', async () => {
-    for (let i = 0; i < RATE_LIMITS.registerDevice.limit; i++) {
-      expect((await register({ displayName: `n${i}` })).status).toBe(201);
+  it('rate-limits registrations per client address (in memory), not globally', async () => {
+    const from = (ip: string, name: string) =>
+      register({ displayName: name }, { 'x-forwarded-for': ip });
+    for (let i = 0; i < CLIENT_RATE_LIMITS.registerDevice.limit; i++) {
+      expect((await from('203.0.113.1', `n${i}`)).status).toBe(201);
     }
-    const res = await register({ displayName: 'one too many' });
+    const res = await from('203.0.113.1', 'one too many');
     expect(res.status).toBe(429);
     expect(Number(res.headers.get('retry-after'))).toBeGreaterThan(0);
     expect(await res.json()).toMatchObject({ ok: false, error: { code: 'rate_limited' } });
+    // Someone on another network can still register.
+    expect((await from('203.0.113.2', 'other')).status).toBe(201);
+    // No IP address is stored anywhere in the database.
+    const dump = JSON.stringify(
+      await Promise.all(
+        ['devices', 'rate_limits', 'error_logs'].map((table) =>
+          t().sql.execute({ sql: `SELECT * FROM ${table}` }),
+        ),
+      ),
+    );
+    expect(dump).not.toContain('203.0.113');
+  });
+
+  it('keeps a global backstop in the database (429 once it is exceeded)', async () => {
+    vi.spyOn(t().db, 'hitRateLimit').mockResolvedValue(RATE_LIMITS.registerDevice.limit + 1);
+    const res = await register({ displayName: 'Sam' });
+    expect(res.status).toBe(429);
   });
 
   it('works from the Firefox extension origin and blocks websites (CORS)', async () => {

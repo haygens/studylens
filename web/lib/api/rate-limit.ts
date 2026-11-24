@@ -11,17 +11,34 @@ export interface RateLimitRule {
 const HOUR = 60 * 60 * 1000;
 
 /**
- * Limits are counted in the database (fixed windows), so they hold across serverless instances.
+ * Limits counted in the database (fixed windows), so they hold across serverless instances.
  * Keys are a device ID or a global name — never an IP address.
  */
 export const RATE_LIMITS = {
   /**
-   * Registration has no device yet, and we don't store IPs, so this is one global cap for all
-   * new registrations. Plenty for a class; stops a script from filling the table.
+   * Backstop for all new registrations together. The real per-client limit is
+   * `CLIENT_RATE_LIMITS.registerDevice` (in memory); this only stops a distributed flood from
+   * filling the table.
    */
-  registerDevice: { name: 'register', limit: 100, windowMs: HOUR },
+  registerDevice: { name: 'register', limit: 1000, windowMs: HOUR },
   /** Error reports per device. */
   errorReport: { name: 'errors', limit: 20, windowMs: HOUR },
+  /** Join attempts per device, successful or not (stops guessing codes). */
+  joinGroup: { name: 'join', limit: 20, windowMs: HOUR },
+  /** New groups per device. */
+  createGroup: { name: 'create-group', limit: 10, windowMs: HOUR },
+  /** Display name changes per device. */
+  renameDevice: { name: 'rename', limit: 20, windowMs: HOUR },
+} satisfies Record<string, RateLimitRule>;
+
+/**
+ * Limits per client address, counted in memory only (see client-limit.ts). Generous, because a
+ * whole class on school Wi-Fi shares one public address.
+ */
+export const CLIENT_RATE_LIMITS = {
+  registerDevice: { name: 'register', limit: 30, windowMs: HOUR },
+  joinGroup: { name: 'join', limit: 60, windowMs: HOUR },
+  createGroup: { name: 'create-group', limit: 30, windowMs: HOUR },
 } satisfies Record<string, RateLimitRule>;
 
 /** Counts one request for `subject` (a device ID, or `global`); throws 429 when over the limit. */
