@@ -1508,3 +1508,20 @@ Problems / open questions:
 Disk space: C: 3.44 GB free, M: 13.94 GB free.
 
 Next piece (from PLAN.md): P18 — Study groups (passive): daily focus totals + who's in a session.
+
+## P16 manual test — 2026-11-23 (hs, real Firefox, production server, two fresh test profiles)
+
+PASS:
+
+- Solo install: both optional permissions (server access and "Share personally identifying
+  information") are OFF in about:addons.
+- One Firefox prompt on first use ("Join or create a group").
+- Create group (code `WR34-EQF5`); the second profile joined; both see each other.
+- Turning off server access shows "StudyLens can't contact its server" with Allow again / Forget.
+- Leave and "Delete my group data from the server" work; server access is removed afterward.
+
+FAIL:
+
+- After the single prompt, "Access your data for https://studylens-flame.vercel.app" was ON but
+  "Share personally identifying information" stayed OFF, and the display name was still sent.
+  Follow-up fix: next entry (P16 follow-up).
