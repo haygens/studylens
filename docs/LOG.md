@@ -1629,3 +1629,14 @@ Problems / open questions:
 Disk space: C: 3.27 GB free, M: 13.75 GB free.
 
 Next piece (from PLAN.md): P19b — Preregistration draft + analysis script (or P18b stretch).
+
+## P18 follow-up checks — 2026-11-23
+
+- CI on `f165f2c`: check ✓, e2e ✓.
+- Production: `/api/health` → `db: "up"`; new routes live (`POST /api/totals`, `POST
+  /api/presence`, `GET /api/groups/focusing` answer 401 without a token).
+- addons-linter 10.16.0, temporarily in `M:\temp\addons-linter-tmp` (30 MB), then deleted, on
+  `studylens-0.5.0-firefox.zip`: 0 errors, 0 notices, 2 warnings (`UNSAFE_VAR_ASSIGNMENT` in
+  React DOM, same as earlier releases). Data collection permissions accepted.
+- Still open: real-Firefox check that one prompt grants origin + both data categories (hs's
+  manual test).
