@@ -1591,3 +1591,41 @@ PASS:
 - "Allow again" and then "Delete my group data from the server" worked.
 
 Result: **P16 fully verified in real Firefox.**
+
+## Handoff — 2026-11-23 (P18 done, v0.5.0)
+
+Done:
+
+- Logged hs's P16 re-check in Firefox 160.0.1 (`5399b8d`): P16 fully verified.
+- Server (`003030d`): migration 2 (per-membership `share_minutes`/`share_presence`, existing rows
+  off); `POST /api/totals` (1–7 days, impossible values rejected), `POST /api/presence`
+  (start/heartbeat/stop, 3-min TTL), `PATCH /api/groups/:id/sharing`, `GET /api/groups/:id/overview`
+  (today + 7-day history + focusing now, only what each member shares), `GET /api/groups/focusing`
+  (popup count). Data no group shares any more is deleted at once (switch off, leave, delete
+  device); cleanup deletes totals older than 14 days.
+- Extension (`f42ca38`, `2c315a4`): Firefox optional `technicalAndInteraction` ("extension usage
+  data"; not browsingActivity) in the same prompt; sync on session start/end, ≤ every 5 min and a
+  heartbeat on the session tick alarm, only when registered + a switch on + permissions; offline
+  retry via the heartbeat alarm. Study groups tab: switches (on after explanation + live preview,
+  optimistic), minutes, "Focusing now" badge, 7-day strip, 60 s refresh while visible. Popup
+  "N friends focusing now". Sessions stay `solo`; local `inGroup` covariate (not in CSV).
+- Docs (`dab76d9`): PRIVACY.md, AMO notes, Edge privacy answers, codebook, release notes 0.5.0,
+  backend.md, CLAUDE.md, README. PLAN: P18 checked off.
+- Version 0.5.0; zips in `extension/.output/` (firefox, edge, sources). Sources rebuild: 21/21
+  files identical.
+
+Tests: unit 935/935 (58 files); full E2E 48/48 (incl. 3 new two-profile P18 tests); lint, format,
+typecheck, web build, check:builds clean. smoke:edge 11 passed, 0 failed, 1 skipped (PC idle).
+
+Problems / open questions:
+
+- addons-linter not run this session (usage limit). CI result and /api/health after push not
+  confirmed in this session.
+- Firefox install dialog shows `technicalAndInteraction` checked by default; StudyLens doesn't rely
+  on it (in-app switches decide). Unverified in real Firefox that one prompt grants origin + both
+  categories.
+- Permissions-off can't be simulated in E2E (unit-tested instead).
+
+Disk space: C: 3.27 GB free, M: 13.75 GB free.
+
+Next piece (from PLAN.md): P19b — Preregistration draft + analysis script (or P18b stretch).
