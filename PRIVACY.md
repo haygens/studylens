@@ -1,14 +1,15 @@
 # StudyLens Privacy Policy
 
 _Updated: November 23, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.5.0
-(study groups, not released yet) and earlier. Versions up to 0.4.0 have no study groups._
+(study groups) and earlier. Versions up to 0.4.0 have no study groups._
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
 browsing stays yours: **everything it records about your browsing stays on your device.** Up to
 version 0.4.0 it never sends anything anywhere. From version 0.5.0 it sends something only if you
-choose to join a **study group**, and then only a display name you pick and which groups you are
-in (see "Study groups" below) — never your browsing. **StudyLens never stores what you type** — on
-websites, or in its own "What did you come here for?" box. The only text it keeps is what you enter
+choose to join a **study group**, and then only a display name you pick, which groups you are
+in, and — while you leave its switches on — your daily focus minutes and whether you are focusing
+right now (see "Study groups" below). Never your browsing. **StudyLens never stores what you
+type** — on websites, or in its own "What did you come here for?" box. The only text it keeps is what you enter
 as a session goal, a site label, or (for study groups) a display name and group name.
 
 ## What StudyLens records
@@ -41,6 +42,11 @@ as a session goal, a site label, or (for study groups) a display name and group 
   site labels") with the times you turned it on or off, a counter that goes up each time your
   site labels change, and a **random participant ID** made on this device (see "Research CSV
   export" below). No new browser permissions.
+- **From version 0.5.0 (study groups, only if you join one):** your group registration (see
+  "Study groups"), your two sharing switches for each group, the focus minutes StudyLens last sent
+  for each of the last 7 days and when, and whether the server currently shows you as "focusing
+  now". Each focus session also notes whether you were in a study group when it started (yes/no,
+  stored only on your device; not in the research CSV).
 - **Weekly totals** of activity older than 30 days (time per week, site, and label), and the time
   the daily cleanup last ran. See "Retention" below.
 
@@ -164,6 +170,7 @@ is entirely optional.
 - **Study groups** (version 0.5.0 and later, optional): leave a group, change your display name,
   or delete all your group data from the server, on the Study groups tab. You can also take back
   StudyLens's permission to contact its server in your browser's add-on settings at any time.
+  For each group, two switches: **"Share my focus minutes"** and **"Show when I'm focusing"**.
 
 ## No third parties
 
@@ -177,13 +184,18 @@ any server and nothing about you leaves your device.
 - **Asking first.** The "Study groups" tab first explains what would be shared and what never is.
   Only when you click **"Join or create a group"** does StudyLens ask your browser for permission
   to contact the StudyLens server (`studylens-flame.vercel.app`) — never at install. In Firefox the
-  same prompt also asks to share "personally identifying information": that is the display name
-  you choose. If Firefox doesn't record that OK, StudyLens asks for it on its own, and if you say
-  no, it sends nothing and doesn't set you up (study groups can't work without a display name).
+  same prompt also asks to share "personally identifying information" (the display name you
+  choose) and "technical and interaction data" (your focus minutes and whether you are focusing —
+  see "Passive groups" below). Firefox may also show "technical and interaction data" as a checkbox
+  when you install StudyLens; StudyLens sends nothing because of that alone. If Firefox doesn't
+  record your OK for the display name, StudyLens asks for it on its own, and if you say no, it
+  sends nothing and doesn't set you up (study groups can't work without a display name).
   Nothing is sent until you then create or join a group. Before every request, StudyLens checks
   that it still has server access, and before anything that sends or shows your display name
   (setting up, changing your name, creating or joining a group) that Firefox still has your OK to
-  share it. If you take either back in your browser's add-on settings, StudyLens stops sending; it
+  share it; before sending focus minutes or "focusing now", that Firefox has your OK for
+  "technical and interaction data" (if you turn that off, groups keep working without them). If
+  you take any of these back in your browser's add-on settings, StudyLens stops sending; it
   can then still delete your group data from the server, which sends only your browser's secret
   key. If your Firefox can't record data-sharing permissions at all, StudyLens never sends your
   display name and study groups don't work there.
@@ -192,18 +204,43 @@ any server and nothing about you leaves your device.
   server gives your browser a random device ID and a secret token. Your browser keeps both (in
   `browser.storage.local`; the My Data page shows them, with the token hidden, and the export hides
   the token too). The server keeps only a scrambled (hashed) copy of the token.
-- **What the server stores now (version 0.5.0):** your display name, your random device ID, when
-  it last heard from your browser, the groups you created or joined (group name, join code, who
-  started it, when you joined).
-- **What a later part of version 0.5.0 adds (passive groups),** only for members of your groups:
-  your **daily focus minutes** (one number per day, for example "focused 2 h 15 min") and whether
-  you are in a focus session right now. This policy will say when that part is active.
+- **What the server stores (version 0.5.0):** your display name, your random device ID, when it
+  last heard from your browser, the groups you created or joined (group name, join code, who
+  started it, when you joined), your two sharing switches for each group, and — only while at
+  least one of your groups has the matching switch on — your **focus minutes per day** and whether
+  you are **focusing now** (see below).
+- **Passive groups: what is shared.** Per group, two switches:
+  - **"Share my focus minutes"**: the minutes you spent inside focus sessions you started in
+    StudyLens, one number per day by your own calendar date (for example "focused 2 h 15 min").
+    The group sees today's number and the last 7 days.
+  - **"Show when I'm focusing"**: a "Focusing now" badge while a focus session is running.
+
+  Nothing else about a session is shared: not its goal, length, condition, sites, labels,
+  distraction counts or check-in answers. When you join or create a group, StudyLens first
+  explains this and shows a preview of exactly what others will see; both switches are **on** by
+  default and you can turn them off before joining, or later on the Study groups tab, where the
+  preview updates as you change them. A change takes effect at once. **Turning a switch off
+  deletes that data from the server** as soon as none of your groups shares it any more.
+
+- **When StudyLens sends it.** Only while you are in a group with a switch on and your browser's
+  permissions allow it (checked before every request): your focus minutes when a focus session
+  starts or ends and at most every 5 minutes during a session, and "focusing now" when a session
+  starts, once a minute while it runs, and when it ends. No requests otherwise. If you are
+  offline, StudyLens keeps only the latest numbers and sends them later; your focus sessions work
+  as usual either way. The popup can show a line like "2 friends focusing now" (that request sends
+  only your browser's secret key).
+- **How long the server keeps it.** Focus minutes are deleted after **14 days**. "Focusing now"
+  expires **3 minutes** after your browser last confirmed it (and ends immediately when your session
+  ends). Leaving a group, turning a switch off, or deleting your group data removes it at once.
+- **Research.** Being in a study group doesn't change the research: your sessions stay "solo"
+  sessions, and nothing about groups is in the research CSV.
 - **What the server never stores:** which websites you visit, domain names, web addresses, page
   titles, your site labels, distraction attempts, research conditions, check-in answers, your
   session goals, your email, or your IP address.
-- **Who sees what:** members of a group see each other's display names (and, once passive groups
-  are active, each other's daily focus totals and who is in a session right now). Never sites.
-  Other members never see your device ID.
+- **Who sees what:** members of a group see each other's display names and, for each member, only
+  what that member shares **in that group**: today's focus minutes with the last 7 days, and the
+  "Focusing now" badge. Never sites. Other members never see your device ID. People outside your
+  groups see nothing.
 - **Limits and abuse protection.** A group has at most 20 members, and you can be in at most 5
   groups. To stop people from guessing join codes, the server counts requests per browser (by
   device ID, stored for at most a day) and per internet address. Internet addresses are counted
@@ -211,10 +248,10 @@ any server and nothing about you leaves your device.
   they are never written to the database or any log, and are forgotten within an hour.
 - **Leaving and deleting.** On the Study groups tab you can leave a group at any time, change your
   display name, and **"Delete my group data from the server"**: this deletes your display name,
-  device ID and all your memberships from the server (a group you were the last member of is
-  deleted too), and StudyLens gives back its permission to contact the server. "Delete everything"
-  on the My Data page does the same. If the server can't be reached at that moment, your data on
-  this device is still deleted, you are told, and StudyLens keeps only the secret token so it can
+  device ID, all your memberships, focus minutes and "focusing now" from the server (a group you
+  were the last member of is deleted too), and StudyLens gives back its permission to contact the
+  server. "Delete everything" on the My Data page does the same. If the server can't be reached at
+  that moment, your data on this device is still deleted, you are told, and StudyLens keeps only the secret token so it can
   finish deleting your server data automatically later (it tries about every 30 minutes while
   your browser is open and the permission is still granted).
 - **Error reports.** StudyLens 0.5.0 does not send error reports. (The server can accept short,

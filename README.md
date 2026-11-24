@@ -24,8 +24,9 @@ Distraction always have an icon and a label, never just a color.
 
 - **Local-first:** everything is stored only in your browser. Version 0.4.0 has no server and makes
   no network requests. From version 0.5.0 there are optional **study groups**: only if you turn
-  them on does StudyLens contact its server, and then it sends only a display name you choose and
-  which groups you're in — never your browsing.
+  them on does StudyLens contact its server, and then it sends only a display name you choose,
+  which groups you're in, and — behind two switches per group — your daily focus minutes and
+  whether you're focusing right now. Never your browsing.
 - **Domains only:** it records `youtube.com`, never full addresses, search terms, page titles, page
   content, or keystrokes. What you type in the "What did you come here for?" box is never stored.
 - **Not in private windows.**

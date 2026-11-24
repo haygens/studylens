@@ -56,3 +56,13 @@ sends it anywhere.
   needs 3+ typed characters, which are never stored).
 - Sessions from before v0.4.0 have no `attempts` and no `label_set_version`; leave them out of the
   primary analysis.
+- **Passive study groups (v0.5.0, P18) are not group sessions.** Being in a group where members
+  see each other's daily focus minutes and "focusing now" does not change a session's `mode`: it
+  stays `solo` and stays in the main analysis. Only live group sessions (P18b, future) are
+  `group`.
+- **Possible covariate, recorded but not exported yet:** from v0.5.0 every session stores a
+  local-only flag `inGroup` (true/false: was this browser in at least one study group when the
+  session started; missing before v0.5.0). It is **not a CSV column** yet. Seeing friends' focus
+  totals could plausibly change behavior, so a later version may add it as a column (and the
+  preregistration should say whether it is a covariate or an exclusion) — only after IRB approval
+  and with the codebook updated first.

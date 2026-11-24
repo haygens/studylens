@@ -171,8 +171,7 @@ see all stored data on the My Data page, export it as JSON, or delete it all.
 
 ## Version 0.5.0 (study groups, P16 + P18) — changes for the next upload
 
-Not uploaded yet: 0.5.0 ships when study groups (P16) and passive groups (P18) are both done.
-Everything above still applies, with these changes. Privacy questions in Partner Center: see
+Not uploaded yet (P16 + P18 done 2026-11-23; zips built). Everything above still applies, with these changes. Privacy questions in Partner Center: see
 `edge-privacy-answers.md`.
 
 **Notes for certification — replace the first paragraph with:**
@@ -182,7 +181,10 @@ StudyLens is a local-first focus tracker for students. Everything it records sta
 "Study groups" tab and clicks "Join or create a group" does StudyLens request the optional host
 permission `https://studylens-flame.vercel.app/*` (never at install). After that it sends the
 StudyLens server only a display name the user chooses, a group name or join code, and a random
-device token the server issued. It never sends browsing data (no domains, URLs, titles, site
+device token the server issued — and, while the user leaves the per-group switches on (on by
+default after an explanation with a live preview), one number per day (focus minutes inside
+StudyLens focus sessions) and whether a focus session is running now, for members of their groups.
+It never sends browsing data (no domains, URLs, titles, site
 labels, goals, check-in answers or research data). Users who never use groups make no network
 requests at all. Source code (MIT): https://github.com/haygens/studylens (server in `web/`, API in
 `docs/backend.md`).
@@ -201,5 +203,9 @@ No host permissions at install, no content scripts. One optional host permission
 10. Options page → **Study groups** tab. It explains what is shared and what never is.
 11. Click **Join or create a group** → Edge asks to allow access to studylens-flame.vercel.app →
     Allow.
-12. Type a display name and a group name → **Create group**. The card shows the join code and you
-    as the only member. **Leave group**, then **Delete my group data from the server**.
+12. Type a display name and a group name (the two sharing switches above the forms are on, with a
+    preview of what others see) → **Create group**. The card shows the join code and you as the
+    only member.
+13. Start a focus session from the toolbar popup. On the group card your row shows "Focusing now"
+    (Refresh, or wait up to 60 s). Turn "Show when I'm focusing" off: the badge disappears.
+14. **Leave group**, then **Delete my group data from the server**.

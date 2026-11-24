@@ -106,9 +106,12 @@ If a requested change would break one of these rules, stop and tell hs instead o
   for a local DB file in `web/.data/` (on M:), or leave it empty for the in-memory stub.
 - Web build: `npm run build -w web` (also runs in CI)
 - API endpoints (P15): `GET /api/health`, `POST /api/devices`, `POST /api/errors` (bearer token),
-  `GET /api/cleanup` (Vercel Cron, `CRON_SECRET`; schedule in `web/vercel.json`). Details:
-  `docs/backend.md`. Database/API tests use temp DB files in `web/.data/test/` (or
-  `STUDYLENS_TEST_DB_DIR`) and delete them afterwards.
+  `GET /api/cleanup` (Vercel Cron, `CRON_SECRET`; schedule in `web/vercel.json`). Study groups
+  (P16): `/api/groups`, `/api/groups/join`, `/api/groups/:id/membership`, `/api/devices/me`.
+  Passive groups (P18): `POST /api/totals`, `POST /api/presence`, `PATCH /api/groups/:id/sharing`,
+  `GET /api/groups/:id/overview`, `GET /api/groups/focusing`. Details: `docs/backend.md`.
+  Database/API tests use temp DB files in `web/.data/test/` (or `STUDYLENS_TEST_DB_DIR`) and
+  delete them afterwards.
 - Tests (all workspaces): `npm test` — watch mode: `npm run test:watch`
 - E2E tests (builds the E2E version and the normal Edge build, starts the web API locally with
   `next dev` on 127.0.0.1:3101 and a temp DB in `web/.data/e2e/`, runs Playwright in installed Edge):

@@ -187,17 +187,33 @@ library code (`dangerouslySetInnerHTML` support); StudyLens never uses `innerHTM
 
 ## Version 0.5.0 (study groups, P16 + P18) — changes for the next upload
 
-Not uploaded yet: 0.5.0 ships when study groups (P16) and passive groups (P18) are both done.
-Everything above still applies, with these changes.
+Not uploaded yet (P16 + P18 done 2026-11-23; zips built). Everything above still applies, with
+these changes.
 
 **Data collection (Developer Hub → "Data collection" and the manifest).** The manifest declares
-`data_collection_permissions: { required: ["none"], optional: ["personallyIdentifyingInfo"] }`.
-Nothing is collected by default. The optional category covers the **display name** a user picks
-when they create or join a study group (it may be a real name, so it is declared). It is requested
-at runtime, in the same `permissions.request()` as the server origin, only when the user clicks
-"Join or create a group" — never at install. (`technicalAndInteraction` is not used.) If AMO's
-form asks which data is transmitted: display name and group membership, to the developer's own
-server, only after opt-in.
+`data_collection_permissions: { required: ["none"], optional: ["personallyIdentifyingInfo",
+"technicalAndInteraction"] }`. Nothing is collected by default. Both are requested at runtime, in
+the same `permissions.request()` as the server origin, only when the user clicks "Join or create a
+group" — never at install:
+
+- `personallyIdentifyingInfo`: the **display name** a user picks when they create or join a study
+  group (it may be a real name, so it is declared).
+- `technicalAndInteraction` (passive groups, P18): the user's **focus minutes per day** (time
+  inside focus sessions they started in StudyLens) and **whether a focus session is running**
+  ("focusing now"), shared only with members of their groups, each behind a per-group switch.
+  Why this category: Mozilla describes it as "extension usage and settings data" and how the user
+  "interacts with Firefox and the installed add-on" — focus minutes are usage of StudyLens's own
+  timer. It is **not** `browsingActivity`: no websites, domains, URLs or site categories are sent.
+  It is not `websiteActivity` (no clicks/scrolling/typing on pages) and not `healthInfo`.
+
+Firefox shows `technicalAndInteraction` as a checkbox in the install dialog (checked by default).
+StudyLens does not treat that as the user's choice: nothing is sent unless the user also joins a
+group (in-app explanation with a live preview, then the browser prompt) and leaves the in-app
+switches on. Unchecking it in about:addons stops sending at once (checked before every request).
+
+If AMO's form asks which data is transmitted: display name, group membership, daily focus minutes
+and "focusing now", to the developer's own server, only after opt-in. Daily focus minutes are
+deleted after 14 days; "focusing now" expires 3 minutes after the last heartbeat.
 
 **Notes to reviewer — replace the first paragraph with:**
 
@@ -206,9 +222,14 @@ StudyLens is a local-first focus tracker. Everything it records stays in `storag
 shared, and clicks "Join or create a group", StudyLens asks for the optional host permission
 `https://studylens-flame.vercel.app/*` and the optional data collection category
 `personallyIdentifyingInfo` (one prompt; if Firefox didn't grant the data category, a second
-prompt asks for it alone from its own button). Then, and only then, it sends the server a display name
-the user chooses, a group name or join code, and a random device token the server issued. It never
-sends browsing data (no domains, URLs, titles, labels, goals, check-in answers or research data).
+prompt asks for it alone from its own button) and `technicalAndInteraction` (focus activity).
+Then, and only then, it sends the server a display name the user chooses, a group name or join
+code, and a random device token the server issued. While the user leaves the per-group switches on
+(on by default after an explanation with a live preview), it also sends **one number per day**
+(focus minutes inside StudyLens focus sessions) when a session starts or ends and at most every 5
+minutes during one, and a "focusing now" start/heartbeat (once a minute, only while a session
+runs)/stop. Each request checks the permissions first. It never sends browsing data (no domains,
+URLs, titles, labels, goals, check-in answers or research data).
 Users who never open groups make no network requests at all. Server source: `web/` in the same
 repository (Next.js on Vercel, Turso database); API documented in `docs/backend.md`.
 
@@ -232,5 +253,11 @@ repository (Next.js on Vercel, Turso database); API documented in `docs/backend.
 11. Type a display name (e.g. "Reviewer") and a group name, click **Create group**. The group card
     shows an 8-character join code and you as the only member. "Copy invite message" copies the
     code and install links.
-12. **Leave group** → Yes, leave. Then **Delete my group data from the server** → Yes, delete: the
+12. **Passive groups (P18):** on the group card, "What this group sees about you" has two switches
+    ("Share my focus minutes", "Show when I'm focusing") and a live preview ("Others in this group
+    see: Reviewer · 0 min focused today …"). Start a focus session from the toolbar popup: the card's
+    member row shows "Focusing now" (Refresh, or wait up to 60 s) and, a few minutes later, the
+    minutes. Turn a switch off: the row shows "Focus minutes not shared" / no badge, and the server
+    deletes that data.
+13. **Leave group** → Yes, leave. Then **Delete my group data from the server** → Yes, delete: the
     server copy is deleted and the permission is given back (about:addons → Permissions).
