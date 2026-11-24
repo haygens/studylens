@@ -1640,3 +1640,25 @@ Next piece (from PLAN.md): P19b — Preregistration draft + analysis script (or 
   React DOM, same as earlier releases). Data collection permissions accepted.
 - Still open: real-Firefox check that one prompt grants origin + both data categories (hs's
   manual test).
+
+## P18 manual test — 2026-11-23 (hs, two fresh Firefox 160 profiles, production server, v0.5.0 zip)
+
+PASS:
+
+- One prompt granted server access + "personally identifying information" + "technical and
+  interaction data".
+- Create and join worked.
+- B saw A "Focusing now" and A's minutes (auto-refresh; no manual Refresh needed).
+- B's popup showed "1 friend focusing now".
+- Turning off "Show when I'm focusing" removed the badge; turning off "Share my focus minutes"
+  showed "Focus minutes not shared".
+- Turning off "technical and interaction data" in about:addons showed the explanation and sent
+  nothing.
+- Leave and "Delete my group data from the server" worked.
+
+Bugs found (fixed in the next entry):
+
+1. "Members (N of 20)" was stale: A's card said "1 of 20" while listing 2 members (page open since
+   before B joined).
+2. The "Others in this group see" preview showed "0 min focused today" while the member's own row
+   showed "1 min".
