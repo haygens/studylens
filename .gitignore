@@ -38,3 +38,6 @@ Thumbs.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Written by `next dev` when it detects an AI coding agent (not project docs)
+web/AGENTS.md
