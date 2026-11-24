@@ -153,6 +153,7 @@ button.sl-btn-primary {
 input[type='text'],
 input[type='number'],
 input:not([type]),
+textarea,
 select {
   font: inherit;
   font-size: var(--sl-fs-body);

@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import { E2E_API_BASE, OPTIONAL_DATA_COLLECTION, PRODUCTION_API_BASE } from './server-urls';
 
 /**
  * Firefox add-on ID. It can NEVER change after the first upload to addons.mozilla.org, so it lives
@@ -17,7 +18,12 @@ const GECKO_ID = 'studylens@haygens.github.io';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   vite: (env) => ({
-    define: { __STUDYLENS_E2E__: JSON.stringify(env.mode === 'e2e') },
+    define: {
+      __STUDYLENS_E2E__: JSON.stringify(env.mode === 'e2e'),
+      __STUDYLENS_API_BASE__: JSON.stringify(
+        env.mode === 'e2e' ? E2E_API_BASE : PRODUCTION_API_BASE,
+      ),
+    },
   }),
   manifest: ({ browser, mode }) => ({
     name: mode === 'e2e' ? 'StudyLens (E2E test build)' : 'StudyLens',
@@ -28,8 +34,14 @@ export default defineConfig({
     action: {
       default_icon: { 16: 'icon/16.png', 32: 'icon/32.png', 48: 'icon/48.png' },
     },
-    // Privacy rule 3: minimal permissions, no host permissions at install.
+    // Privacy rule 3: minimal permissions, no host permissions at install. The StudyLens server
+    // is an OPTIONAL host permission, requested only when the user first joins or creates a study
+    // group (P16). The E2E build instead gets its local test server at install, because Playwright
+    // can't click the browser's permission prompt; its request() then resolves without a prompt.
     permissions: ['storage', 'tabs', 'idle', 'alarms'],
+    ...(mode === 'e2e'
+      ? { host_permissions: [`${E2E_API_BASE}/*`] }
+      : { optional_host_permissions: [`${PRODUCTION_API_BASE}/*`] }),
     // Privacy rule 4: never run in private windows.
     incognito: 'not_allowed',
     ...(browser === 'firefox' && {
@@ -39,9 +51,8 @@ export default defineConfig({
           // `data_collection_permissions` needs Firefox 140+ (142+ on Android); 142 keeps
           // `web-ext lint` clean for both.
           strict_min_version: '142.0',
-          // Nothing leaves the device by default. Opt-in research upload (P17) will add an
-          // optional entry here.
-          data_collection_permissions: { required: ['none'] },
+          // Nothing leaves the device by default; study groups are opt-in (see above).
+          data_collection_permissions: { required: ['none'], optional: OPTIONAL_DATA_COLLECTION },
         },
       },
     }),

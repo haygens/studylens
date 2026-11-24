@@ -5,15 +5,21 @@
  * - Every `.output/<browser>-mv3` folder must exist and must NOT contain the E2E markers.
  * - An E2E build (`*-e2e`), if present, MUST contain them, so this check can't pass by accident.
  * - Both manifests are complete and browser-correct: MV3, the same 4 permissions, no host
- *   permissions, never in private windows, every icon file present. Edge: a service worker and no
- *   Firefox-only keys. Firefox: background scripts and the add-on ID that must never change.
+ *   permissions at install, exactly one OPTIONAL host permission (the StudyLens server, asked for
+ *   only when the user joins a study group — P16), never in private windows, every icon file
+ *   present. Edge: a service worker and no Firefox-only keys. Firefox: background scripts, the
+ *   add-on ID that must never change, and data collection "none" required with only the study
+ *   group category optional.
+ * - Normal builds talk to the production server; only the E2E build knows the local test server.
  */
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Node 24 runs TypeScript files directly (type stripping), so the URLs have one source.
+import { E2E_API_BASE, OPTIONAL_DATA_COLLECTION, PRODUCTION_API_BASE } from '../server-urls.ts';
 
 const outRoot = fileURLToPath(new URL('../.output/', import.meta.url));
-const MARKERS = ['studylens-e2e-build', 'E2E test build', 'testSeconds'];
+const MARKERS = ['studylens-e2e-build', 'E2E test build', 'testSeconds', E2E_API_BASE];
 const REQUIRED = ['firefox-mv3', 'edge-mv3'];
 
 function files(dir) {
@@ -49,9 +55,16 @@ function manifestProblems(name, dir) {
     JSON.stringify([...(m.permissions ?? [])].sort()) === JSON.stringify(PERMISSIONS),
     `permissions are ${JSON.stringify(m.permissions)}`,
   );
+  check(!m.host_permissions && !m.optional_permissions, 'host permissions at install');
   check(
-    !m.host_permissions && !m.optional_permissions && !m.optional_host_permissions,
-    'host or optional permissions',
+    JSON.stringify(m.optional_host_permissions) === JSON.stringify([`${PRODUCTION_API_BASE}/*`]),
+    `optional_host_permissions are ${JSON.stringify(m.optional_host_permissions)}`,
+  );
+  check(
+    files(dir).some(
+      (f) => f.endsWith('.js') && readFileSync(f, 'utf8').includes(PRODUCTION_API_BASE),
+    ),
+    'the code does not use the production server URL',
   );
   check(!m.content_scripts, 'content scripts');
   check(m.incognito === 'not_allowed', 'incognito is not not_allowed');
@@ -71,6 +84,12 @@ function manifestProblems(name, dir) {
   } else {
     check(Array.isArray(m.background?.scripts), 'Firefox needs background scripts');
     check(m.browser_specific_settings?.gecko?.id === GECKO_ID, 'Firefox add-on ID changed');
+    const dc = m.browser_specific_settings?.gecko?.data_collection_permissions;
+    check(
+      JSON.stringify(dc) ===
+        JSON.stringify({ required: ['none'], optional: OPTIONAL_DATA_COLLECTION }),
+      `data_collection_permissions are ${JSON.stringify(dc)}`,
+    );
   }
   return problems;
 }

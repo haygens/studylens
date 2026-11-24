@@ -29,6 +29,8 @@ import { installPlan } from '../onboarding/onboarding';
 import { applyInstallPlan, dismissThemesHint, finishWelcome } from './onboarding-store';
 import { ensureParticipantId, setLabelLock } from './research-store';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
+import type { ApiClient } from '../groups/api-client';
+import { ensureDevice, rememberPendingDelete } from '../groups/service';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
 const MIN = 60_000;
@@ -95,6 +97,15 @@ async function useEverything(store: FullStore) {
   await setLabelLock(store, false, T0 - MIN / 2);
   // Theme (P13b).
   await saveTheme(store, 'ocean');
+  // Study groups (P16): registering on the server, and a server delete left pending.
+  const client = {
+    register: async (displayName: string) => ({
+      ok: true as const,
+      data: { deviceId: 'dev-1', token: 'slt_secret', displayName },
+    }),
+  } as unknown as ApiClient;
+  await ensureDevice({ store, client }, 'Sam');
+  await rememberPendingDelete({ store, client }, 'slt_old');
   // Onboarding (P13b): welcome page and the "New: themes!" hint.
   await applyInstallPlan(store, installPlan('install'));
   await finishWelcome(store);

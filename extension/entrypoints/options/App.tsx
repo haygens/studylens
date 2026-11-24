@@ -1,7 +1,8 @@
 /**
- * Options page with four tabs: Site categories (P3), Insights (local dashboard, P11), Settings
- * (pause tracking, research interventions — P8, study mode — P13c) and My Data (P6). The tab lives in the URL hash
- * (`options.html#my-data`), so the popup can link straight to My Data.
+ * Options page with five tabs: Site categories (P3), Insights (local dashboard, P11), Study groups
+ * (opt-in, P16), Settings (pause tracking, research interventions — P8, study mode — P13c) and My
+ * Data (P6). The tab lives in the URL hash (`options.html#my-data`), so the popup can link straight
+ * to a tab.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '../popup/ErrorBoundary';
@@ -13,12 +14,14 @@ import { feedbackLink } from '@/src/ui/feedback';
 import Insights from './Insights';
 import MyData, { PauseCard } from './MyData';
 import SiteCategories from './SiteCategories';
+import StudyGroups from './StudyGroups';
 
-type Tab = 'categories' | 'insights' | 'settings' | 'my-data';
+type Tab = 'categories' | 'insights' | 'groups' | 'settings' | 'my-data';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'categories', label: 'Site categories' },
   { id: 'insights', label: 'Insights' },
+  { id: 'groups', label: 'Study groups' },
   { id: 'settings', label: 'Settings' },
   { id: 'my-data', label: 'My Data' },
 ];
@@ -79,6 +82,12 @@ export default function App() {
         <main style={page}>
           <ErrorBoundary name="Insights">
             <Insights />
+          </ErrorBoundary>
+        </main>
+      ) : tab === 'groups' ? (
+        <main style={page}>
+          <ErrorBoundary name="Study groups">
+            <StudyGroups />
           </ErrorBoundary>
         </main>
       ) : tab === 'my-data' ? (

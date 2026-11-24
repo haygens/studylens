@@ -16,6 +16,8 @@ import {
   recordChoice,
   type InterstitialDeps,
 } from '@/src/interventions/interstitial-controller';
+import { groupDeps } from '@/src/groups/browser-groups';
+import { retryPendingDelete } from '@/src/groups/service';
 import { cryptoRandomInt } from '@/src/interventions/randomize';
 import { deleteEverything } from '@/src/my-data/delete-all';
 import { installPlan } from '@/src/onboarding/onboarding';
@@ -235,6 +237,11 @@ export default defineBackground(() => {
       // Auto-skip a check-in left unanswered for 12 hours and keep the "?" badge right.
       void enqueue(() => expireCheckIns(sessionDeps, Date.now())).catch(() => undefined);
       cleanUpIfDue();
+      // Study groups (P16): finish deleting server data that "Delete everything" couldn't reach.
+      // A network call, so it runs outside the queue (tracking never waits for the server).
+      void retryPendingDelete(groupDeps, Date.now()).catch((err: unknown) =>
+        console.error('[StudyLens] pending server delete failed', err),
+      );
     }
     if (alarm.name === SESSION_END_ALARM) void reconcile().catch(() => undefined);
     if (alarm.name === SESSION_TICK_ALARM) {

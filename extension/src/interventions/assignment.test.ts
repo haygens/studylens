@@ -177,7 +177,8 @@ describe('intervention engine in session starts', () => {
       counts[String(started)] = (counts[String(started)] ?? 0) + 1;
     }
     expect(counts).toEqual({ control: 100, friction: 100, intention: 100 });
-  });
+    // CPU-bound (300 full session runs, ~3 s alone): more time when every test file runs at once.
+  }, 30_000);
 
   it('opted out: "opted-out", and the block is not used', async () => {
     const store = memoryStore({

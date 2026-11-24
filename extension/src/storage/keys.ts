@@ -67,6 +67,17 @@ export const STORAGE_KEYS = {
   labelLock: 'study:label-lock',
   /** Label-set version (P13c): goes up by one every time the site labels change. */
   labelSetVersion: 'categories:version',
+  /**
+   * Study groups (P16): this browser's registration on the StudyLens server — a random device ID
+   * the server made, the secret token for it (never shown or exported in full), the display name
+   * and when it registered. Only exists after the user joined or created a group.
+   */
+  groupDevice: 'groups:device',
+  /**
+   * Study groups (P16): if "Delete everything" couldn't reach the server, the token needed to
+   * finish deleting this browser's data there. StudyLens retries automatically, then removes it.
+   */
+  groupServerDeletePending: 'groups:pending-server-delete',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

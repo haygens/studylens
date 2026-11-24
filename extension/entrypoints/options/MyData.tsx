@@ -5,6 +5,16 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
+import { failureText } from '@/src/groups/api-client';
+import { groupDeps } from '@/src/groups/browser-groups';
+import { asGroupDevice, maskToken } from '@/src/groups/group-store';
+import { removeServerAccess } from '@/src/groups/permission';
+import {
+  deleteServerDataBeforeDeleteEverything,
+  rememberPendingDelete,
+  type DeleteEverythingServerStep,
+} from '@/src/groups/service';
+import { STORAGE_KEYS } from '@/src/storage/keys';
 import CategoryChip from '@/src/ui/CategoryChip';
 import { exportFileName, exportJson } from '@/src/my-data/export';
 import { researchCsv, researchFileName } from '@/src/my-data/research-csv';
@@ -132,13 +142,29 @@ function NeverCollected() {
         <li>Anything in private / incognito windows</li>
       </ul>
       <p style={{ ...muted, marginBottom: 0 }}>
-        Everything below is stored only in this browser. Nothing is sent anywhere.
+        Everything below is stored only in this browser. Nothing is sent anywhere, unless you join a
+        study group: then only your display name and group memberships go to the StudyLens server
+        (see the Study groups tab).
       </p>
     </section>
   );
 }
 
-function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
+/** What "Delete everything" did on the server, in words. */
+function serverDeleteText(step: DeleteEverythingServerStep): string | null {
+  switch (step.status) {
+    case 'not-registered':
+      return null;
+    case 'deleted':
+      return 'Your study group data was also deleted from the StudyLens server (display name, device ID and group memberships).';
+    case 'failed':
+      return step.failure.kind === 'no-permission'
+        ? 'Your study group data on the StudyLens server (display name and group memberships) is not deleted yet, because StudyLens no longer has permission to contact its server. Turn that permission back on in your browser’s add-on settings and StudyLens will finish the deletion automatically.'
+        : `StudyLens couldn’t delete your study group data on its server (display name and group memberships): ${failureText(step.failure)} It kept only the key needed to delete it, and will try again automatically (about every 30 minutes while the browser is open).`;
+  }
+}
+
+function DeleteCard({ onDeleted }: { onDeleted: (step: DeleteEverythingServerStep) => void }) {
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,12 +175,17 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
     setBusy(true);
     setError(null);
     try {
+      // Study groups (P16): delete the server copy first, while the token still exists. This
+      // never throws and never stops the local delete.
+      const server = await deleteServerDataBeforeDeleteEverything(groupDeps);
       const reply = (await browser.runtime.sendMessage({
         type: 'data:delete-all',
       } satisfies SessionMessage)) as SessionReply;
       if (!reply.ok) throw new Error(reply.error);
+      if (server.status === 'failed') await rememberPendingDelete(groupDeps, server.token);
+      if (server.status === 'deleted') await removeServerAccess();
       setTyped('');
-      onDeleted();
+      onDeleted(server);
     } catch (err) {
       console.error('[StudyLens] delete everything failed', err);
       setError('Something went wrong, so nothing may have been deleted. Try again.');
@@ -168,9 +199,10 @@ function DeleteCard({ onDeleted }: { onDeleted: () => void }) {
       <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Delete everything</h2>
       <p style={muted}>
         This permanently deletes all your activity records, focus sessions, check-in answers, site
-        labels and research settings from this browser, and stops a running session. It can't be
-        undone. Export first if you want a copy. (If tracking is paused, it stays paused; if
-        research interventions are off, they stay off. The theme goes back to Sunrise.)
+        labels and research settings from this browser, and stops a running session. If you joined a
+        study group, it also deletes your group data from the StudyLens server. It can't be undone.
+        Export first if you want a copy. (If tracking is paused, it stays paused; if research
+        interventions are off, they stay off. The theme goes back to Sunrise.)
       </p>
       <form
         onSubmit={(e) => void onSubmit(e)}
@@ -212,6 +244,8 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
   const running = activeSession(stored);
   const now = recordingNow(stored);
   const research = researchInfo(stored);
+  const groupDevice = asGroupDevice(stored[STORAGE_KEYS.groupDevice]);
+  const pendingServerDelete = stored[STORAGE_KEYS.groupServerDeletePending] !== undefined;
 
   return (
     <>
@@ -410,6 +444,35 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
       </section>
 
       <section style={card}>
+        <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Study groups</h2>
+        {groupDevice ? (
+          <p style={{ fontSize: 'var(--sl-fs-body)', marginBottom: 0 }}>
+            This browser is registered on the StudyLens server for study groups.
+            <br />
+            Display name: <strong>{groupDevice.displayName}</strong>
+            <br />
+            Device ID (random, made by the server): <code>{groupDevice.deviceId}</code>
+            <br />
+            Secret token (proves to the server it’s this browser):{' '}
+            <code>{maskToken(groupDevice.token)}</code>
+            <br />
+            Registered: {new Date(groupDevice.registeredAt).toLocaleString()}
+          </p>
+        ) : (
+          <p style={muted}>
+            Not set up. StudyLens has never sent anything to its server from this browser (or you
+            deleted your group data).
+          </p>
+        )}
+        {pendingServerDelete && (
+          <p style={{ ...muted, marginBottom: 0 }}>
+            Waiting to finish deleting your old group data from the server (StudyLens keeps only the
+            key needed for that, and retries automatically).
+          </p>
+        )}
+      </section>
+
+      <section style={card}>
         <h2 style={{ margin: 0, fontSize: 'var(--sl-fs-h2)' }}>Research settings</h2>
         <p style={{ fontSize: 'var(--sl-fs-body)', marginBottom: 0 }}>
           Participant ID (random, made on this device, used only in the research CSV):{' '}
@@ -437,7 +500,7 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
 
 export default function MyData() {
   const { state, retry } = useAllData();
-  const [deleted, setDeleted] = useState(false);
+  const [deleted, setDeleted] = useState<DeleteEverythingServerStep | null>(null);
 
   return (
     <>
@@ -510,7 +573,7 @@ export default function MyData() {
           }}
         >
           Everything is deleted. StudyLens has no activity records, focus sessions, check-ins or
-          site labels stored anymore.
+          site labels stored anymore. {serverDeleteText(deleted)}
         </p>
       )}
 
@@ -520,7 +583,7 @@ export default function MyData() {
       )}
       {state.status === 'ready' && <Tables stored={state.data} />}
 
-      <DeleteCard onDeleted={() => setDeleted(true)} />
+      <DeleteCard onDeleted={setDeleted} />
     </>
   );
 }

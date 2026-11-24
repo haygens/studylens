@@ -2,8 +2,23 @@
  * "Export my data" (P6): everything StudyLens has stored, as one JSON file. Pure — the page
  * turns the result into a Blob download (no downloads permission needed).
  *
- * The export contains every stored key exactly as stored, so nothing can be left out.
+ * The export contains every stored key exactly as stored, so nothing can be left out — except
+ * secrets: the study group device token (P16) is replaced by a masked version, because an export
+ * file may be shared and the token lets anyone act as this browser on the StudyLens server.
  */
+import { maskToken } from '../groups/group-store';
+import { STORAGE_KEYS } from '../storage/keys';
+
+const KEYS_WITH_TOKEN = new Set<string>([
+  STORAGE_KEYS.groupDevice,
+  STORAGE_KEYS.groupServerDeletePending,
+]);
+
+function withoutSecrets(key: string, value: unknown): unknown {
+  if (!KEYS_WITH_TOKEN.has(key) || typeof value !== 'object' || value === null) return value;
+  const token = (value as { token?: unknown }).token;
+  return typeof token === 'string' ? { ...value, token: maskToken(token) } : value;
+}
 
 export const EXPORT_FORMAT_VERSION = 1;
 
@@ -19,7 +34,7 @@ export interface StudyLensExport {
 
 export function buildExport(stored: Record<string, unknown>, now: number): StudyLensExport {
   const storage: Record<string, unknown> = {};
-  for (const key of Object.keys(stored).sort()) storage[key] = stored[key];
+  for (const key of Object.keys(stored).sort()) storage[key] = withoutSecrets(key, stored[key]);
   return {
     app: 'StudyLens',
     exportFormatVersion: EXPORT_FORMAT_VERSION,
@@ -28,7 +43,7 @@ export function buildExport(stored: Record<string, unknown>, now: number): Study
       'Everything StudyLens had stored in this browser at export time. Times are epoch ' +
       'milliseconds. Activity is grouped by local day under "activity:YYYY-MM-DD". Activity older ' +
       'than 30 days is kept only as weekly totals under "totals:weekly" (milliseconds per week, ' +
-      'site and label; weeks start on Monday).',
+      'site and label; weeks start on Monday). The study group token is masked (it is a secret).',
     storage,
   };
 }
