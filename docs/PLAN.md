@@ -82,9 +82,11 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       `CRON_SECRET`); zod validation, JSON errors, per-device rate limits, `withErrorLogging`,
       CORS for the extension origins. Tests on temp libSQL files, in CI. Done 2026-11-22; see
       `docs/backend.md`. The extension still never calls the server (P16).
-- [ ] **P15d. Backend deployment** — hs creates the Turso database + token, imports the repo into
+- [x] **P15d. Backend deployment** — hs creates the Turso database + token, imports the repo into
       Vercel (root `web/`), sets `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `CRON_SECRET`; then check
       `https://<project>.vercel.app/api/health` shows `"db":"up"` and the cron appears in Vercel.
+      Done 2026-11-23: https://studylens-flame.vercel.app (function region `pdx1`, Turso
+      `aws-us-west-2`).
 - [ ] **P16. Group join (no accounts)** — no email accounts. A random device ID generated locally + a
       chosen display name + a group code. The extension asks for permission to contact the StudyLens
       server **only when the user first joins or creates a group** (optional host permission requested

@@ -5,7 +5,13 @@ database. It exists for **study groups** (P16, P18, P18b). **The extension does 
 that starts in P16, and only after the user joins or creates a group and grants the optional
 permission to contact the server.
 
-Status: code done (P15). Deployment (Turso database + Vercel project) still pending.
+Status: deployed (P15d, 2026-11-23).
+
+- Production URL: **https://studylens-flame.vercel.app** — health check:
+  https://studylens-flame.vercel.app/api/health (returns `"ok":true` and `"db":"up"`).
+- Vercel project root directory `web`; function region **`pdx1`** (Portland, Oregon), set in the
+  Vercel dashboard (Project → Settings → Functions), not in `vercel.json`.
+- Turso database in **`aws-us-west-2`** (Oregon), next to the function region.
 
 ## What is stored — and what never is
 
@@ -194,7 +200,8 @@ Never paste the token or secret into a chat, an issue, or a file in the repo.
 
 1. Go to https://app.turso.tech and sign up / log in (GitHub login is easiest).
 2. Click **Databases** → **Create Database**. Name: `studylens`. Pick the location closest to
-   Vercel's default function region (Washington, D.C. → an AWS **us-east-1** location). Create.
+   your Vercel function region. (StudyLens uses Turso `aws-us-west-2` with the Vercel function
+   region set to `pdx1` Portland in Project → Settings → Functions.) Create.
 3. Open the database. Copy its **URL** (looks like `libsql://studylens-<you>.turso.io`). This is
    `TURSO_DATABASE_URL`. Keep it in a private note (e.g. Notepad, not saved in the repo).
 4. On the same page click **Create Token** (sometimes under the **⋯** menu or "Generate Token").

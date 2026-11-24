@@ -21,6 +21,8 @@ Solo project for TCSS 490 Artifact 5 ("moonshot"). Final show and tell: **Monday
 - Extension: **WXT** framework + **React**. Targets: **Firefox (MV3)** and **Edge (Chromium MV3)**.
   Chrome/Safari are future work — don't add Chrome-only or Safari-specific code.
 - Web: **Next.js on Vercel (Hobby plan)** — React dashboard + API routes in one app.
+  Production: **https://studylens-flame.vercel.app** (deployed P15d, 2026-11-23; health check
+  `/api/health`). Vercel function region `pdx1` (Portland), Turso DB in `aws-us-west-2`.
 - Database: **Turso** (libSQL via `@libsql/client`) — code done in P15, the Turso database and Vercel
   project are created by hs in the web dashboards. All server data access goes through the `Db`
   interface in `web/lib/db/` (libSQL implementation + in-memory stub). Schema = numbered migrations

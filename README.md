@@ -131,7 +131,8 @@ source in `extension/` and the shared types in `packages/shared/`. No code is do
 runtime, and no build step fetches anything except npm packages.
 
 The repository is an npm workspace. The `web/` folder is a separate web app that is **not** part of
-the extension; only its `package.json` is needed so that `npm ci` matches the lock file.
+the extension; only its `package.json` is needed so that `npm ci` matches the lock file. It is
+deployed at <https://studylens-flame.vercel.app> (the extension does not contact it yet).
 
 ## Repository layout
 
@@ -142,7 +143,8 @@ extension/         the browser extension (WXT + React + TypeScript)
   src/             logic (tracking, sessions, storage), mostly pure and unit-tested
   public/icon/     icons (made from assets/icon.svg by `npm run icons -w extension`)
 packages/shared/   shared TypeScript types
-web/               web app (future: dashboard and opt-in sync), not part of the extension
+web/               web app + API (study groups, from P16), not part of the extension;
+                   deployed at https://studylens-flame.vercel.app
 docs/              plan, session log, store listing
 ```
 

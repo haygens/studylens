@@ -1354,3 +1354,29 @@ Problems / open questions: one flaky E2E test on the first local run (passed on 
 Disk space: C: 3.46 GB free, M: 14.02 GB free.
 
 Next piece (from PLAN.md): P15d — Backend deployment (hs: redeploy on Vercel), then P16 — Group join.
+
+## Handoff — 2026-11-23 (P15d deployed)
+
+Done:
+
+- P15d done by hs: backend deployed to Vercel at **https://studylens-flame.vercel.app** (Root
+  Directory `web`, function region `pdx1` Portland set in the Vercel dashboard, Turso database in
+  `aws-us-west-2`). `/api/health` returns `{"ok":true,"db":"up","version":"0.1.0"}` (re-checked
+  from this PC).
+- Recorded the URL and regions in `CLAUDE.md`, `docs/backend.md` (status + Turso location step),
+  and `README.md`; checked off P15d in `docs/PLAN.md`.
+
+Changed files: `CLAUDE.md`, `README.md`, `docs/backend.md`, `docs/PLAN.md`, `docs/LOG.md`.
+
+Tests: docs only; format check clean.
+
+Problems / open questions:
+
+- Confirm the daily cleanup cron shows under Vercel → Project → Settings → Cron Jobs (part of the
+  P15d check in PLAN.md).
+- The function region lives only in the Vercel dashboard. It could also go in `web/vercel.json`
+  (`"regions": ["pdx1"]`) so it's tracked in git.
+
+Disk space: C: 3.43 GB free, M: 14.01 GB free.
+
+Next piece (from PLAN.md): P16 — Group join (no accounts).
