@@ -1691,3 +1691,11 @@ LOG.md; fixed in `e0b86c7`.)
 Disk space: C: 3.26 GB free, M: 13.90 GB free.
 
 Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
+
+## Store submission — 2026-11-23 (hs)
+
+2026-11-23: v0.5.0 submitted to AMO (with sources zip and reviewer notes on the optional host +
+data collection permissions) and to Microsoft Edge Add-ons as an update (Privacy tab updated:
+single purpose mentions study groups; data usage now Personally identifiable information + Web
+history + User activity; certification notes describe the optional host permission). Edge status:
+In review. v0.4.0 remains live on both until approval.

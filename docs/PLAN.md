@@ -92,7 +92,7 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       server **only when the user first joins or creates a group** (optional host permission requested
       at runtime, never at install). When this ships: update the AMO `data_collection_permissions`,
       PRIVACY.md, and the store listings.
-      Done 2026-11-23 (ships in v0.5.0 with P18; zips built, not uploaded): group API (create,
+      Done 2026-11-23 (ships in v0.5.0 with P18; submitted 2026-11-23): group API (create,
       join by 8-character code, list, leave, rename, delete device; 20 members/group, 5 groups/device;
       per-device + in-memory per-address rate limits), "Study groups" options tab with consent
       screen → permission → create/join, invite message, "Delete everything" also deletes server
@@ -102,7 +102,8 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       the extension.
 - [x] **P18. Study groups (passive)** — members see each other's **daily focus totals** and who is in a
       session right now. Never site names. Polling (WebSockets optional; Vercel's are in beta).
-      Done 2026-11-23 (v0.5.0, zips built, not uploaded): per-group switches "Share my focus
+      Done 2026-11-23 — **released-pending:** v0.5.0 submitted to AMO and Edge Add-ons on
+      2026-11-23 (Edge: In review; v0.4.0 live until approval). Per-group switches "Share my focus
       minutes" / "Show when I'm focusing" (ON after the explanation + live preview on join; off
       deletes the data on the server). New endpoints: totals (plausibility checks), presence (3-min
       TTL), sharing switches, group overview (today + 7-day history + focusing now, only what each
