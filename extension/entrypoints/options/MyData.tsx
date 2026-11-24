@@ -7,7 +7,7 @@ import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
 import { failureText } from '@/src/groups/api-client';
 import { groupDeps, serverAccess } from '@/src/groups/browser-groups';
-import { asGroupDevice, maskToken } from '@/src/groups/group-store';
+import { asGroupDevice, asSharingCache, asSyncState, maskToken } from '@/src/groups/group-store';
 import {
   deleteServerDataBeforeDeleteEverything,
   rememberPendingDelete,
@@ -22,6 +22,7 @@ import {
   activeSession,
   activityByDay,
   formatClock,
+  formatDay,
   formatMinutes,
   recordingNow,
   researchInfo,
@@ -142,8 +143,9 @@ function NeverCollected() {
       </ul>
       <p style={{ ...muted, marginBottom: 0 }}>
         Everything below is stored only in this browser. Nothing is sent anywhere, unless you join a
-        study group: then only your display name and group memberships go to the StudyLens server
-        (see the Study groups tab).
+        study group: then only your display name, your group memberships and — while you leave its
+        switches on — your daily focus minutes and whether you are focusing right now go to the
+        StudyLens server (see the Study groups tab). Never sites, labels, goals or check-ins.
       </p>
     </section>
   );
@@ -155,11 +157,11 @@ function serverDeleteText(step: DeleteEverythingServerStep): string | null {
     case 'not-registered':
       return null;
     case 'deleted':
-      return 'Your study group data was also deleted from the StudyLens server (display name, device ID and group memberships).';
+      return 'Your study group data was also deleted from the StudyLens server (display name, device ID, group memberships, focus minutes and “focusing now”).';
     case 'failed':
       return step.failure.kind === 'no-permission'
-        ? 'Your study group data on the StudyLens server (display name and group memberships) is not deleted yet, because StudyLens no longer has permission to contact its server. Turn that permission back on in your browser’s add-on settings and StudyLens will finish the deletion automatically.'
-        : `StudyLens couldn’t delete your study group data on its server (display name and group memberships): ${failureText(step.failure)} It kept only the key needed to delete it, and will try again automatically (about every 30 minutes while the browser is open).`;
+        ? 'Your study group data on the StudyLens server (display name, group memberships, focus minutes) is not deleted yet, because StudyLens no longer has permission to contact its server. Turn that permission back on in your browser’s add-on settings and StudyLens will finish the deletion automatically.'
+        : `StudyLens couldn’t delete your study group data on its server (display name, group memberships, focus minutes): ${failureText(step.failure)} It kept only the key needed to delete it, and will try again automatically (about every 30 minutes while the browser is open).`;
   }
 }
 
@@ -245,6 +247,9 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
   const research = researchInfo(stored);
   const groupDevice = asGroupDevice(stored[STORAGE_KEYS.groupDevice]);
   const pendingServerDelete = stored[STORAGE_KEYS.groupServerDeletePending] !== undefined;
+  const groupSharing = Object.entries(asSharingCache(stored[STORAGE_KEYS.groupSharing]));
+  const groupSync = asSyncState(stored[STORAGE_KEYS.groupActivitySync]);
+  const sentDays = Object.entries(groupSync.sent).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <>
@@ -462,6 +467,38 @@ function Tables({ stored }: { stored: Record<string, unknown> }) {
             Not set up. StudyLens has never sent anything to its server from this browser (or you
             deleted your group data).
           </p>
+        )}
+        {groupDevice && (
+          <>
+            <p style={{ fontSize: 'var(--sl-fs-body)', marginBottom: 0 }}>
+              Your sharing switches (group IDs only; names are on the Study groups tab):
+            </p>
+            {groupSharing.length === 0 ? (
+              <p style={muted}>Not in any group.</p>
+            ) : (
+              <ul style={{ margin: '4px 0 0', paddingLeft: 20, fontSize: 'var(--sl-fs-body)' }}>
+                {groupSharing.map(([id, s]) => (
+                  <li key={id}>
+                    <code>{id}</code>: focus minutes {s.focusMinutes ? 'shared' : 'not shared'};
+                    “focusing now” {s.focusingNow ? 'shown' : 'not shown'}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p style={{ fontSize: 'var(--sl-fs-body)', marginBottom: 0 }}>
+              Focus minutes last sent to the server:{' '}
+              {sentDays.length === 0
+                ? 'none'
+                : sentDays.map(([d, m]) => `${formatDay(d)}: ${m} min`).join(' · ')}
+              <br />
+              Last sent:{' '}
+              {groupSync.lastTotalsAttempt === null
+                ? 'never'
+                : new Date(groupSync.lastTotalsAttempt).toLocaleString()}
+              <br />
+              The server shows you as “focusing now”: {groupSync.presenceOn ? 'yes' : 'no'}
+            </p>
+          </>
         )}
         {pendingServerDelete && (
           <p style={{ ...muted, marginBottom: 0 }}>

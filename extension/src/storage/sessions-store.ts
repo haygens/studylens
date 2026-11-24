@@ -57,6 +57,8 @@ function researchFieldsOf(v: Record<string, unknown>) {
     sessionNumber: positiveInt(v.sessionNumber),
     labelSetVersion: positiveInt(v.labelSetVersion),
     labelsLocked: v.labelsLocked === true,
+    // P18 covariate: kept only when recorded (sessions before v0.5.0 don't have it).
+    ...(typeof v.inGroup === 'boolean' && { inGroup: v.inGroup }),
   };
 }
 

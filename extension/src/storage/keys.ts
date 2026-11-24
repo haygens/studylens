@@ -78,6 +78,18 @@ export const STORAGE_KEYS = {
    * finish deleting this browser's data there. StudyLens retries automatically, then removes it.
    */
   groupServerDeletePending: 'groups:pending-server-delete',
+  /**
+   * Passive study groups (P18): my sharing switches per group ("Share my focus minutes", "Show
+   * when I'm focusing"), copied from the server so the background knows whether to send anything
+   * without asking the server. Group IDs and true/false only.
+   */
+  groupSharing: 'groups:sharing',
+  /**
+   * Passive study groups (P18): what was last sent — the focus minutes the server confirmed per
+   * local date (last 7 days), when totals were last sent, and whether the server shows me as
+   * "focusing now". Used to send only changes and to retry after being offline.
+   */
+  groupActivitySync: 'groups:activity-sync',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

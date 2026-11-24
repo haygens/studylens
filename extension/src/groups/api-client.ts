@@ -9,13 +9,23 @@
 import type {
   ApiErrorBody,
   ApiErrorCode,
+  DailyTotal,
   DeleteDeviceResponse,
+  FocusingNowResponse,
+  GroupOverviewResponse,
   GroupResponse,
+  GroupSharing,
   ListGroupsResponse,
+  PresenceResponse,
+  PresenceState,
   RegisterDeviceResponse,
+  TotalsResponse,
   UpdateDeviceResponse,
+  UpdateSharingRequest,
+  UpdateSharingResponse,
 } from '@studylens/shared';
 import { REQUEST_TIMEOUT_MS } from './config';
+import type { ConsentNeed, GateResult } from './permission';
 
 export type ApiFailure =
   /** The server couldn't be reached (offline, DNS, connection refused, CORS). */
@@ -28,6 +38,11 @@ export type ApiFailure =
    * allowed sharing it (data collection consent). Nothing was sent.
    */
   | { ok: false; kind: 'no-name-consent' }
+  /**
+   * Firefox (P18): the request would send focus minutes / "focusing now" (or turn a sharing
+   * switch on), but the user hasn't allowed sharing focus activity. Nothing was sent.
+   */
+  | { ok: false; kind: 'no-activity-consent' }
   | {
       ok: false;
       kind: 'http';
@@ -44,10 +59,11 @@ export interface ApiClientDeps {
   base: string;
   fetch: typeof fetch;
   /**
-   * Checked before every request. `sendsName` is true for requests that send the display name or
-   * make it visible to a group (register, rename, create, join).
+   * Checked before every request. `need` is `name` for requests that send the display name or
+   * make it visible to a group (register, rename, create, join), `activity` for requests that send
+   * focus minutes or "focusing now" (P18), else `none`.
    */
-  hasPermission: (sendsName: boolean) => Promise<'ok' | 'no-permission' | 'no-name-consent'>;
+  hasPermission: (need: ConsentNeed) => Promise<GateResult>;
   timeoutMs?: number;
 }
 
@@ -59,9 +75,9 @@ export function createApiClient(deps: ApiClientDeps) {
   async function call<T>(
     method: Method,
     path: string,
-    opts: { token?: string; body?: unknown; sendsName?: boolean } = {},
+    opts: { token?: string; body?: unknown; need?: ConsentNeed } = {},
   ): Promise<ApiResult<T>> {
-    const allowed = await deps.hasPermission(opts.sendsName === true);
+    const allowed = await deps.hasPermission(opts.need ?? 'none');
     if (allowed !== 'ok') return { ok: false, kind: allowed };
 
     const headers: Record<string, string> = {};
@@ -115,13 +131,22 @@ export function createApiClient(deps: ApiClientDeps) {
     register: (displayName: string) =>
       call<RegisterDeviceResponse>('POST', '/api/devices', {
         body: { displayName },
-        sendsName: true,
+        need: 'name',
       }),
     listGroups: (token: string) => call<ListGroupsResponse>('GET', '/api/groups', { token }),
-    createGroup: (token: string, name: string) =>
-      call<GroupResponse>('POST', '/api/groups', { token, body: { name }, sendsName: true }),
-    joinGroup: (token: string, code: string) =>
-      call<GroupResponse>('POST', '/api/groups/join', { token, body: { code }, sendsName: true }),
+    /** P18: `sharing` = my switches; turning either on also needs the activity consent. */
+    createGroup: (token: string, name: string, sharing: GroupSharing) =>
+      call<GroupResponse>('POST', '/api/groups', {
+        token,
+        body: { name, sharing },
+        need: 'name',
+      }),
+    joinGroup: (token: string, code: string, sharing: GroupSharing) =>
+      call<GroupResponse>('POST', '/api/groups/join', {
+        token,
+        body: { code, sharing },
+        need: 'name',
+      }),
     leaveGroup: (token: string, groupId: string) =>
       call<{ ok: true }>('DELETE', `/api/groups/${encodeURIComponent(groupId)}/membership`, {
         token,
@@ -130,10 +155,34 @@ export function createApiClient(deps: ApiClientDeps) {
       call<UpdateDeviceResponse>('PATCH', '/api/devices/me', {
         token,
         body: { displayName },
-        sendsName: true,
+        need: 'name',
       }),
     deleteDevice: (token: string) =>
       call<DeleteDeviceResponse>('DELETE', '/api/devices/me', { token }),
+    /** P18: turning a switch on needs the activity consent; turning one off never does. */
+    updateSharing: (token: string, groupId: string, patch: UpdateSharingRequest) =>
+      call<UpdateSharingResponse>('PATCH', `/api/groups/${encodeURIComponent(groupId)}/sharing`, {
+        token,
+        body: patch,
+        need: patch.focusMinutes === true || patch.focusingNow === true ? 'activity' : 'none',
+      }),
+    sendTotals: (token: string, days: DailyTotal[]) =>
+      call<TotalsResponse>('POST', '/api/totals', { token, body: { days }, need: 'activity' }),
+    sendPresence: (token: string, state: PresenceState) =>
+      call<PresenceResponse>('POST', '/api/presence', {
+        token,
+        body: { state },
+        // `stop` only ends what was shared; it reveals nothing new.
+        need: state === 'stop' ? 'none' : 'activity',
+      }),
+    overview: (token: string, groupId: string, today: string) =>
+      call<GroupOverviewResponse>(
+        'GET',
+        `/api/groups/${encodeURIComponent(groupId)}/overview?today=${encodeURIComponent(today)}`,
+        { token },
+      ),
+    focusingNow: (token: string) =>
+      call<FocusingNowResponse>('GET', '/api/groups/focusing', { token }),
   };
 }
 
@@ -155,6 +204,8 @@ export function failureText(failure: ApiFailure): string {
       return 'StudyLens doesn’t have permission to contact its server, so nothing was sent.';
     case 'no-name-consent':
       return 'Study groups need your OK to share your display name, and Firefox doesn’t have it, so nothing was sent.';
+    case 'no-activity-consent':
+      return 'Sharing focus minutes or “focusing now” needs your OK in Firefox (“technical and interaction data”), and Firefox doesn’t have it, so nothing was sent.';
     case 'http':
       switch (failure.code) {
         case 'validation_failed':

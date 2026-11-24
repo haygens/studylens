@@ -46,6 +46,13 @@ export interface ActiveSession extends InterventionCounts, AttemptFields {
   labelSetVersion: number | null;
   /** P13c: true if study mode (labels locked) was on when the session started. */
   labelsLocked: boolean;
+  /**
+   * P18: true if this browser was in at least one (passive) study group when the session started.
+   * A possible covariate for later analysis. Local only: not in the research CSV (yet) and never
+   * sent anywhere. Missing on sessions from before v0.5.0. Being in a passive group does NOT make
+   * a session a group session: `mode` stays `solo`.
+   */
+  inGroup?: boolean;
 }
 
 /** P13c fields as they are before the session is started (filled in by startSession). */

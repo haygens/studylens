@@ -9,6 +9,10 @@
  *    server (display name only) and create/join the group.
  * 4. Set up: my groups and their members, copy an invite, leave, change my name, and delete my
  *    group data from the server.
+ * 5. Passive groups (P18): each member's focus minutes today, a "focusing now" badge and a 7-day
+ *    strip (only what they share), refreshed every 60 s while this page is open and visible; my
+ *    two switches per group with a live preview of exactly what others see. On join both
+ *    switches are ON after the explanation (the user can turn them off before joining).
  *
  * The server can be down or the computer offline: every request has a timeout and a clear error
  * with Retry, and none of this affects the solo features.
@@ -20,9 +24,14 @@ import {
   GROUP_NAME_MAX_LENGTH,
   MAX_GROUP_MEMBERS,
   MAX_GROUPS_PER_DEVICE,
+  OVERVIEW_REFRESH_MS,
+  SHARING_DEFAULT,
+  SHARING_OFF,
   formatJoinCode,
   isJoinCode,
   normalizeJoinCode,
+  type GroupOverviewResponse,
+  type GroupSharing,
   type GroupSummary,
   type ListGroupsResponse,
 } from '@studylens/shared';
@@ -32,18 +41,35 @@ import { groupDeps, serverAccess } from '@/src/groups/browser-groups';
 import { API_BASE } from '@/src/groups/config';
 import { clearGroupDevice, loadGroupDevice, type GroupDevice } from '@/src/groups/group-store';
 import { inviteMessage } from '@/src/groups/invite';
-import { canShareName, type ServerAccess } from '@/src/groups/permission';
+import { syncActivity } from '@/src/groups/activity-sync';
+import { canShareActivity, canShareName, type ServerAccess } from '@/src/groups/permission';
 import {
   createGroup,
   deleteServerData,
+  groupOverview,
   joinGroup,
   leaveGroup,
   listGroups,
   renameDevice,
+  updateSharing,
 } from '@/src/groups/service';
+import { localDayId } from '@/src/tracker/local-day';
 import { LOAD_TIMEOUT_MS, settle, type LoadState } from '@/src/popup/popup-data';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 import { LoadError, Loading } from '../popup/LoadStatus';
+import {
+  MemberActivity,
+  SharingSwitches,
+  ensureActivityConsent,
+  useServerAccess,
+} from './GroupActivity';
+
+/** After joining or changing a switch: send what is now shared (nothing if it isn't). */
+const sendSharedNow = () => void syncActivity(groupDeps, Date.now(), 'settings');
+
+/** The switches to start with: ON after the explanation, unless sharing activity can't work. */
+const startingSharing = (access: ServerAccess | null): GroupSharing =>
+  access && access.activitySharing === 'unsupported' ? SHARING_OFF : SHARING_DEFAULT;
 
 const SERVER_HOST = new URL(API_BASE).host;
 const h2 = { margin: 0, fontSize: 'var(--sl-fs-h2)' } as const;
@@ -122,13 +148,22 @@ function WhatIsShared() {
         <li>which groups you are in.</li>
       </ul>
       <p style={{ margin: '8px 0 4px' }}>
-        Members of a group see each other’s display names. A coming version will also show them, and
-        only them:
+        Members of a group see each other’s display names, and — each behind its own switch, per
+        group, on unless you turn it off — only:
       </p>
       <ul style={{ margin: 0, paddingLeft: 20 }}>
-        <li>your daily focus total (for example “focused 2 h 15 min”), and</li>
-        <li>whether you are in a focus session right now.</li>
+        <li>
+          <strong>your focus minutes</strong>: today’s total (for example “focused 2 h 15 min”) and
+          one number per day for the last 7 days, and
+        </li>
+        <li>
+          <strong>whether you are focusing right now</strong> (in a focus session).
+        </li>
       </ul>
+      <p className="sl-muted" style={{ margin: '4px 0 0' }}>
+        Turning a switch off takes effect at once and deletes that data from the server. Focus
+        minutes are deleted from the server after 14 days anyway.
+      </p>
       <p style={{ margin: '8px 0 4px' }}>
         <strong>Never shared:</strong>
       </p>
@@ -167,8 +202,9 @@ function NameSharingStep({ onAllowed, onCancel }: { onAllowed: () => void; onCan
   const [unsupported, setUnsupported] = useState(false);
 
   function onClick() {
-    // Straight from the click: Firefox only shows its prompt during a user action.
-    const asked = serverAccess.requestNameSharing();
+    // Straight from the click: Firefox only shows its prompt during a user action. Asks for the
+    // focus activity OK too (P18), so the switches can work.
+    const asked = serverAccess.requestDataSharing();
     setDeclined(false);
     void asked.then((a) => {
       if (canShareName(a)) return onAllowed();
@@ -185,7 +221,9 @@ function NameSharingStep({ onAllowed, onCancel }: { onAllowed: () => void; onCan
       <p style={{ margin: '8px 0' }}>
         Firefox also asks your OK before StudyLens may send personal information. For study groups
         that is only the <strong>display name</strong> you’ll choose, which the members of your
-        groups see. Study groups can’t work without it. Nothing has been sent.
+        groups see, and — if you leave the switches on — your focus minutes and whether you are
+        focusing (“technical and interaction data”). Study groups can’t work without the name.
+        Nothing has been sent.
       </p>
       <div className="sl-row" style={{ flexWrap: 'wrap' }}>
         <button type="button" className="sl-btn-primary" onClick={onClick}>
@@ -237,8 +275,10 @@ function Intro({ onAllowed }: { onAllowed: () => void }) {
         <p style={{ margin: '8px 0' }}>
           When you click the button, your browser asks whether StudyLens may contact its server (
           <code>{SERVER_HOST}</code>)
-          {import.meta.env.FIREFOX ? ' and send the display name you choose' : ''}. Nothing is sent
-          until you then create or join a group.
+          {import.meta.env.FIREFOX
+            ? ' and send the display name you choose and your focus activity (if you share it)'
+            : ''}
+          . Nothing is sent until you then create or join a group.
         </p>
         <button type="button" className="sl-btn-primary" onClick={onClick}>
           Join or create a group
@@ -351,6 +391,16 @@ function Setup({ onDone }: { onDone: (message: string) => void }) {
   const [displayName, setDisplayName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [access, setAccess] = useServerAccess();
+  const [sharing, setSharing] = useState<GroupSharing | null>(null);
+  const chosen = sharing ?? startingSharing(access);
+
+  function onSharingChange(patch: Partial<GroupSharing>) {
+    const turningOn = patch.focusMinutes === true || patch.focusingNow === true;
+    void ensureActivityConsent(access, turningOn, setAccess).then((ok) => {
+      if (ok) setSharing({ ...chosen, ...patch });
+    });
+  }
 
   /** Checks the display name first; returns an error message for the form, or null. */
   async function run(
@@ -364,6 +414,7 @@ function Setup({ onDone }: { onDone: (message: string) => void }) {
     const res = await action(displayName.trim().replace(/\s+/g, ' '));
     setBusy(false);
     if (!res.ok) return failureText(res);
+    sendSharedNow();
     onDone(done(res.data));
     return null;
   }
@@ -388,12 +439,30 @@ function Setup({ onDone }: { onDone: (message: string) => void }) {
       </p>
       {nameError && <Alert>{nameError}</Alert>}
 
+      <h3 style={{ margin: '16px 0 0', fontSize: 'var(--sl-fs-h3)' }}>
+        What your group will see about you
+      </h3>
+      <p style={{ margin: '4px 0 0' }}>
+        Besides your display name, a group can see your <strong>focus minutes</strong> (today and
+        the last 7 days) and <strong>when you’re focusing</strong>. Both are on unless you turn them
+        off here; you can change them for each group at any time, and turning one off deletes that
+        data from the server. Never your sites, labels, goals or check-in answers.
+      </p>
+      <SharingSwitches
+        idPrefix="sl-setup-sharing"
+        sharing={chosen}
+        onChange={onSharingChange}
+        displayName={displayName.trim()}
+        busy={busy}
+        access={access}
+      />
+
       <h3 style={{ margin: '16px 0 0', fontSize: 'var(--sl-fs-h3)' }}>Start a new group</h3>
       <CreateForm
         disabled={busy}
         onCreate={(groupName) =>
           run(
-            (name) => createGroup(groupDeps, name, groupName),
+            (name) => createGroup(groupDeps, name, groupName, chosen),
             (g) =>
               `You created “${g.name}”. Invite friends with the code ${formatJoinCode(g.joinCode)}.`,
           )
@@ -404,7 +473,7 @@ function Setup({ onDone }: { onDone: (message: string) => void }) {
         disabled={busy}
         onJoin={(code) =>
           run(
-            (name) => joinGroup(groupDeps, name, code),
+            (name) => joinGroup(groupDeps, name, code, chosen),
             (g) => `You joined “${g.name}”.`,
           )
         }
@@ -461,18 +530,80 @@ function InviteButton({ group }: { group: GroupSummary }) {
   );
 }
 
+type OverviewState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: GroupOverviewResponse }
+  | { status: 'error'; failure: ApiFailure };
+
+/** P18: every group's overview, with my local date as "today". */
+function fetchOverviews(device: GroupDevice, ids: string[]) {
+  const today = localDayId(Date.now());
+  return Promise.all(
+    ids.map(async (id): Promise<[string, OverviewState]> => {
+      const res = await groupOverview(groupDeps, device, id, today);
+      return [id, res.ok ? { status: 'ready', data: res.data } : { status: 'error', failure: res }];
+    }),
+  );
+}
+
 function GroupCard({
   group,
   device,
+  overview,
+  access,
+  setAccess,
   onLeft,
+  onSharingChanged,
 }: {
   group: GroupSummary;
   device: GroupDevice;
+  overview: OverviewState | undefined;
+  access: ServerAccess | null;
+  setAccess: (a: ServerAccess) => void;
   onLeft: (message: string) => void;
+  onSharingChanged: (groupId: string, sharing: GroupSharing) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sharingBusy, setSharingBusy] = useState(false);
+  const [sharingError, setSharingError] = useState<string | null>(null);
+
+  function onSharingChange(patch: Partial<GroupSharing>) {
+    const turningOn = patch.focusMinutes === true || patch.focusingNow === true;
+    // The Firefox prompt (if needed) must start in this click, before anything else.
+    const consent = ensureActivityConsent(access, turningOn, setAccess);
+    setSharingError(null);
+    void consent.then(async (ok) => {
+      if (!ok) {
+        setSharingError('Firefox didn’t allow sharing focus activity, so nothing changed.');
+        return;
+      }
+      setSharingBusy(true);
+      const res = await updateSharing(groupDeps, device, group.id, patch);
+      setSharingBusy(false);
+      if (!res.ok) return setSharingError(`${failureText(res)} Nothing changed.`);
+      onSharingChanged(group.id, res.data);
+      if (turningOn) sendSharedNow();
+    });
+  }
+
+  const members: { key: string; view: ReactNode }[] =
+    overview?.status === 'ready'
+      ? overview.data.members.map((m, i) => ({
+          key: `${i}`,
+          view: <MemberActivity member={m} you={m.isMe} />,
+        }))
+      : group.members.map((m, i) => ({
+          key: `${i}`,
+          view: (
+            <>
+              {m.displayName}
+              {m.isMe && ' (you)'}
+              {m.role === 'owner' && <span className="sl-muted"> · started the group</span>}
+            </>
+          ),
+        }));
 
   async function leave() {
     setBusy(true);
@@ -499,15 +630,34 @@ function GroupCard({
       <p className="sl-muted" style={{ margin: '8px 0 4px' }}>
         Members ({group.members.length} of {MAX_GROUP_MEMBERS}):
       </p>
-      <ul style={{ margin: 0, paddingLeft: 20 }} aria-label={`Members of ${group.name}`}>
-        {group.members.map((m, i) => (
-          <li key={i}>
-            {m.displayName}
-            {m.isMe && ' (you)'}
-            {m.role === 'owner' && <span className="sl-muted"> · started the group</span>}
-          </li>
+      <ul
+        style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 6 }}
+        aria-label={`Members of ${group.name}`}
+      >
+        {members.map((m) => (
+          <li key={m.key}>{m.view}</li>
         ))}
       </ul>
+      {overview?.status === 'error' && (
+        <p className="sl-muted" role="status" style={{ margin: '4px 0 0' }}>
+          Focus minutes couldn’t load: {failureText(overview.failure)} They’ll update on the next
+          refresh.
+        </p>
+      )}
+      <details style={{ marginTop: 12 }} open>
+        <summary>
+          <strong>What this group sees about you</strong>
+        </summary>
+        <SharingSwitches
+          idPrefix={`sl-sharing-${group.id}`}
+          sharing={group.sharing}
+          onChange={onSharingChange}
+          displayName={device.displayName}
+          busy={sharingBusy}
+          access={access}
+        />
+        {sharingError && <Alert>{sharingError}</Alert>}
+      </details>
       <InviteButton group={group} />
       <div style={{ marginTop: 12 }}>
         {confirming ? (
@@ -783,6 +933,10 @@ function Groups({
   setFlash: (m: string | null) => void;
 }) {
   const [remote, setRemote] = useState<Remote>({ status: 'loading' });
+  const [overviews, setOverviews] = useState<Record<string, OverviewState>>({});
+  const [access, setAccess] = useServerAccess();
+  const [newSharing, setNewSharing] = useState<GroupSharing | null>(null);
+  const chosenNew = newSharing ?? startingSharing(access);
   const [permission, setPermission] = useState<
     'checking' | 'granted' | 'missing' | 'no-name-consent' | 'name-unsupported'
   >('checking');
@@ -818,6 +972,61 @@ function Groups({
   useEffect(() => {
     void fetchGroups().then(show);
   }, [fetchGroups, show]);
+
+  /** P18: each group's overview (members' minutes, badge, strip). Token only; reveals nothing. */
+  const groupIds = remote.status === 'ready' ? remote.data.groups.map((g) => g.id).join(',') : '';
+  const loadOverviews = useCallback(() => {
+    if (!groupIds) return;
+    void fetchOverviews(device, groupIds.split(',')).then((entries) =>
+      setOverviews((old) => {
+        const next: Record<string, OverviewState> = {};
+        for (const [id, state] of entries) {
+          // Keep the last good numbers on a failed refresh (with a note), not a blank.
+          const prev = old[id];
+          next[id] = state.status === 'error' && prev?.status === 'ready' ? prev : state;
+        }
+        return next;
+      }),
+    );
+  }, [groupIds, device]);
+
+  // Refresh every 60 s, only while this page is open and visible (no background traffic).
+  useEffect(() => {
+    if (!groupIds) return;
+    loadOverviews();
+    const whenVisible = () => {
+      if (document.visibilityState === 'visible') loadOverviews();
+    };
+    const timer = setInterval(whenVisible, OVERVIEW_REFRESH_MS);
+    document.addEventListener('visibilitychange', whenVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', whenVisible);
+    };
+  }, [groupIds, loadOverviews]);
+
+  /** A switch changed: show it at once, then reload the overviews (my row changes too). */
+  const onSharingChanged = (groupId: string, sharing: GroupSharing) => {
+    setRemote((r) =>
+      r.status === 'ready'
+        ? {
+            ...r,
+            data: {
+              ...r.data,
+              groups: r.data.groups.map((g) => (g.id === groupId ? { ...g, sharing } : g)),
+            },
+          }
+        : r,
+    );
+    loadOverviews();
+  };
+
+  function onNewSharingChange(patch: Partial<GroupSharing>) {
+    const turningOn = patch.focusMinutes === true || patch.focusingNow === true;
+    void ensureActivityConsent(access, turningOn, setAccess).then((ok) => {
+      if (ok) setNewSharing({ ...chosenNew, ...patch });
+    });
+  }
 
   /** Retry / Refresh buttons: show "Loading..." while fetching again. */
   const refresh = () => {
@@ -895,8 +1104,23 @@ function Groups({
             </p>
           )}
           {groups.map((g) => (
-            <GroupCard key={g.id} group={g} device={device} onLeft={afterChange} />
+            <GroupCard
+              key={g.id}
+              group={g}
+              device={device}
+              overview={overviews[g.id]}
+              access={access}
+              setAccess={setAccess}
+              onLeft={afterChange}
+              onSharingChanged={onSharingChanged}
+            />
           ))}
+          {access && !canShareActivity(access) && access.server && groups.length > 0 && (
+            <p className="sl-muted" role="note" style={{ marginTop: 8 }}>
+              StudyLens is sending no focus minutes and no “focusing now” right now (see the note in
+              each group). Everything else works.
+            </p>
+          )}
           <div className="sl-row" style={{ marginTop: 8 }}>
             <button type="button" className="sl-link" onClick={refresh}>
               Refresh
@@ -908,11 +1132,22 @@ function Groups({
             </h2>
             {room ? (
               <>
+                <p className="sl-muted" style={{ margin: '8px 0 0' }}>
+                  What the new group will see about you (you can change it later):
+                </p>
+                <SharingSwitches
+                  idPrefix="sl-new-sharing"
+                  sharing={chosenNew}
+                  onChange={onNewSharingChange}
+                  displayName={device.displayName}
+                  access={access}
+                />
                 <CreateForm
                   disabled={false}
                   onCreate={async (name) => {
-                    const res = await createGroup(groupDeps, device.displayName, name);
+                    const res = await createGroup(groupDeps, device.displayName, name, chosenNew);
                     if (!res.ok) return failureText(res);
+                    sendSharedNow();
                     afterChange(
                       `You created “${res.data.name}”. Invite friends with the code ${formatJoinCode(res.data.joinCode)}.`,
                     );
@@ -922,8 +1157,9 @@ function Groups({
                 <JoinForm
                   disabled={false}
                   onJoin={async (code) => {
-                    const res = await joinGroup(groupDeps, device.displayName, code);
+                    const res = await joinGroup(groupDeps, device.displayName, code, chosenNew);
                     if (!res.ok) return failureText(res);
+                    sendSharedNow();
                     afterChange(`You joined “${res.data.name}”.`);
                     return null;
                   }}

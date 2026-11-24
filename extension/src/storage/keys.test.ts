@@ -31,6 +31,7 @@ import { ensureParticipantId, setLabelLock } from './research-store';
 import { STORAGE_KEYS, classifyKey, dayOfKey, keysToDelete } from './keys';
 import type { ApiClient } from '../groups/api-client';
 import { ensureDevice, rememberPendingDelete } from '../groups/service';
+import { saveSharingCache, saveSyncState } from '../groups/group-store';
 
 const T0 = Date.UTC(2026, 10, 16, 15, 0);
 const MIN = 60_000;
@@ -106,6 +107,13 @@ async function useEverything(store: FullStore) {
   } as unknown as ApiClient;
   await ensureDevice({ store, client }, 'Sam');
   await rememberPendingDelete({ store, client }, 'slt_old');
+  // Passive groups (P18): my switches, and what was sent.
+  await saveSharingCache(store, { g1: { focusMinutes: true, focusingNow: true } });
+  await saveSyncState(
+    store,
+    { sent: { '2026-11-15': 5 }, lastTotalsAttempt: T0, presenceOn: false },
+    '2026-11-15',
+  );
   // Onboarding (P13b): welcome page and the "New: themes!" hint.
   await applyInstallPlan(store, installPlan('install'));
   await finishWelcome(store);

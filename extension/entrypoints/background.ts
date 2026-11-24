@@ -16,6 +16,7 @@ import {
   recordChoice,
   type InterstitialDeps,
 } from '@/src/interventions/interstitial-controller';
+import { syncActivity, type SyncReason } from '@/src/groups/activity-sync';
 import { groupDeps } from '@/src/groups/browser-groups';
 import { retryPendingDelete } from '@/src/groups/service';
 import { cryptoRandomInt } from '@/src/interventions/randomize';
@@ -101,10 +102,27 @@ export default defineBackground(() => {
       context: await readContext(IDLE_THRESHOLD_SECONDS, await isTrackingPaused(localStore)),
     }));
 
+  /**
+   * Passive study groups (P18): focus minutes and "focusing now". Network calls run in their own
+   * chain, outside `queue`, so tracking and sessions never wait for the server; they start only
+   * after the session change they report has been saved. `syncActivity` sends nothing unless this
+   * browser is in a group with a sharing switch on and the permissions allow it.
+   */
+  let groupQueue: Promise<void> = Promise.resolve();
+  function syncGroups(reason: SyncReason): void {
+    groupQueue = groupQueue
+      .then(() => syncActivity(groupDeps, Date.now(), reason))
+      .then(
+        () => undefined,
+        (err: unknown) => console.error('[StudyLens] study group sync failed', err),
+      );
+  }
+
   /** Bring the tracker up to date first so a session that ends now includes the current site. */
-  function reconcile(): Promise<unknown> {
+  async function reconcile(): Promise<void> {
     dispatch(() => ({ type: 'heartbeat' }));
-    return enqueue(() => reconcileSession(sessionDeps, Date.now()));
+    const ended = await enqueue(() => reconcileSession(sessionDeps, Date.now()));
+    if (ended) syncGroups('session-end');
   }
 
   /**
@@ -140,11 +158,14 @@ export default defineBackground(() => {
         const result = await enqueue(() =>
           startSession(sessionDeps, msg.goal, msg.minutes, Date.now(), seconds),
         );
+        if (result.ok) syncGroups('session-start');
         return result.ok ? { ok: true } : { ok: false, error: result.error };
       }
       case 'session:end-early':
         dispatch(() => ({ type: 'heartbeat' }));
-        await enqueue(() => endSessionEarly(sessionDeps, Date.now()));
+        if (await enqueue(() => endSessionEarly(sessionDeps, Date.now()))) {
+          syncGroups('session-end');
+        }
         return { ok: true };
       case 'session:check':
         await reconcile();
@@ -242,10 +263,16 @@ export default defineBackground(() => {
       void retryPendingDelete(groupDeps, Date.now()).catch((err: unknown) =>
         console.error('[StudyLens] pending server delete failed', err),
       );
+      // Passive groups (P18): only retries focus minutes that couldn't be sent (offline); no
+      // request at all when nothing is waiting.
+      syncGroups('heartbeat');
     }
     if (alarm.name === SESSION_END_ALARM) void reconcile().catch(() => undefined);
     if (alarm.name === SESSION_TICK_ALARM) {
       void enqueue(() => refreshBadge(sessionDeps, Date.now())).catch(() => undefined);
+      // Passive groups (P18): "focusing now" heartbeat, and focus minutes every 5 minutes. This
+      // alarm only exists while a session runs.
+      syncGroups('tick');
     }
   });
 
@@ -283,7 +310,9 @@ export default defineBackground(() => {
   // Every wake-up: close a stale tracker segment (if any) and pick up the current state, then
   // end an overdue session at its planned end (or restore its alarms and badge).
   sync();
-  void enqueue(() => reconcileSession(sessionDeps, Date.now())).catch(() => undefined);
+  void enqueue(() => reconcileSession(sessionDeps, Date.now()))
+    .then((ended) => ended && syncGroups('session-end'))
+    .catch(() => undefined);
   // Retention (P12): run now if it is overdue (e.g. the browser was closed for days).
   cleanUpIfDue();
   // Research CSV (P13c): a random participant ID, made once on this device (and again after

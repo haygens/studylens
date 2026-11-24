@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SHARING_OFF } from '@studylens/shared';
 import { createApiClient } from './api-client';
 import { SERVER_ORIGIN_PATTERN } from './config';
 import {
+  canShareActivity,
   canShareName,
   createServerAccess,
   permissionGate,
@@ -9,6 +11,7 @@ import {
 } from './permission';
 
 const PII = 'personallyIdentifyingInfo';
+const TAI = 'technicalAndInteraction';
 type Perms = { origins?: string[]; data_collection?: string[] };
 
 /**
@@ -56,24 +59,38 @@ function fakePermissions(opts: {
       ...(dataOn && { data_collection: [...data] }),
     })),
   };
-  return { api, requests, revokeData: () => data.delete(PII), revokeServer: () => origins.clear() };
+  return {
+    api,
+    requests,
+    revokeData: () => data.delete(PII),
+    revokeActivity: () => data.delete(TAI),
+    revokeServer: () => origins.clear(),
+  };
 }
 
 describe('server access + display-name consent', () => {
   it('Edge: one request for the server only; no data consent exists or is needed', async () => {
     const fake = fakePermissions({ browser: 'edge', answers: [true] });
     const access = createServerAccess(fake.api, false);
-    expect(await access.read()).toEqual({ server: false, nameSharing: 'not-needed' });
+    expect(await access.read()).toEqual({
+      server: false,
+      nameSharing: 'not-needed',
+      activitySharing: 'not-needed',
+    });
     const after = await access.requestAll();
     expect(fake.requests).toEqual([{ origins: [SERVER_ORIGIN_PATTERN] }]);
-    expect(after).toEqual({ server: true, nameSharing: 'not-needed' });
+    expect(after).toEqual({
+      server: true,
+      nameSharing: 'not-needed',
+      activitySharing: 'not-needed',
+    });
     expect(canShareName(after)).toBe(true);
   });
 
   it('Firefox, not requested yet: nothing granted', async () => {
     const access = createServerAccess(fakePermissions({ browser: 'firefox' }).api, true);
     const a = await access.read();
-    expect(a).toEqual({ server: false, nameSharing: 'missing' });
+    expect(a).toEqual({ server: false, nameSharing: 'missing', activitySharing: 'missing' });
     expect(canShareName(a)).toBe(false);
   });
 
@@ -81,9 +98,12 @@ describe('server access + display-name consent', () => {
     const fake = fakePermissions({ browser: 'firefox', answers: [true] });
     const access = createServerAccess(fake.api, true);
     const a = await access.requestAll();
-    expect(fake.requests).toEqual([{ origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII] }]);
-    expect(a).toEqual({ server: true, nameSharing: 'granted' });
+    expect(fake.requests).toEqual([
+      { origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII, TAI] },
+    ]);
+    expect(a).toEqual({ server: true, nameSharing: 'granted', activitySharing: 'granted' });
     expect(canShareName(a)).toBe(true);
+    expect(canShareActivity(a)).toBe(true);
   });
 
   it('Firefox, declined: nothing granted', async () => {
@@ -91,7 +111,11 @@ describe('server access + display-name consent', () => {
       fakePermissions({ browser: 'firefox', answers: [false] }).api,
       true,
     );
-    expect(await access.requestAll()).toEqual({ server: false, nameSharing: 'missing' });
+    expect(await access.requestAll()).toEqual({
+      server: false,
+      nameSharing: 'missing',
+      activitySharing: 'missing',
+    });
   });
 
   it('Firefox with data collection switched off (hs’s manual test): never counts as granted', async () => {
@@ -102,7 +126,7 @@ describe('server access + display-name consent', () => {
     expect(
       await fake.api.contains({ origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII] }),
     ).toBe(true);
-    expect(a).toEqual({ server: true, nameSharing: 'unsupported' });
+    expect(a).toEqual({ server: true, nameSharing: 'unsupported', activitySharing: 'unsupported' });
     expect(canShareName(a)).toBe(false);
   });
 
@@ -110,13 +134,21 @@ describe('server access + display-name consent', () => {
     const fake = fakePermissions({
       browser: 'firefox',
       granted: { origins: [SERVER_ORIGIN_PATTERN] },
-      answers: [true],
+      answers: [true, true],
     });
     const access = createServerAccess(fake.api, true);
-    expect(await access.read()).toEqual({ server: true, nameSharing: 'missing' });
+    expect(await access.read()).toEqual({
+      server: true,
+      nameSharing: 'missing',
+      activitySharing: 'missing',
+    });
     const a = await access.requestNameSharing();
     expect(fake.requests).toEqual([{ data_collection: [PII] }]);
-    expect(a).toEqual({ server: true, nameSharing: 'granted' });
+    expect(a).toEqual({ server: true, nameSharing: 'granted', activitySharing: 'missing' });
+    // P18: focus activity is asked on its own click (e.g. turning a switch on).
+    const b = await access.requestActivitySharing();
+    expect(fake.requests.at(-1)).toEqual({ data_collection: [TAI] });
+    expect(b).toEqual({ server: true, nameSharing: 'granted', activitySharing: 'granted' });
   });
 
   it('Firefox: consent revoked later (about:addons) is noticed on the next check', async () => {
@@ -124,7 +156,15 @@ describe('server access + display-name consent', () => {
     const access = createServerAccess(fake.api, true);
     await access.requestAll();
     fake.revokeData();
-    expect(await access.read()).toEqual({ server: true, nameSharing: 'missing' });
+    expect(await access.read()).toEqual({
+      server: true,
+      nameSharing: 'missing',
+      activitySharing: 'granted',
+    });
+    fake.revokeActivity();
+    const a = await access.read();
+    expect(a.activitySharing).toBe('missing');
+    expect(canShareActivity(a)).toBe(false);
   });
 
   it('calls request() synchronously, so it still counts as part of the click', () => {
@@ -148,7 +188,11 @@ describe('server access + display-name consent', () => {
       getAll: async () => ({}),
     };
     const access = createServerAccess(api, true);
-    expect(await access.requestAll()).toEqual({ server: false, nameSharing: 'missing' });
+    expect(await access.requestAll()).toEqual({
+      server: false,
+      nameSharing: 'missing',
+      activitySharing: 'missing',
+    });
   });
 
   it('removeAll gives back both', async () => {
@@ -156,7 +200,11 @@ describe('server access + display-name consent', () => {
     const access = createServerAccess(fake.api, true);
     await access.requestAll();
     await access.removeAll();
-    expect(await access.read()).toEqual({ server: false, nameSharing: 'missing' });
+    expect(await access.read()).toEqual({
+      server: false,
+      nameSharing: 'missing',
+      activitySharing: 'missing',
+    });
   });
 });
 
@@ -172,8 +220,8 @@ describe('nothing that reveals the display name is sent without consent', () => 
     });
     const results = {
       register: await client.register('Sam'),
-      createGroup: await client.createGroup('t', 'G'),
-      joinGroup: await client.joinGroup('t', 'ABCDEFGH'),
+      createGroup: await client.createGroup('t', 'G', SHARING_OFF),
+      joinGroup: await client.joinGroup('t', 'ABCDEFGH', SHARING_OFF),
       rename: await client.rename('t', 'Sam'),
       listGroups: await client.listGroups('t'),
       leaveGroup: await client.leaveGroup('t', 'g1'),
@@ -243,7 +291,7 @@ describe('nothing that reveals the display name is sent without consent', () => 
   it('Firefox with consent, and Edge with server access: everything is allowed', async () => {
     const firefox = fakePermissions({
       browser: 'firefox',
-      granted: { origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII] },
+      granted: { origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII, TAI] },
     });
     const edge = fakePermissions({
       browser: 'edge',
@@ -263,5 +311,82 @@ describe('nothing that reveals the display name is sent without consent', () => 
     const { results, fetchMock } = await run(fakePermissions({ browser: 'edge' }), false);
     expect(Object.values(results).every((r) => !r.ok && r.kind === 'no-permission')).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('P18: nothing about focus activity is sent without consent', () => {
+  async function run(fake: ReturnType<typeof fakePermissions>, isFirefox: boolean) {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+    const client = createApiClient({
+      base: 'https://api.test.invalid',
+      fetch: fetchMock as unknown as typeof fetch,
+      hasPermission: permissionGate(createServerAccess(fake.api, isFirefox)),
+    });
+    const results = {
+      totals: await client.sendTotals('t', [{ localDate: '2026-11-23', focusMinutes: 5 }]),
+      start: await client.sendPresence('t', 'start'),
+      heartbeat: await client.sendPresence('t', 'heartbeat'),
+      sharingOn: await client.updateSharing('t', 'g1', { focusMinutes: true }),
+      stop: await client.sendPresence('t', 'stop'),
+      sharingOff: await client.updateSharing('t', 'g1', {
+        focusMinutes: false,
+        focusingNow: false,
+      }),
+      overview: await client.overview('t', 'g1', '2026-11-23'),
+    };
+    const sent = fetchMock.mock.calls.map((c) => {
+      const [url, init] = c as unknown as [string, RequestInit];
+      return `${init.method} ${url.replace('https://api.test.invalid', '')}`;
+    });
+    return { results, sent };
+  }
+
+  it('Firefox without the activity OK: totals, presence and switching on are not sent', async () => {
+    const fake = fakePermissions({
+      browser: 'firefox',
+      granted: { origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII] },
+    });
+    const { results, sent } = await run(fake, true);
+    for (const r of [results.totals, results.start, results.heartbeat, results.sharingOn]) {
+      expect(r).toEqual({ ok: false, kind: 'no-activity-consent' });
+    }
+    // Ending presence, switching off and reading the overview reveal nothing new about me.
+    expect(sent).toEqual([
+      'POST /api/presence',
+      'PATCH /api/groups/g1/sharing',
+      'GET /api/groups/g1/overview?today=2026-11-23',
+    ]);
+  });
+
+  it('Firefox with data collection switched off: never sent', async () => {
+    const fake = fakePermissions({
+      browser: 'firefox',
+      featureOn: false,
+      granted: { origins: [SERVER_ORIGIN_PATTERN] },
+    });
+    const { results } = await run(fake, true);
+    expect(results.totals).toEqual({ ok: false, kind: 'no-activity-consent' });
+  });
+
+  it('Firefox with the OK, and Edge: everything goes out', async () => {
+    for (const [fake, isFirefox] of [
+      [
+        fakePermissions({
+          browser: 'firefox',
+          granted: { origins: [SERVER_ORIGIN_PATTERN], data_collection: [PII, TAI] },
+        }),
+        true,
+      ],
+      [fakePermissions({ browser: 'edge', granted: { origins: [SERVER_ORIGIN_PATTERN] } }), false],
+    ] as const) {
+      const { results, sent } = await run(fake, isFirefox);
+      expect(Object.values(results).every((r) => r.ok)).toBe(true);
+      expect(sent).toHaveLength(7);
+    }
+  });
+
+  it('no server access: nothing at all', async () => {
+    const { sent } = await run(fakePermissions({ browser: 'edge' }), false);
+    expect(sent).toEqual([]);
   });
 });

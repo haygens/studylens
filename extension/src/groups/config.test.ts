@@ -7,7 +7,10 @@ describe('server config', () => {
   it('uses the build-time base URL and the display-name data category', () => {
     // Unit tests build with a dummy base URL (vitest.config.ts).
     expect(SERVER_ORIGIN_PATTERN).toBe('https://api.test.invalid/*');
-    expect(OPTIONAL_DATA_COLLECTION).toEqual(['personallyIdentifyingInfo']);
+    expect(OPTIONAL_DATA_COLLECTION).toEqual([
+      'personallyIdentifyingInfo',
+      'technicalAndInteraction',
+    ]);
   });
 
   it('production uses HTTPS; the E2E server is local only', () => {

@@ -4,6 +4,7 @@ import { NEW_SESSION_FIELDS } from './session';
 import { STATE_KEY, dayKey, memoryStore } from '../storage/activity-store';
 import { RULES_KEY } from '../storage/categories-store';
 import { ENABLED_KEY } from '../storage/interventions-store';
+import { STORAGE_KEYS } from '../storage/keys';
 import { ACTIVE_SESSION_KEY, loadActiveSession, loadSessions } from '../storage/sessions-store';
 import { initialState, type Segment, type TrackerState } from '../tracker/tracker';
 import { CHECK_IN_EXPIRY_MS } from './check-in';
@@ -64,6 +65,21 @@ const seg = (hostname: string, a: number, b: number): Segment => ({
 });
 
 describe('session controller', () => {
+  it('P18: records "in a study group" locally; the session stays solo', async () => {
+    const solo = setup();
+    await startSession(solo.deps, 'Essay', 25, T0);
+    expect(await loadActiveSession(solo.store)).toMatchObject({ mode: 'solo', inGroup: false });
+
+    const grouped = setup({
+      [STORAGE_KEYS.groupDevice]: { deviceId: 'd', token: 'slt_x', displayName: 'Sam' },
+      [STORAGE_KEYS.groupSharing]: { g1: { focusMinutes: false, focusingNow: false } },
+    });
+    await startSession(grouped.deps, 'Essay', 25, T0);
+    expect(await loadActiveSession(grouped.store)).toMatchObject({ mode: 'solo', inGroup: true });
+    await endSessionEarly(grouped.deps, T0 + MIN);
+    expect((await loadSessions(grouped.store))[0]).toMatchObject({ mode: 'solo', inGroup: true });
+  });
+
   it('starts a session, schedules its alarms and shows the minutes on the badge', async () => {
     const t = setup();
     const result = await startSession(t.deps, 'Problem set', 25, T0);
@@ -115,6 +131,7 @@ describe('session controller', () => {
     expect(done).toEqual({
       id: 's1',
       goal: 'Essay',
+      inGroup: false,
       plannedMinutes: 25,
       start: T0,
       plannedEnd: T0 + 25 * MIN,

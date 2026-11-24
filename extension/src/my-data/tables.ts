@@ -200,7 +200,7 @@ export function sessionRows(stored: Record<string, unknown>): SessionRow[] {
     .map((s: FocusSession) => ({
       id: s.id,
       number: s.sessionNumber === null ? '—' : String(s.sessionNumber),
-      mode: s.mode === 'solo' ? 'Solo' : 'Group',
+      mode: (s.mode === 'solo' ? 'Solo' : 'Group') + (s.inGroup ? ' (in a study group)' : ''),
       attempts: describeAttempts(s),
       labels:
         s.labelSetVersion === null

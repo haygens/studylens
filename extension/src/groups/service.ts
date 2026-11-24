@@ -6,7 +6,13 @@
  * The device is registered lazily: only when the user creates or joins their first group (after
  * the consent screen and the browser's permission prompt). Until then nothing is ever sent.
  */
-import type { GroupSummary, ListGroupsResponse } from '@studylens/shared';
+import type {
+  GroupOverviewResponse,
+  GroupSharing,
+  GroupSummary,
+  ListGroupsResponse,
+  UpdateSharingRequest,
+} from '@studylens/shared';
 import type { FullStore } from '../storage/activity-store';
 import { isUnknownDevice, type ApiClient, type ApiFailure, type ApiResult } from './api-client';
 import {
@@ -14,8 +20,10 @@ import {
   clearPendingDelete,
   loadGroupDevice,
   loadPendingDelete,
+  loadSharingCache,
   saveGroupDevice,
   savePendingDelete,
+  saveSharingCache,
   type GroupDevice,
 } from './group-store';
 
@@ -26,6 +34,14 @@ export interface GroupDeps {
 }
 
 const fail = (failure: ApiFailure) => failure;
+
+/** P18: keeps the local copy of my switches for one group in step with the server. */
+async function rememberSharing(deps: GroupDeps, groupId: string, sharing: GroupSharing | null) {
+  const cache = await loadSharingCache(deps.store);
+  if (sharing) cache[groupId] = sharing;
+  else delete cache[groupId];
+  await saveSharingCache(deps.store, cache);
+}
 
 /**
  * The registered device with `displayName` on the server: registers it first if needed, or — if
@@ -57,28 +73,40 @@ export async function ensureDevice(
   return { ok: true, data: device };
 }
 
-/** First use: register (if needed) with the display name, then create a group. */
+/**
+ * First use: register (if needed) with the display name, then create a group with my switches
+ * (P18).
+ */
 export async function createGroup(
   deps: GroupDeps,
   displayName: string,
   groupName: string,
+  sharing: GroupSharing,
 ): Promise<ApiResult<GroupSummary>> {
   const device = await ensureDevice(deps, displayName);
   if (!device.ok) return device;
-  const res = await deps.client.createGroup(device.data.token, groupName);
-  return res.ok ? { ok: true, data: res.data.group } : res;
+  const res = await deps.client.createGroup(device.data.token, groupName, sharing);
+  if (!res.ok) return res;
+  await rememberSharing(deps, res.data.group.id, res.data.group.sharing);
+  return { ok: true, data: res.data.group };
 }
 
-/** First use: register (if needed) with the display name, then join by code. */
+/**
+ * First use: register (if needed) with the display name, then join by code with my switches
+ * (P18; if I was already a member, the server keeps my old switches and returns them).
+ */
 export async function joinGroup(
   deps: GroupDeps,
   displayName: string,
   code: string,
+  sharing: GroupSharing,
 ): Promise<ApiResult<GroupSummary>> {
   const device = await ensureDevice(deps, displayName);
   if (!device.ok) return device;
-  const res = await deps.client.joinGroup(device.data.token, code);
-  return res.ok ? { ok: true, data: res.data.group } : res;
+  const res = await deps.client.joinGroup(device.data.token, code, sharing);
+  if (!res.ok) return res;
+  await rememberSharing(deps, res.data.group.id, res.data.group.sharing);
+  return { ok: true, data: res.data.group };
 }
 
 export async function listGroups(
@@ -90,15 +118,68 @@ export async function listGroups(
   if (res.ok && res.data.me.displayName !== device.displayName) {
     await saveGroupDevice(deps.store, { ...device, displayName: res.data.me.displayName });
   }
+  // P18: the server's list is the truth about my groups and switches.
+  if (res.ok) {
+    await saveSharingCache(
+      deps.store,
+      Object.fromEntries(res.data.groups.map((g) => [g.id, g.sharing])),
+    );
+  }
   return res;
 }
 
+/** Leaving also forgets my switches for the group (the server deleted what it no longer shows). */
 export async function leaveGroup(
   deps: GroupDeps,
   device: GroupDevice,
   groupId: string,
 ): Promise<ApiResult<{ ok: true }>> {
-  return deps.client.leaveGroup(device.token, groupId);
+  const res = await deps.client.leaveGroup(device.token, groupId);
+  if (res.ok || (res.kind === 'http' && res.status === 404)) {
+    await rememberSharing(deps, groupId, null);
+  }
+  return res;
+}
+
+/**
+ * P18: changes my switches for one group. Takes effect on the server at once; turning a switch
+ * off there also deletes that data once no group shares it.
+ */
+export async function updateSharing(
+  deps: GroupDeps,
+  device: GroupDevice,
+  groupId: string,
+  patch: UpdateSharingRequest,
+): Promise<ApiResult<GroupSharing>> {
+  const res = await deps.client.updateSharing(device.token, groupId, patch);
+  if (!res.ok) {
+    if (res.kind === 'http' && res.status === 404) await rememberSharing(deps, groupId, null);
+    return res;
+  }
+  await rememberSharing(deps, groupId, res.data.sharing);
+  return { ok: true, data: res.data.sharing };
+}
+
+/** P18: what the members of a group see about each other. `today` = my local date. */
+export function groupOverview(
+  deps: GroupDeps,
+  device: GroupDevice,
+  groupId: string,
+  today: string,
+): Promise<ApiResult<GroupOverviewResponse>> {
+  return deps.client.overview(device.token, groupId, today);
+}
+
+/**
+ * P18, popup: how many friends are focusing now, or null when not registered / not allowed /
+ * not reachable (the popup then just shows nothing). Never sends anything about me.
+ */
+export async function focusingFriends(deps: GroupDeps): Promise<number | null> {
+  const device = await loadGroupDevice(deps.store);
+  if (!device) return null;
+  if (Object.keys(await loadSharingCache(deps.store)).length === 0) return null;
+  const res = await deps.client.focusingNow(device.token);
+  return res.ok ? res.data.count : null;
 }
 
 export async function renameDevice(

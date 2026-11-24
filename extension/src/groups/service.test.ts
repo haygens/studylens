@@ -1,16 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import type { GroupSummary } from '@studylens/shared';
+import { SHARING_DEFAULT, type GroupSummary } from '@studylens/shared';
 import { memoryStore } from '../storage/activity-store';
 import { STORAGE_KEYS } from '../storage/keys';
 import type { ApiClient, ApiFailure, ApiResult } from './api-client';
-import { loadGroupDevice, loadPendingDelete, maskToken } from './group-store';
+import {
+  isInGroup,
+  loadGroupDevice,
+  loadPendingDelete,
+  loadSharingCache,
+  loadSyncState,
+  maskToken,
+} from './group-store';
 import {
   PENDING_DELETE_RETRY_MS,
   createGroup,
   deleteServerData,
   deleteServerDataBeforeDeleteEverything,
+  focusingFriends,
   joinGroup,
+  leaveGroup,
   listGroups,
+  updateSharing,
   rememberPendingDelete,
   renameDevice,
   retryPendingDelete,
@@ -24,6 +34,7 @@ const GROUP: GroupSummary = {
   role: 'owner',
   joinedAt: T,
   members: [{ displayName: 'Sam', role: 'owner', isMe: true }],
+  sharing: SHARING_DEFAULT,
 };
 const OFFLINE: ApiFailure = { ok: false, kind: 'offline' };
 const UNKNOWN: ApiFailure = {
@@ -40,7 +51,8 @@ function fakeClient(overrides: Partial<Record<keyof ApiClient, () => ApiResult<u
   const answer =
     <T>(name: keyof ApiClient, fallback: T) =>
     async (...args: unknown[]) => {
-      calls.push(`${name}(${args.join(', ')})`);
+      // Objects (sharing switches, patches) are left out of the log; tests check them directly.
+      calls.push(`${name}(${args.filter((a) => typeof a !== 'object').join(', ')})`);
       return (overrides[name]?.() ?? { ok: true, data: fallback }) as ApiResult<T>;
     };
   const client = {
@@ -51,6 +63,8 @@ function fakeClient(overrides: Partial<Record<keyof ApiClient, () => ApiResult<u
     leaveGroup: answer('leaveGroup', { ok: true }),
     rename: answer('rename', { displayName: 'Samira' }),
     deleteDevice: answer('deleteDevice', { ok: true }),
+    updateSharing: answer('updateSharing', { sharing: { focusMinutes: false, focusingNow: true } }),
+    focusingNow: answer('focusingNow', { count: 2 }),
   } as unknown as ApiClient;
   return { client, calls };
 }
@@ -60,8 +74,11 @@ describe('study groups service', () => {
     const store = memoryStore();
     const { client, calls } = fakeClient();
     const deps = { store, client, now: () => T };
-    expect(await createGroup(deps, 'Sam', 'Study')).toEqual({ ok: true, data: GROUP });
-    expect(await joinGroup(deps, 'Sam', 'ZZZZZZZZ')).toMatchObject({ ok: true });
+    expect(await createGroup(deps, 'Sam', 'Study', SHARING_DEFAULT)).toEqual({
+      ok: true,
+      data: GROUP,
+    });
+    expect(await joinGroup(deps, 'Sam', 'ZZZZZZZZ', SHARING_DEFAULT)).toMatchObject({ ok: true });
     expect(calls).toEqual([
       'register(Sam)',
       'createGroup(slt_tok, Study)',
@@ -82,9 +99,12 @@ describe('study groups service', () => {
       createGroup: () => (createFails ? OFFLINE : { ok: true, data: { group: GROUP } }),
     });
     const deps = { store, client, now: () => T };
-    expect(await createGroup(deps, 'Sam', 'Study')).toEqual(OFFLINE); // registered, then failed
+    expect(await createGroup(deps, 'Sam', 'Study', SHARING_DEFAULT)).toEqual(OFFLINE); // registered, then failed
     createFails = false;
-    expect(await createGroup(deps, 'Samira', 'Study')).toEqual({ ok: true, data: GROUP });
+    expect(await createGroup(deps, 'Samira', 'Study', SHARING_DEFAULT)).toEqual({
+      ok: true,
+      data: GROUP,
+    });
     expect(calls).toEqual([
       'register(Sam)',
       'createGroup(slt_tok, Study)',
@@ -101,12 +121,15 @@ describe('study groups service', () => {
       { store: memoryStore({ [STORAGE_KEYS.groupDevice]: device }), client: same.client },
       'Sam',
       'ZZZZZZZZ',
+      SHARING_DEFAULT,
     );
     expect(same.calls).toEqual(['joinGroup(slt_tok, ZZZZZZZZ)']);
 
     const failing = fakeClient({ rename: () => OFFLINE });
     const store = memoryStore({ [STORAGE_KEYS.groupDevice]: device });
-    expect(await joinGroup({ store, client: failing.client }, 'Alex', 'ZZZZZZZZ')).toEqual(OFFLINE);
+    expect(
+      await joinGroup({ store, client: failing.client }, 'Alex', 'ZZZZZZZZ', SHARING_DEFAULT),
+    ).toEqual(OFFLINE);
     expect(failing.calls).toEqual(['rename(slt_tok, Alex)']);
     expect((await loadGroupDevice(store))?.displayName).toBe('Sam');
   });
@@ -114,7 +137,7 @@ describe('study groups service', () => {
   it('stores nothing if registration fails', async () => {
     const store = memoryStore();
     const { client, calls } = fakeClient({ register: () => OFFLINE });
-    expect(await createGroup({ store, client }, 'Sam', 'Study')).toEqual(OFFLINE);
+    expect(await createGroup({ store, client }, 'Sam', 'Study', SHARING_DEFAULT)).toEqual(OFFLINE);
     expect(calls).toEqual(['register(Sam)']);
     expect(store.data).toEqual({});
   });
@@ -212,6 +235,80 @@ describe('Delete everything: the server part', () => {
     const { client } = fakeClient({ deleteDevice: () => UNKNOWN });
     expect(await retryPendingDelete({ store, client }, T)).toBe('deleted');
     expect(store.data).toEqual({});
+  });
+});
+
+describe('P18: my sharing switches are kept in step locally', () => {
+  const device = { deviceId: 'dev-1', token: 'slt_tok', displayName: 'Sam', registeredAt: T };
+
+  it('create/join remember the switches; list replaces them; leave forgets them', async () => {
+    const store = memoryStore();
+    const { client } = fakeClient();
+    const deps = { store, client, now: () => T };
+    expect(await isInGroup(store)).toBe(false);
+    await createGroup(deps, 'Sam', 'Study', SHARING_DEFAULT);
+    expect(await loadSharingCache(store)).toEqual({ g1: SHARING_DEFAULT });
+    expect(await isInGroup(store)).toBe(true);
+
+    const other = { ...GROUP, id: 'g2', sharing: { focusMinutes: true, focusingNow: false } };
+    const listing = fakeClient({
+      listGroups: () => ({ ok: true, data: { me: { displayName: 'Sam' }, groups: [other] } }),
+    });
+    await listGroups({ store, client: listing.client }, device);
+    expect(await loadSharingCache(store)).toEqual({ g2: other.sharing });
+
+    await leaveGroup(deps, device, 'g2');
+    expect(await loadSharingCache(store)).toEqual({});
+    expect(await isInGroup(store)).toBe(false);
+  });
+
+  it('updateSharing sends the patch and stores the server’s answer', async () => {
+    const store = memoryStore({
+      [STORAGE_KEYS.groupDevice]: device,
+      [STORAGE_KEYS.groupSharing]: { g1: SHARING_DEFAULT },
+      // What was sent before: forgotten once no group shares minutes (the server deleted them).
+      [STORAGE_KEYS.groupActivitySync]: {
+        sent: { '2026-11-24': 30 },
+        lastTotalsAttempt: T,
+        presenceOn: true,
+      },
+    });
+    const { client, calls } = fakeClient();
+    const res = await updateSharing({ store, client }, device, 'g1', { focusMinutes: false });
+    expect(res).toEqual({ ok: true, data: { focusMinutes: false, focusingNow: true } });
+    expect(calls).toEqual(['updateSharing(slt_tok, g1)']);
+    expect(await loadSharingCache(store)).toEqual({
+      g1: { focusMinutes: false, focusingNow: true },
+    });
+    expect(await loadSyncState(store)).toEqual({
+      sent: {},
+      lastTotalsAttempt: null,
+      presenceOn: true,
+    });
+  });
+
+  it('a failed switch change keeps the old switches', async () => {
+    const store = memoryStore({ [STORAGE_KEYS.groupSharing]: { g1: SHARING_DEFAULT } });
+    const { client } = fakeClient({ updateSharing: () => OFFLINE });
+    expect(await updateSharing({ store, client }, device, 'g1', { focusMinutes: false })).toEqual(
+      OFFLINE,
+    );
+    expect(await loadSharingCache(store)).toEqual({ g1: SHARING_DEFAULT });
+  });
+
+  it('focusingFriends: a number only when registered and in a group; null otherwise', async () => {
+    const { client, calls } = fakeClient();
+    expect(await focusingFriends({ store: memoryStore(), client })).toBeNull();
+    const noGroups = memoryStore({ [STORAGE_KEYS.groupDevice]: device });
+    expect(await focusingFriends({ store: noGroups, client })).toBeNull();
+    expect(calls).toEqual([]); // no request for solo users or without groups
+    const inGroup = memoryStore({
+      [STORAGE_KEYS.groupDevice]: device,
+      [STORAGE_KEYS.groupSharing]: { g1: SHARING_DEFAULT },
+    });
+    expect(await focusingFriends({ store: inGroup, client })).toBe(2);
+    const failing = fakeClient({ focusingNow: () => OFFLINE });
+    expect(await focusingFriends({ store: inGroup, client: failing.client })).toBeNull();
   });
 });
 

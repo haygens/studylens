@@ -49,6 +49,7 @@ import {
   type CheckInInput,
 } from './check-in';
 import { computeSessionStats } from './session-stats';
+import { isInGroup } from '../groups/group-store';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -91,10 +92,11 @@ export async function startSession(
   if (skipped) await saveSessions(deps.store, skipped);
   // Research condition (P8). The session and the shortened block are saved in one write, so a
   // condition is used up exactly when a session really starts.
-  const [settings, block, research] = await Promise.all([
+  const [settings, block, research, inGroup] = await Promise.all([
     loadInterventionSettings(deps.store),
     loadBlock(deps.store),
     deps.store.get([SESSION_COUNTER_KEY, LABEL_LOCK_KEY, LABEL_VERSION_KEY]),
+    isInGroup(deps.store),
   ]);
   const assignment = assignCondition(settings, block, deps.random);
   // Research instrumentation (P13c): session order, label-set version and study mode.
@@ -106,6 +108,8 @@ export async function startSession(
     sessionNumber,
     labelSetVersion: asLabelSetVersion(research[LABEL_VERSION_KEY]),
     labelsLocked: asLabelLock(research[LABEL_LOCK_KEY]).locked,
+    // P18: passive group membership is only a local covariate; the session stays `solo`.
+    inGroup,
   };
   await deps.store.set({
     [ACTIVE_SESSION_KEY]: session,

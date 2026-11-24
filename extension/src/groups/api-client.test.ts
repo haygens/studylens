@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SHARING_OFF } from '@studylens/shared';
 import { createApiClient, failureText, isUnknownDevice, type ApiFailure } from './api-client';
 
 const BASE = 'https://api.test.invalid';
@@ -22,13 +23,13 @@ function client(fetchImpl: typeof fetch, opts: { permission?: boolean; timeoutMs
 describe('API client', () => {
   it('sends JSON with the bearer token, no cookies and no referrer', async () => {
     const fetchMock = vi.fn(async () => json(201, { group: { id: 'g1' } }));
-    const res = await client(fetchMock).createGroup('slt_tok', 'Study');
+    const res = await client(fetchMock).createGroup('slt_tok', 'Study', SHARING_OFF);
     expect(res).toEqual({ ok: true, data: { group: { id: 'g1' } } });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(`${BASE}/api/groups`);
     expect(init).toMatchObject({
       method: 'POST',
-      body: JSON.stringify({ name: 'Study' }),
+      body: JSON.stringify({ name: 'Study', sharing: SHARING_OFF }),
       credentials: 'omit',
       referrerPolicy: 'no-referrer',
       cache: 'no-store',
@@ -45,7 +46,7 @@ describe('API client', () => {
     const c = client(fetchMock);
     await c.register('Sam');
     await c.listGroups('t');
-    await c.joinGroup('t', 'ABCDEFGH');
+    await c.joinGroup('t', 'ABCDEFGH', SHARING_OFF);
     await c.leaveGroup('t', 'g/1');
     await c.rename('t', 'Samira');
     await c.deleteDevice('t');
@@ -78,7 +79,7 @@ describe('API client', () => {
           details: [{ path: 'name', message: 'Group name is required.' }],
         },
       }),
-    ).createGroup('t', '');
+    ).createGroup('t', '', SHARING_OFF);
     expect(res).toEqual({
       ok: false,
       kind: 'http',
