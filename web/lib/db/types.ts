@@ -3,10 +3,17 @@
  * - `createSqlDb` (sql-db.ts): libSQL — Turso in production, a local file for dev/tests.
  * - `createMemoryDb` (memory.ts): in-memory stub for quick dev without a database file.
  *
- * P15: devices, error logs, rate limits, cleanup. P16: groups and memberships. P18/P18b methods are
- * added with their endpoints (the schema for them already exists, schema.ts).
+ * P15: devices, error logs, rate limits, cleanup. P16: groups and memberships. P18: sharing
+ * switches, daily totals, presence, group overview. P18b methods are added with their endpoints.
  */
-import type { GroupRole, GroupSummary } from '@studylens/shared';
+import type {
+  DailyTotal,
+  GroupRole,
+  GroupSharing,
+  GroupSummary,
+  OverviewMember,
+  PresenceState,
+} from '@studylens/shared';
 
 export interface Device {
   id: string;
@@ -47,6 +54,7 @@ export interface CleanupResult {
   presenceRowsDeleted: number;
   participantRowsDeleted: number;
   rateLimitRowsDeleted: number;
+  dailyTotalsDeleted: number;
 }
 
 export interface NewGroup {
@@ -57,6 +65,8 @@ export interface NewGroup {
   /** The creator, who becomes the owner and first member. */
   deviceId: string;
   createdAt: number;
+  /** The creator's switches (P18). */
+  sharing: GroupSharing;
 }
 
 export type CreateGroupResult =
@@ -78,7 +88,20 @@ export interface GroupLimits {
   maxGroupsPerDevice: number;
 }
 
-export type { GroupRole, GroupSummary };
+export interface GroupOverview {
+  group: { id: string; name: string };
+  members: OverviewMember[];
+}
+
+export interface OverviewQuery {
+  /** Epoch ms: presence counts only while `expires_at` is later than this. */
+  now: number;
+  /** The viewer's local date; history covers `historyDays` dates ending on it. */
+  today: string;
+  historyDays: number;
+}
+
+export type { GroupRole, GroupSharing, GroupSummary };
 
 export interface Db {
   /** Throws if the database can't be reached. */
@@ -98,20 +121,50 @@ export interface Db {
 
   /** Creates a group with the creator as owner, unless the device is in too many groups. */
   createGroup(group: NewGroup, maxGroupsPerDevice: number): Promise<CreateGroupResult>;
-  /** Joins by (normalized) join code, respecting both limits atomically. */
+  /**
+   * Joins by (normalized) join code, respecting both limits atomically. `sharing` applies only to
+   * a new membership (an existing member keeps their switches).
+   */
   joinGroup(
     joinCode: string,
     deviceId: string,
     now: number,
     limits: GroupLimits,
+    sharing: GroupSharing,
   ): Promise<JoinGroupResult>;
   /** The device's groups with their members (oldest membership first). */
   listGroups(deviceId: string): Promise<GroupSummary[]>;
   /**
    * Removes the device from the group. Returns false if it wasn't a member. An empty group is
-   * deleted; if the owner left, the longest-standing member becomes the owner.
+   * deleted; if the owner left, the longest-standing member becomes the owner. Daily totals and
+   * presence that no remaining group of the device shares any more are deleted at once (P18).
    */
   leaveGroup(groupId: string, deviceId: string): Promise<boolean>;
+
+  /**
+   * P18: changes my switches for one group (only the ones given). Returns the new switches, or
+   * null if I'm not a member. Data no group shares any more is deleted at once.
+   */
+  updateSharing(
+    groupId: string,
+    deviceId: string,
+    patch: Partial<GroupSharing>,
+  ): Promise<GroupSharing | null>;
+  /**
+   * P18: saves daily focus minutes (insert or replace per date), but only if at least one of the
+   * device's groups has "Share my focus minutes" on; otherwise deletes any it had. Returns the
+   * number of days saved.
+   */
+  upsertDailyTotals(deviceId: string, days: DailyTotal[], now: number): Promise<number>;
+  /**
+   * P18: `start`/`heartbeat` mark the device as focusing until `now + ttlMs` (only if a group
+   * shares it); `stop` deletes the row. Returns whether the device now counts as focusing.
+   */
+  setPresence(deviceId: string, state: PresenceState, now: number, ttlMs: number): Promise<boolean>;
+  /** P18: what the members of a group see about each other; null if I'm not a member. */
+  groupOverview(groupId: string, deviceId: string, q: OverviewQuery): Promise<GroupOverview | null>;
+  /** P18: other members (any of my groups, counted once) focusing now who share it with me. */
+  countFocusingNow(deviceId: string, now: number): Promise<number>;
 
   addErrorLog(entry: NewErrorLog): Promise<void>;
   /** Newest first. */

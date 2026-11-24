@@ -1,11 +1,12 @@
-# StudyLens backend (P15, P16)
+# StudyLens backend (P15, P16, P18)
 
 The backend is the Next.js app in `web/`, deployed on Vercel (Hobby), with a Turso (libSQL)
 database. It exists for **study groups** (P16, P18, P18b). The extension calls it **only** after the
 user clicks "Join or create a group" on the Study groups tab and grants the optional permission to
 contact the server (`extension/src/groups/`); solo users never contact it.
 
-Status: deployed (P15d, 2026-11-23). Study group endpoints added in P16.
+Status: deployed (P15d, 2026-11-23). Study group endpoints added in P16; passive groups (focus
+minutes, "focusing now") in P18.
 
 - Production URL: **https://studylens-flame.vercel.app** — health check:
   https://studylens-flame.vercel.app/api/health (returns `"ok":true` and `"db":"up"`).
@@ -43,7 +44,7 @@ milliseconds.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | `devices`              | `id`, `display_name` (1–30), `token_hash` (unique, 64 hex), `created_at`, `last_seen_at`                                               | P15/P16 |
 | `groups`               | `id`, `name` (1–40), `join_code` (unique), `created_by` → devices, `created_at`                                                        | P16     |
-| `memberships`          | `group_id`, `device_id`, `role` (`owner`/`member`), `joined_at`                                                                        | P16     |
+| `memberships`          | `group_id`, `device_id`, `role` (`owner`/`member`), `joined_at`, `share_minutes`, `share_presence` (0/1, P18: my switches per group)   | P16/P18 |
 | `group_sessions`       | `id`, `group_id`, `host_device_id`, `goal` (optional, ≤120), `planned_minutes` (1–240), `started_at`, `ended_at`                       | P18b    |
 | `session_participants` | `session_id`, `device_id`, `status` (`focusing`/`finished`/`left`), `joined_at`, `last_heartbeat_at`, `focus_minutes` (only if shared) | P18b    |
 | `device_presence`      | `device_id`, `since`, `expires_at` — "who's in a session right now" in passive groups                                                  | P18     |
@@ -125,7 +126,44 @@ Study groups (P16), all with the device token:
 | `DELETE /api/devices/me`            | —                          | `200 { ok: true }` — device, memberships, presence, totals: all gone; token dead          |
 
 `members` is `[{ displayName, role, isMe }]`, oldest member first — other members' device IDs are
-never sent. Types: `packages/shared/src/api.ts` and `groups.ts`. P18/P18b endpoints come later.
+never sent. Each group also has `sharing: { focusMinutes, focusingNow }` — my switches (P18).
+`POST /api/groups` and `/join` take an optional `sharing` object; left out, both are off. Types:
+`packages/shared/src/api.ts`, `groups.ts` and `activity.ts`.
+
+Passive groups (P18), all with the device token:
+
+| Method + path                   | Body                                                    | Success                                                                     |
+| ------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `POST /api/totals`              | `{ days: [{ localDate: "YYYY-MM-DD", focusMinutes }] }` | `200 { ok, stored }` — upsert 1–7 days; `stored: 0` if no group shares them |
+| `POST /api/presence`            | `{ state: "start" \| "heartbeat" \| "stop" }`           | `200 { ok, focusing }` — focusing for 3 min after start/heartbeat           |
+| `PATCH /api/groups/:id/sharing` | `{ focusMinutes?, focusingNow? }`                       | `200 { sharing }`; turning one off deletes that data (see below); 404       |
+| `GET /api/groups/:id/overview`  | `?today=YYYY-MM-DD` (viewer's local date, optional)     | `200 { group, today, members }`; 404 if not a member                        |
+| `GET /api/groups/focusing`      | —                                                       | `200 { count }` — other members focusing now (popup line)                   |
+
+Overview members: `{ displayName, role, isMe, todayMinutes, focusingNow, history }`. `null` means
+the member doesn't share it **in this group**; `history` is 7 `{ localDate, focusMinutes }`
+entries ending on `today`, missing days as 0. `focusingNow` is true while the last
+start/heartbeat is less than 3 minutes old. No device IDs, sites, categories, goals, conditions or
+check-in answers exist on the server, so none can appear.
+
+**Passive group rules (P18).**
+
+- Totals are **numbers only**: one row per device and local date (the member's own calendar). The
+  server doesn't know time zones, so `today` in an overview is the viewer's date (at most one day
+  from the server's UTC date). Friends in different time zones may see "today" shift by a day.
+- **Impossible values are rejected (400):** not a real date, more than 1440 minutes, a date that
+  hasn't started anywhere yet (local dates begin at the earliest at UTC+14), more minutes than
+  have passed on that date anywhere, a date older than 7 days, duplicate dates, more than 7 days
+  per request, or any extra field (strict schemas).
+- **Switches per group.** Data is stored per device, but a group sees it only if that member's
+  switch is on in that group. Totals/presence are only saved while at least one of the device's
+  groups shares them. As soon as no group shares them any more (a switch turned off, or leaving a
+  group), they are **deleted** in the same transaction, not just hidden. Memberships from before
+  P18 (migration 2) start with both switches off.
+- **Leaving** a group or **deleting the device** removes everything at once (as above).
+- `daily_totals` are deleted by the daily cleanup once their date is more than **14 days** before
+  the cleanup's UTC date. `device_presence` rows expire 3 minutes after the last heartbeat (they
+  stop counting immediately; the cleanup deletes them later).
 
 **Group rules.** Join codes are 8 characters from `23456789ABCDEFGHJKMNPQRSTWXYZ` (no look-alikes
 such as 0/O or 1/I/L), made with a cryptographic random generator, case-insensitive, and shown as
@@ -162,13 +200,18 @@ Two kinds, both fixed one-hour windows:
   are generous because a whole class on school Wi-Fi shares one public address. Locally there is no
   proxy header, so every request counts as one client (`local`).
 
-| Endpoint                | Per device (database) | Per client address (memory) |
-| ----------------------- | --------------------- | --------------------------- |
-| `POST /api/devices`     | — (no device yet)     | 30 / hour                   |
-| `POST /api/groups/join` | 20 attempts / hour    | 60 attempts / hour          |
-| `POST /api/groups`      | 10 / hour             | 30 / hour                   |
-| `PATCH /api/devices/me` | 20 / hour             | —                           |
-| `POST /api/errors`      | 20 / hour             | —                           |
+| Endpoint                   | Per device (database) | Per client address (memory) |
+| -------------------------- | --------------------- | --------------------------- |
+| `POST /api/devices`        | — (no device yet)     | 30 / hour                   |
+| `POST /api/groups/join`    | 20 attempts / hour    | 60 attempts / hour          |
+| `POST /api/groups`         | 10 / hour             | 30 / hour                   |
+| `PATCH /api/devices/me`    | 20 / hour             | —                           |
+| `POST /api/errors`         | 20 / hour             | —                           |
+| `POST /api/totals`         | 60 / hour             | —                           |
+| `POST /api/presence`       | 150 / hour            | —                           |
+| `PATCH …/sharing`          | 60 / hour             | —                           |
+| `GET …/overview`           | 600 / hour            | —                           |
+| `GET /api/groups/focusing` | 240 / hour            | —                           |
 
 Every join attempt counts — wrong codes too — before the code is looked at, so guessing one of
 ~6.6 × 10^11 codes is hopeless. `POST /api/devices` also has a **global backstop** of 1000
@@ -207,6 +250,8 @@ pass without CORS headers. CORS is not authentication — the bearer token is.
 - deletes `device_presence` rows past `expires_at`, and `session_participants` rows with no
   heartbeat for 24 h
 - deletes rate-limit counters older than a day
+- deletes `daily_totals` whose local date is more than **14 days** before the cleanup's UTC date
+  (P18; returned as `dailyTotalsDeleted`)
 
 ## Environment variables
 

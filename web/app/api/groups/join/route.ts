@@ -1,4 +1,9 @@
-import { MAX_GROUP_MEMBERS, MAX_GROUPS_PER_DEVICE, type GroupResponse } from '@studylens/shared';
+import {
+  MAX_GROUP_MEMBERS,
+  MAX_GROUPS_PER_DEVICE,
+  SHARING_OFF,
+  type GroupResponse,
+} from '@studylens/shared';
 import { getDb } from '@/lib/db';
 import { requireDevice } from '@/lib/api/auth';
 import { enforceClientRateLimit } from '@/lib/api/client-limit';
@@ -12,7 +17,8 @@ export const dynamic = 'force-dynamic';
 const METHODS = ['POST'];
 
 /**
- * POST /api/groups/join { code } → 201 { group } (joined) or 200 { group } (already a member).
+ * POST /api/groups/join { code, sharing? } → 201 { group } (joined) or 200 { group } (already a
+ * member; their switches stay as they were). `sharing`: P18, both off when left out.
  * 404 `not_found`, 409 `group_full` / `too_many_groups`.
  *
  * Every attempt counts toward two limits before the code is even looked at: per device
@@ -24,12 +30,15 @@ export const POST = apiRoute('/api/groups/join', METHODS, async (req) => {
   const device = await requireDevice(req, db, now);
   enforceClientRateLimit(req, CLIENT_RATE_LIMITS.joinGroup, now);
   await enforceRateLimit(db, RATE_LIMITS.joinGroup, device.id, now);
-  const { code } = await readJson(req, joinGroupSchema);
+  const { code, sharing = SHARING_OFF } = await readJson(req, joinGroupSchema);
 
-  const result = await db.joinGroup(code, device.id, now, {
-    maxMembers: MAX_GROUP_MEMBERS,
-    maxGroupsPerDevice: MAX_GROUPS_PER_DEVICE,
-  });
+  const result = await db.joinGroup(
+    code,
+    device.id,
+    now,
+    { maxMembers: MAX_GROUP_MEMBERS, maxGroupsPerDevice: MAX_GROUPS_PER_DEVICE },
+    sharing,
+  );
   switch (result.status) {
     case 'not_found':
       throw groupNotFound();

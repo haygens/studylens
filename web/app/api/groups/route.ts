@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   MAX_GROUPS_PER_DEVICE,
+  SHARING_OFF,
   type GroupResponse,
   type ListGroupsResponse,
 } from '@studylens/shared';
@@ -32,7 +33,8 @@ export const GET = apiRoute('/api/groups', METHODS, async (req) => {
 });
 
 /**
- * POST /api/groups { name } → 201 { group }. The creator is the owner and first member.
+ * POST /api/groups { name, sharing? } → 201 { group }. The creator is the owner and first member;
+ * `sharing` is their switches for the group (P18; both off when left out).
  * 409 `too_many_groups` when the device is already in 5 groups.
  */
 export const POST = apiRoute('/api/groups', METHODS, async (req) => {
@@ -41,12 +43,12 @@ export const POST = apiRoute('/api/groups', METHODS, async (req) => {
   const device = await requireDevice(req, db, now);
   enforceClientRateLimit(req, CLIENT_RATE_LIMITS.createGroup, now);
   await enforceRateLimit(db, RATE_LIMITS.createGroup, device.id, now);
-  const { name } = await readJson(req, createGroupSchema);
+  const { name, sharing = SHARING_OFF } = await readJson(req, createGroupSchema);
 
   for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt++) {
     const id = randomUUID();
     const result = await db.createGroup(
-      { id, name, joinCode: generateJoinCode(), deviceId: device.id, createdAt: now },
+      { id, name, joinCode: generateJoinCode(), deviceId: device.id, createdAt: now, sharing },
       MAX_GROUPS_PER_DEVICE,
     );
     if (result.status === 'too_many_groups') throw tooManyGroups();

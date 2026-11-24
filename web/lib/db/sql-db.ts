@@ -1,6 +1,8 @@
-import type { GroupRole, GroupSummary } from '@studylens/shared';
+import { addDays, utcDate, type GroupRole, type GroupSummary } from '@studylens/shared';
 import type { SqlExecutor, SqlStatement, SqlValue } from './executor';
+import { buildOverviewMembers, historyStart } from './overview';
 import {
+  DAILY_TOTALS_KEEP_DAYS,
   ERROR_LOG_MAX_AGE_MS,
   GOAL_AFTER_END_MS,
   PARTICIPANT_STALE_MS,
@@ -40,6 +42,27 @@ function pruneGroup(groupId: string): SqlStatement[] {
     { sql: `DELETE FROM groups WHERE id = ? AND ${empty}`, args: [groupId, groupId] },
   ];
 }
+
+/**
+ * P18: deletes the device's daily totals / presence once none of its groups shares them any more
+ * (after a switch was turned off, or after leaving a group).
+ */
+function pruneUnshared(deviceId: string): SqlStatement[] {
+  return [
+    {
+      sql: `DELETE FROM daily_totals WHERE device_id = ? AND NOT EXISTS
+              (SELECT 1 FROM memberships WHERE device_id = ? AND share_minutes = 1)`,
+      args: [deviceId, deviceId],
+    },
+    {
+      sql: `DELETE FROM device_presence WHERE device_id = ? AND NOT EXISTS
+              (SELECT 1 FROM memberships WHERE device_id = ? AND share_presence = 1)`,
+      args: [deviceId, deviceId],
+    },
+  ];
+}
+
+const bit = (b: boolean) => (b ? 1 : 0);
 
 /**
  * The libSQL implementation of `Db`. The executor must already be migrated (see `openDb` in
@@ -122,11 +145,21 @@ export function createSqlDb(sql: SqlExecutor): Db {
           args: [g.id, g.name, g.joinCode, g.deviceId, g.createdAt, g.deviceId, maxGroupsPerDevice],
         },
         {
-          sql: `INSERT INTO memberships (group_id, device_id, role, joined_at)
-                SELECT ?, ?, 'owner', ?
+          sql: `INSERT INTO memberships
+                  (group_id, device_id, role, joined_at, share_minutes, share_presence)
+                SELECT ?, ?, 'owner', ?, ?, ?
                 WHERE EXISTS (SELECT 1 FROM groups WHERE id = ? AND join_code = ? AND created_by = ?)
                 ON CONFLICT DO NOTHING`,
-          args: [g.id, g.deviceId, g.createdAt, g.id, g.joinCode, g.deviceId],
+          args: [
+            g.id,
+            g.deviceId,
+            g.createdAt,
+            bit(g.sharing.focusMinutes),
+            bit(g.sharing.focusingNow),
+            g.id,
+            g.joinCode,
+            g.deviceId,
+          ],
         },
       ]);
       if (insert?.rowsAffected === 1) return { status: 'created' };
@@ -139,18 +172,28 @@ export function createSqlDb(sql: SqlExecutor): Db {
         : { status: 'code_taken' };
     },
 
-    async joinGroup(joinCode, deviceId, now, limits) {
+    async joinGroup(joinCode, deviceId, now, limits, sharing) {
       // The limits are checked inside the INSERT itself (one statement, one transaction), so two
       // people joining at the same moment can't push a group past the member limit.
       const [insert, check] = await sql.batch([
         {
-          sql: `INSERT INTO memberships (group_id, device_id, role, joined_at)
-                SELECT g.id, ?, 'member', ? FROM groups g
+          sql: `INSERT INTO memberships
+                  (group_id, device_id, role, joined_at, share_minutes, share_presence)
+                SELECT g.id, ?, 'member', ?, ?, ? FROM groups g
                 WHERE g.join_code = ?
                   AND (SELECT COUNT(*) FROM memberships m WHERE m.group_id = g.id) < ?
                   AND (SELECT COUNT(*) FROM memberships m WHERE m.device_id = ?) < ?
                 ON CONFLICT DO NOTHING`,
-          args: [deviceId, now, joinCode, limits.maxMembers, deviceId, limits.maxGroupsPerDevice],
+          args: [
+            deviceId,
+            now,
+            bit(sharing.focusMinutes),
+            bit(sharing.focusingNow),
+            joinCode,
+            limits.maxMembers,
+            deviceId,
+            limits.maxGroupsPerDevice,
+          ],
         },
         {
           sql: `SELECT g.id,
@@ -173,7 +216,8 @@ export function createSqlDb(sql: SqlExecutor): Db {
     async listGroups(deviceId) {
       const [mine, members] = await Promise.all([
         sql.execute({
-          sql: `SELECT g.id, g.name, g.join_code, my.role, my.joined_at
+          sql: `SELECT g.id, g.name, g.join_code, my.role, my.joined_at,
+                       my.share_minutes, my.share_presence
                 FROM memberships my JOIN groups g ON g.id = my.group_id
                 WHERE my.device_id = ?
                 ORDER BY my.joined_at, g.id`,
@@ -200,6 +244,10 @@ export function createSqlDb(sql: SqlExecutor): Db {
             role: String(m.role) as GroupRole,
             isMe: num(m.is_me) === 1,
           })),
+        sharing: {
+          focusMinutes: num(r.share_minutes) === 1,
+          focusingNow: num(r.share_presence) === 1,
+        },
       }));
     },
 
@@ -211,8 +259,133 @@ export function createSqlDb(sql: SqlExecutor): Db {
         },
         promoteOwner(groupId),
         ...pruneGroup(groupId),
+        ...pruneUnshared(deviceId),
       ]);
       return (removed?.rowsAffected ?? 0) > 0;
+    },
+
+    async updateSharing(groupId, deviceId, patch) {
+      const toArg = (v: boolean | undefined) => (v === undefined ? null : bit(v));
+      const results = await sql.batch([
+        {
+          sql: `UPDATE memberships
+                SET share_minutes = COALESCE(?, share_minutes),
+                    share_presence = COALESCE(?, share_presence)
+                WHERE group_id = ? AND device_id = ?`,
+          args: [toArg(patch.focusMinutes), toArg(patch.focusingNow), groupId, deviceId],
+        },
+        ...pruneUnshared(deviceId),
+        {
+          sql: `SELECT share_minutes, share_presence FROM memberships
+                WHERE group_id = ? AND device_id = ?`,
+          args: [groupId, deviceId],
+        },
+      ]);
+      const row = results.at(-1)?.rows[0];
+      if (!row) return null;
+      return {
+        focusMinutes: num(row.share_minutes) === 1,
+        focusingNow: num(row.share_presence) === 1,
+      };
+    },
+
+    async upsertDailyTotals(deviceId, days, now) {
+      const results = await sql.batch([
+        ...days.map((d): SqlStatement => ({
+          sql: `INSERT INTO daily_totals (device_id, local_date, focus_minutes, updated_at)
+                  SELECT ?, ?, ?, ?
+                  WHERE EXISTS (SELECT 1 FROM memberships WHERE device_id = ? AND share_minutes = 1)
+                  ON CONFLICT (device_id, local_date) DO UPDATE
+                    SET focus_minutes = excluded.focus_minutes, updated_at = excluded.updated_at`,
+          args: [deviceId, d.localDate, d.focusMinutes, now, deviceId],
+        })),
+        ...pruneUnshared(deviceId),
+      ]);
+      return results.slice(0, days.length).filter((r) => r.rowsAffected > 0).length;
+    },
+
+    async setPresence(deviceId, state, now, ttlMs) {
+      if (state === 'stop') {
+        await sql.execute({
+          sql: 'DELETE FROM device_presence WHERE device_id = ?',
+          args: [deviceId],
+        });
+        return false;
+      }
+      const [upsert] = await sql.batch([
+        {
+          // `start` begins a new focusing period; a heartbeat keeps `since` unless it had expired.
+          sql: `INSERT INTO device_presence (device_id, since, expires_at)
+                SELECT ?, ?, ?
+                WHERE EXISTS (SELECT 1 FROM memberships WHERE device_id = ? AND share_presence = 1)
+                ON CONFLICT (device_id) DO UPDATE
+                  SET since = CASE WHEN ? = 'start' OR device_presence.expires_at <= excluded.since
+                                   THEN excluded.since ELSE device_presence.since END,
+                      expires_at = excluded.expires_at`,
+          args: [deviceId, now, now + ttlMs, deviceId, state],
+        },
+        ...pruneUnshared(deviceId),
+      ]);
+      return (upsert?.rowsAffected ?? 0) > 0;
+    },
+
+    async groupOverview(groupId, deviceId, q) {
+      const [members, totals] = await Promise.all([
+        sql.execute({
+          sql: `SELECT g.name, m.device_id, m.device_id = ? AS is_me, m.role, d.display_name,
+                       m.share_minutes, m.share_presence,
+                       EXISTS (SELECT 1 FROM device_presence p
+                               WHERE p.device_id = m.device_id AND p.expires_at > ?) AS focusing
+                FROM memberships m
+                  JOIN devices d ON d.id = m.device_id
+                  JOIN groups g ON g.id = m.group_id
+                WHERE m.group_id = ?
+                ORDER BY m.joined_at, m.device_id`,
+          args: [deviceId, q.now, groupId],
+        }),
+        sql.execute({
+          sql: `SELECT t.device_id, t.local_date, t.focus_minutes
+                FROM daily_totals t
+                  JOIN memberships m ON m.device_id = t.device_id
+                WHERE m.group_id = ? AND m.share_minutes = 1
+                  AND t.local_date BETWEEN ? AND ?`,
+          args: [groupId, historyStart(q), q.today],
+        }),
+      ]);
+      const first = members.rows[0];
+      if (!first || !members.rows.some((r) => num(r.is_me) === 1)) return null;
+      return {
+        group: { id: groupId, name: String(first.name) },
+        members: buildOverviewMembers(
+          members.rows.map((r) => ({
+            deviceId: String(r.device_id),
+            displayName: String(r.display_name),
+            role: String(r.role) as GroupRole,
+            isMe: num(r.is_me) === 1,
+            shareMinutes: num(r.share_minutes) === 1,
+            sharePresence: num(r.share_presence) === 1,
+            focusing: num(r.focusing) === 1,
+          })),
+          totals.rows.map((r) => ({
+            deviceId: String(r.device_id),
+            localDate: String(r.local_date),
+            focusMinutes: num(r.focus_minutes),
+          })),
+          q,
+        ),
+      };
+    },
+
+    async countFocusingNow(deviceId, now) {
+      const { rows } = await sql.execute({
+        sql: `SELECT COUNT(DISTINCT m.device_id) AS n
+              FROM memberships m
+                JOIN memberships mine ON mine.group_id = m.group_id AND mine.device_id = ?
+                JOIN device_presence p ON p.device_id = m.device_id AND p.expires_at > ?
+              WHERE m.device_id <> ? AND m.share_presence = 1`,
+        args: [deviceId, now, deviceId],
+      });
+      return num(rows[0]?.n);
     },
 
     async addErrorLog(e) {
@@ -250,7 +423,7 @@ export function createSqlDb(sql: SqlExecutor): Db {
     },
 
     async cleanup(now) {
-      const [errors, goals, presence, participants, limits] = await sql.batch([
+      const [errors, goals, presence, participants, limits, totals] = await sql.batch([
         {
           sql: 'DELETE FROM error_logs WHERE created_at < ?',
           args: [now - ERROR_LOG_MAX_AGE_MS],
@@ -271,6 +444,10 @@ export function createSqlDb(sql: SqlExecutor): Db {
           sql: 'DELETE FROM rate_limits WHERE window_start < ?',
           args: [now - RATE_LIMIT_ROW_MAX_AGE_MS],
         },
+        {
+          sql: 'DELETE FROM daily_totals WHERE local_date < ?',
+          args: [addDays(utcDate(now), -DAILY_TOTALS_KEEP_DAYS)],
+        },
       ]);
       return {
         errorLogsDeleted: errors?.rowsAffected ?? 0,
@@ -278,6 +455,7 @@ export function createSqlDb(sql: SqlExecutor): Db {
         presenceRowsDeleted: presence?.rowsAffected ?? 0,
         participantRowsDeleted: participants?.rowsAffected ?? 0,
         rateLimitRowsDeleted: limits?.rowsAffected ?? 0,
+        dailyTotalsDeleted: totals?.rowsAffected ?? 0,
       };
     },
 

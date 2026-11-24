@@ -112,6 +112,20 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 2,
+    name: 'passive-groups',
+    statements: [
+      // P18: each member's switches per group. Existing memberships start with both OFF: nobody
+      // shares anything they didn't choose to (new joins send their choice explicitly).
+      `ALTER TABLE memberships ADD COLUMN share_minutes INTEGER NOT NULL DEFAULT 0
+         CHECK (share_minutes IN (0, 1))`,
+      `ALTER TABLE memberships ADD COLUMN share_presence INTEGER NOT NULL DEFAULT 0
+         CHECK (share_presence IN (0, 1))`,
+      // For the daily cleanup of totals older than 14 days.
+      `CREATE INDEX IF NOT EXISTS daily_totals_by_date ON daily_totals (local_date)`,
+    ],
+  },
 ];
 
 /** Every table the app creates (for tests and docs). */

@@ -7,6 +7,7 @@ import {
   normalizeJoinCode,
 } from '@studylens/shared';
 import { z } from 'zod';
+import { sharingSchema } from './activity';
 import { ApiError } from './errors';
 
 /** Request bodies are tiny; anything bigger is a mistake or abuse. */
@@ -43,8 +44,15 @@ export const joinCodeSchema = z
 /** Strict objects: unknown fields are rejected, so nothing extra can slip into the server. */
 export const registerDeviceSchema = z.strictObject({ displayName: displayNameSchema });
 export const updateDeviceSchema = z.strictObject({ displayName: displayNameSchema });
-export const createGroupSchema = z.strictObject({ name: groupNameSchema });
-export const joinGroupSchema = z.strictObject({ code: joinCodeSchema });
+/** P18: `sharing` = my switches for the group; left out means both off. */
+export const createGroupSchema = z.strictObject({
+  name: groupNameSchema,
+  sharing: sharingSchema.optional(),
+});
+export const joinGroupSchema = z.strictObject({
+  code: joinCodeSchema,
+  sharing: sharingSchema.optional(),
+});
 
 export const errorReportSchema = z.strictObject({
   message: z.string().trim().min(1).max(ERROR_MESSAGE_MAX_LENGTH),

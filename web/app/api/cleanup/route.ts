@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/cleanup — the daily Vercel Cron job (web/vercel.json). Vercel sends
  * `Authorization: Bearer <CRON_SECRET>`. Deletes error logs older than 14 days, clears group
- * session goals 24 h after the end, and deletes stale presence rows and old rate-limit counters.
+ * session goals 24 h after the end, and deletes stale presence rows, old rate-limit counters, and
+ * daily focus totals older than 14 days (P18).
  */
 export const GET = apiRoute('/api/cleanup', ['GET'], async (req) => {
   const secret = process.env.CRON_SECRET?.trim();

@@ -154,6 +154,8 @@ describe('GET /api/groups', () => {
             { displayName: 'Sam', role: 'owner', isMe: false },
             { displayName: 'Alex', role: 'member', isMe: true },
           ],
+          // P18: joined without choosing switches → both off.
+          sharing: { focusMinutes: false, focusingNow: false },
         },
       ],
     });

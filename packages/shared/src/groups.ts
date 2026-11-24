@@ -4,6 +4,8 @@
  * join codes and membership.
  */
 
+import type { GroupSharing } from './activity';
+
 export const GROUP_NAME_MAX_LENGTH = 40;
 /** A group never has more members than this. */
 export const MAX_GROUP_MEMBERS = 20;
@@ -55,16 +57,22 @@ export interface GroupSummary {
   joinedAt: number;
   /** Oldest member first. */
   members: GroupMember[];
+  /** My switches for this group (P18): what the other members may see about me. */
+  sharing: GroupSharing;
 }
 
 /** POST /api/groups */
 export interface CreateGroupRequest {
   name: string;
+  /** P18: my switches for the new group. Left out = both off. */
+  sharing?: GroupSharing;
 }
 
 /** POST /api/groups/join — `code` may be lowercase and contain spaces or a dash. */
 export interface JoinGroupRequest {
   code: string;
+  /** P18: my switches for the group (ignored if I'm already a member). Left out = both off. */
+  sharing?: GroupSharing;
 }
 
 /** POST /api/groups (201) and POST /api/groups/join (200; 201 when newly joined). */

@@ -25,8 +25,14 @@ export function groupNotFound(message = 'No group has this code. Check it and tr
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-/** The `[id]` of /api/groups/<id>/membership, or null if it isn't a group ID. */
-export function groupIdFromPath(pathname: string): string | null {
-  const id = /^\/api\/groups\/([^/]+)\/membership\/?$/.exec(pathname)?.[1];
-  return id && UUID.test(id) ? id : null;
+export type GroupSubpath = 'membership' | 'sharing' | 'overview';
+
+/** The `[id]` of /api/groups/<id>/<sub>, or null if it isn't a group ID. */
+export function groupIdFromPath(pathname: string, sub: GroupSubpath = 'membership'): string | null {
+  const m = /^\/api\/groups\/([^/]+)\/([a-z]+)\/?$/.exec(pathname);
+  const id = m?.[1];
+  return id && m[2] === sub && UUID.test(id) ? id : null;
 }
+
+/** 404 for a group I'm not in (or that doesn't exist: the same answer, so IDs can't be probed). */
+export const notMember = () => groupNotFound('You are not in this group.');

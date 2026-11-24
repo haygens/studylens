@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { SHARING_OFF } from '@studylens/shared';
 import { describeDbContract } from './contract';
 import { fileUrlToPath, type SqlExecutor } from './executor';
 import { currentVersion, runMigrations } from './migrate';
@@ -46,6 +47,38 @@ for (const driver of await testDrivers()) {
       expect(await runMigrations(sql)).toEqual([]);
       const { rows } = await sql.execute({ sql: 'SELECT COUNT(*) AS n FROM schema_migrations' });
       expect(rows[0]!.n).toBe(MIGRATIONS.length);
+    });
+
+    it('migration 2 (P18): existing memberships share nothing until the member says so', async () => {
+      const old = await openTestDb(driver, { migrate: false });
+      try {
+        await runMigrations(old.sql, MIGRATIONS.slice(0, 1));
+        await old.sql.execute({
+          sql: `INSERT INTO devices (id, display_name, token_hash, created_at, last_seen_at)
+                VALUES ('d1', 'Sam', ?, ?, ?)`,
+          args: ['1'.repeat(64), NOW, NOW],
+        });
+        await old.sql.execute({
+          sql: `INSERT INTO groups (id, name, join_code, created_by, created_at)
+                VALUES ('g1', 'G', 'AAAAAAAA', 'd1', ?)`,
+          args: [NOW],
+        });
+        await old.sql.execute({
+          sql: `INSERT INTO memberships (group_id, device_id, role, joined_at)
+                VALUES ('g1', 'd1', 'owner', ?)`,
+          args: [NOW],
+        });
+        expect(await runMigrations(old.sql)).toEqual([2]);
+        expect((await old.db.listGroups('d1'))[0]?.sharing).toEqual({
+          focusMinutes: false,
+          focusingNow: false,
+        });
+        await expect(
+          old.sql.execute({ sql: 'UPDATE memberships SET share_minutes = 2' }),
+        ).rejects.toThrow();
+      } finally {
+        await old.dispose();
+      }
     });
 
     it('applies only newer migrations, each once', async () => {
@@ -147,7 +180,7 @@ for (const driver of await testDrivers()) {
         args: ['g1', 'G', 'ABC123', 'd1', NOW],
       });
       await sql.execute({
-        sql: 'INSERT INTO memberships VALUES (?, ?, ?, ?)',
+        sql: 'INSERT INTO memberships (group_id, device_id, role, joined_at) VALUES (?, ?, ?, ?)',
         args: ['g1', 'd1', 'owner', NOW],
       });
       await sql.execute({
@@ -166,14 +199,34 @@ for (const driver of await testDrivers()) {
       await insertDevice('d1');
       await insertDevice('d2');
       await db.createGroup(
-        { id: 'g1', name: 'G', joinCode: 'AAAAAAAA', deviceId: 'd1', createdAt: NOW },
+        {
+          id: 'g1',
+          name: 'G',
+          joinCode: 'AAAAAAAA',
+          deviceId: 'd1',
+          createdAt: NOW,
+          sharing: SHARING_OFF,
+        },
         5,
       );
       await db.createGroup(
-        { id: 'g2', name: 'Solo', joinCode: 'BBBBBBBB', deviceId: 'd1', createdAt: NOW },
+        {
+          id: 'g2',
+          name: 'Solo',
+          joinCode: 'BBBBBBBB',
+          deviceId: 'd1',
+          createdAt: NOW,
+          sharing: SHARING_OFF,
+        },
         5,
       );
-      await db.joinGroup('AAAAAAAA', 'd2', NOW + 1, { maxMembers: 20, maxGroupsPerDevice: 5 });
+      await db.joinGroup(
+        'AAAAAAAA',
+        'd2',
+        NOW + 1,
+        { maxMembers: 20, maxGroupsPerDevice: 5 },
+        SHARING_OFF,
+      );
       // P18/P18b rows (no API writes them yet).
       await sql.execute({
         sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?)',

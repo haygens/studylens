@@ -29,6 +29,17 @@ export const RATE_LIMITS = {
   createGroup: { name: 'create-group', limit: 10, windowMs: HOUR },
   /** Display name changes per device. */
   renameDevice: { name: 'rename', limit: 20, windowMs: HOUR },
+  /**
+   * P18. The extension sends totals at most every 5 minutes during a session plus once at its
+   * end (≈ 13/hour), a presence heartbeat once a minute while a session runs (≈ 62/hour), and the
+   * Study groups page refreshes every 60 s per group (up to 5 groups → 300/hour). The limits
+   * leave room for that and stop anything faster.
+   */
+  sendTotals: { name: 'totals', limit: 60, windowMs: HOUR },
+  sendPresence: { name: 'presence', limit: 150, windowMs: HOUR },
+  updateSharing: { name: 'sharing', limit: 60, windowMs: HOUR },
+  groupOverview: { name: 'overview', limit: 600, windowMs: HOUR },
+  focusingNow: { name: 'focusing', limit: 240, windowMs: HOUR },
 } satisfies Record<string, RateLimitRule>;
 
 /**
