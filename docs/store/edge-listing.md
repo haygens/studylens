@@ -166,3 +166,40 @@ see all stored data on the My Data page, export it as JSON, or delete it all.
    "Inspect views: service worker" → Console, run
    `chrome.storage.local.set({ 'interventions:block': ['intention'] })` (or `['friction']`), then
    start a new session and open youtube.com.
+
+---
+
+## Version 0.5.0 (study groups, P16 + P18) — changes for the next upload
+
+Not uploaded yet: 0.5.0 ships when study groups (P16) and passive groups (P18) are both done.
+Everything above still applies, with these changes. Privacy questions in Partner Center: see
+`edge-privacy-answers.md`.
+
+**Notes for certification — replace the first paragraph with:**
+
+StudyLens is a local-first focus tracker for students. Everything it records stays in
+`chrome.storage.local`. Version 0.5.0 adds **optional study groups**: only if the user opens the
+"Study groups" tab and clicks "Join or create a group" does StudyLens request the optional host
+permission `https://studylens-flame.vercel.app/*` (never at install). After that it sends the
+StudyLens server only a display name the user chooses, a group name or join code, and a random
+device token the server issued. It never sends browsing data (no domains, URLs, titles, site
+labels, goals, check-in answers or research data). Users who never use groups make no network
+requests at all. Source code (MIT): https://github.com/haygens/studylens (server in `web/`, API in
+`docs/backend.md`).
+
+**Permissions — replace "No host permissions, no content scripts, no optional permissions." with:**
+
+No host permissions at install, no content scripts. One optional host permission:
+
+- `optional_host_permissions: ["https://studylens-flame.vercel.app/*"]`: the StudyLens server, for
+  study groups only. Requested with `chrome.permissions.request()` from the click on "Join or
+  create a group". Every request first checks `chrome.permissions.contains()`. "Delete my group
+  data from the server" deletes the server copy and removes the permission again.
+
+**How to test study groups (add after step 9):**
+
+10. Options page → **Study groups** tab. It explains what is shared and what never is.
+11. Click **Join or create a group** → Edge asks to allow access to studylens-flame.vercel.app →
+    Allow.
+12. Type a display name and a group name → **Create group**. The card shows the join code and you
+    as the only member. **Leave group**, then **Delete my group data from the server**.

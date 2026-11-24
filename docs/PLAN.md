@@ -87,11 +87,19 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       `https://<project>.vercel.app/api/health` shows `"db":"up"` and the cron appears in Vercel.
       Done 2026-11-23: https://studylens-flame.vercel.app (function region `pdx1`, Turso
       `aws-us-west-2`).
-- [ ] **P16. Group join (no accounts)** — no email accounts. A random device ID generated locally + a
+- [x] **P16. Group join (no accounts)** — no email accounts. A random device ID generated locally + a
       chosen display name + a group code. The extension asks for permission to contact the StudyLens
       server **only when the user first joins or creates a group** (optional host permission requested
       at runtime, never at install). When this ships: update the AMO `data_collection_permissions`,
       PRIVACY.md, and the store listings.
+      Done 2026-11-23 (0.5.0-dev, not released; ships with P18 as v0.5.0): group API (create, join by
+      8-character code, list, leave, rename, delete device; 20 members/group, 5 groups/device;
+      per-device + in-memory per-address rate limits), "Study groups" options tab with consent
+      screen → permission → create/join, invite message, "Delete everything" also deletes server
+      data (retries if offline). Firefox: `personallyIdentifyingInfo` optional. PRIVACY.md groups
+      section active; AMO/Edge notes + `docs/store/edge-privacy-answers.md` drafted. Two-profile
+      E2E against the local web API. The device ID comes from the server (random UUID), not from
+      the extension.
 - [ ] **P18. Study groups (passive)** — members see each other's **daily focus totals** and who is in a
       session right now. Never site names. Polling (WebSockets optional; Vercel's are in beta).
 - [ ] **P18b. Live group focus sessions** _(stretch)_ — someone starts a group session (goal + length)

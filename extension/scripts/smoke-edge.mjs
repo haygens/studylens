@@ -3,7 +3,7 @@
  * Run: `npm run smoke:edge -w extension` (builds the normal Edge build first).
  *
  * Loads the REAL production build (`.output/edge-mv3`, the files that go into
- * `studylens-0.4.0-edge.zip`) in the installed Microsoft Edge (channel `msedge`, headless). No
+ * `studylens-<version>-edge.zip`) in the installed Microsoft Edge (channel `msedge`, headless). No
  * browser is downloaded. The profile is a throwaway folder in TEMP (on M:) and is deleted
  * afterwards. All http(s) requests get tiny local stub pages or are blocked: nothing touches the
  * internet.
@@ -11,13 +11,15 @@
  * Separate from the E2E suite on purpose: no test-only code, no storage seeding, a fresh install.
  *
  * Checks:
- *  1. Manifest: version, permissions (storage/tabs/idle/alarms only), no host permissions, no
+ *  1. Manifest: version, permissions (storage/tabs/idle/alarms only), no host permissions at
+ *     install, only the StudyLens server as an OPTIONAL host permission (study groups, P16), no
  *     test-only code; the build folder has the same files as the Edge zip (if the zip exists).
  *  2. The welcome page opens once on install (Sunrise theme), and when it is closed early the
  *     popup's research notice shows and blocks Start until "Keep on".
  *  3. A 25-min session starts, the badge shows minutes, End early shows the check-in.
  *  4. Visiting a stub site records it in the popup's Today list.
- *  5. The options tabs (Site categories, Insights, Settings, My Data) render without errors.
+ *  5. The options tabs (Site categories, Insights, Study groups, Settings, My Data) render without
+ *     errors; Study groups shows its start screen, and no host permission has been granted.
  *  6. No console errors or uncaught errors from the extension.
  *
  * Note: the production build stops counting time when the PC has had no input for 60 seconds
@@ -32,6 +34,8 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } 
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Node 24 runs TypeScript files directly (type stripping).
+import { E2E_API_BASE, PRODUCTION_API_BASE } from '../server-urls.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const EXTENSION_DIR = path.join(ROOT, '.output', 'edge-mv3');
@@ -43,6 +47,7 @@ const TEST_ONLY_MARKERS = [
   'E2E test build',
   'testSeconds',
   'E2E build only',
+  E2E_API_BASE,
 ];
 const STUB_SITES = { 'en.wikipedia.org': 'Wikipedia (stub)' };
 
@@ -102,8 +107,10 @@ const manifest = JSON.parse(readFileSync(path.join(EXTENSION_DIR, 'manifest.json
 const buildFiles = filesIn(EXTENSION_DIR);
 
 await check(`manifest: version ${VERSION}, MV3, service worker`, () => {
-  expect(manifest.version).toBe(VERSION);
-  expect(manifest.version).toBe('0.4.0');
+  // A pre-release like 0.5.0-dev becomes version 0.5.0 + version_name 0.5.0-dev (Edge shows the name).
+  const [base] = VERSION.split('-');
+  expect(manifest.version).toBe(base);
+  expect(manifest.version_name ?? manifest.version).toBe(VERSION);
   expect(manifest.manifest_version).toBe(3);
   expect(manifest.background?.service_worker).toBeTruthy();
   expect(manifest.browser_specific_settings).toBeUndefined();
@@ -113,7 +120,7 @@ await check('manifest: permissions are only storage/tabs/idle/alarms', () => {
   expect([...(manifest.permissions ?? [])].sort()).toEqual(EXPECTED_PERMISSIONS);
   expect(manifest.host_permissions ?? []).toEqual([]);
   expect(manifest.optional_permissions ?? []).toEqual([]);
-  expect(manifest.optional_host_permissions ?? []).toEqual([]);
+  expect(manifest.optional_host_permissions ?? []).toEqual([`${PRODUCTION_API_BASE}/*`]);
   expect(manifest.content_scripts ?? []).toEqual([]);
   expect(manifest.incognito).toBe('not_allowed');
   return manifest.permissions.join(', ');
@@ -265,6 +272,7 @@ try {
     const tabs = [
       ['categories', 'Site categories'],
       ['insights', 'Insights'],
+      ['groups', 'Study groups'],
       ['settings', 'Settings'],
       ['my-data', 'My Data'],
     ];
@@ -274,6 +282,11 @@ try {
       await expect(page.getByRole('alert')).toHaveCount(0);
       await expect(page.getByText(/something went wrong/i)).toHaveCount(0);
     }
+    // Study groups: the start screen, and still no host permission (it is asked only on a click).
+    await page.goto(`chrome-extension://${extensionId}/options.html#groups`);
+    await expect(page.getByRole('button', { name: 'Join or create a group' })).toBeVisible();
+    const granted = await inWorker(() => chrome.permissions.getAll());
+    expect(granted.origins ?? []).toEqual([]);
     await page.close();
     return tabs.map(([, h]) => h).join(', ');
   });

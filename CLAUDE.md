@@ -29,7 +29,10 @@ Solo project for TCSS 490 Artifact 5 ("moonshot"). Final show and tell: **Monday
   in `web/lib/db/schema.ts` (never edit a shipped one). See `docs/backend.md`.
 - On this PC the libSQL native driver can't load (no Visual C++ runtime), so local `file:` databases
   fall back to Node's built-in `node:sqlite` automatically. CI forces real libSQL (`REQUIRE_LIBSQL=1`).
-- The extension must not call the server until P16 (optional host permission, asked at join time).
+- The extension calls the server ONLY for study groups (P16+), after the user clicks "Join or create a
+  group" and grants the optional host permission; every request checks the permission first
+  (`extension/src/groups/`). API base is a build-time constant (`extension/server-urls.ts`):
+  production in normal builds, `http://127.0.0.1:3101` in the E2E build.
 - Tests: **Vitest**. CI: **GitHub Actions** (public repo).
 - Tooling versions: Node 24, npm 11, TypeScript 6.0.x (TS 7 not yet supported by typescript-eslint),
   ESLint 10 flat config, Prettier 3.
@@ -107,7 +110,8 @@ If a requested change would break one of these rules, stop and tell hs instead o
   `docs/backend.md`. Database/API tests use temp DB files in `web/.data/test/` (or
   `STUDYLENS_TEST_DB_DIR`) and delete them afterwards.
 - Tests (all workspaces): `npm test` — watch mode: `npm run test:watch`
-- E2E tests (builds the E2E version and the normal Edge build, runs Playwright in installed Edge):
+- E2E tests (builds the E2E version and the normal Edge build, starts the web API locally with
+  `next dev` on 127.0.0.1:3101 and a temp DB in `web/.data/e2e/`, runs Playwright in installed Edge):
   `npm run test:e2e`
   — watch in a visible browser: `npm run test:e2e -- --headed`. Never install extra browsers locally.
 - Smoke test of the real production Edge build (`.output/edge-mv3`, installed Edge, headless):

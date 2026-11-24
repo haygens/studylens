@@ -1,9 +1,9 @@
 # StudyLens backend (P15, P16)
 
 The backend is the Next.js app in `web/`, deployed on Vercel (Hobby), with a Turso (libSQL)
-database. It exists for **study groups** (P16, P18, P18b). **The extension does not call it yet** —
-that starts in P16, and only after the user joins or creates a group and grants the optional
-permission to contact the server.
+database. It exists for **study groups** (P16, P18, P18b). The extension calls it **only** after the
+user clicks "Join or create a group" on the Study groups tab and grants the optional permission to
+contact the server (`extension/src/groups/`); solo users never contact it.
 
 Status: deployed (P15d, 2026-11-23). Study group endpoints added in P16.
 
@@ -156,7 +156,9 @@ Two kinds, both fixed one-hour windows:
   comes from Vercel's `x-forwarded-for` (Vercel overwrites it, so clients can't fake it) and is
   replaced by an HMAC with a random key made when the instance starts, so even memory holds no raw
   address. Never written to the database, logs or error reports. Each serverless instance has its
-  own counters, which reset on restart: a best-effort brake on scripts, not an exact quota. Limits
+  own counters, which reset on restart: a best-effort brake on scripts, not an exact quota.
+  Expired counters are dropped at least every 10 minutes, so an address is forgotten within about
+  70 minutes. Limits
   are generous because a whole class on school Wi-Fi shares one public address. Locally there is no
   proxy header, so every request counts as one client (`local`).
 
@@ -228,6 +230,11 @@ See `web/.env.example`. Set them in the Vercel dashboard; for local dev, in `web
    - `Invoke-RestMethod http://localhost:3000/api/devices -Method Post -ContentType 'application/json' -Body '{"displayName":"Test"}'`
 5. Tests: `npm test` (API and database tests create temporary database files in `web\.data\test\`
    and delete them afterwards).
+
+**E2E tests** (`npm run test:e2e`) start their own copy of this app with `next dev` on
+`http://127.0.0.1:3101` (the E2E extension build's server), using `web/.next-e2e/` as its build
+folder and a fresh database file in `web/.data/e2e/` (old ones are deleted at the next run). See
+`extension/e2e/web-server.ts`. It doesn't clash with a `npm run dev -w web` you have running.
 
 On this Windows PC the libSQL native driver needs the Microsoft Visual C++ Redistributable. Without
 it, local files automatically use Node's built-in SQLite (a one-line warning is printed). CI on

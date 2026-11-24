@@ -1,13 +1,15 @@
 # StudyLens Privacy Policy
 
-_Effective: November 21, 2026 · Applies to StudyLens version 0.4.0 for Firefox and Microsoft Edge (and
-earlier)_
+_Updated: November 23, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.5.0
+(study groups, not released yet) and earlier. Versions up to 0.4.0 have no study groups._
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
-browsing stays yours: **everything it records stays on your device, and this version never sends
-anything anywhere. StudyLens never stores what you type** — on websites, or in its own "What did
-you come here for?" box. The only text it keeps is what you enter as a session goal or a site
-label.
+browsing stays yours: **everything it records about your browsing stays on your device.** Up to
+version 0.4.0 it never sends anything anywhere. From version 0.5.0 it sends something only if you
+choose to join a **study group**, and then only a display name you pick and which groups you are
+in (see "Study groups" below) — never your browsing. **StudyLens never stores what you type** — on
+websites, or in its own "What did you come here for?" box. The only text it keeps is what you enter
+as a session goal, a site label, or (for study groups) a display name and group name.
 
 ## What StudyLens records
 
@@ -92,9 +94,11 @@ are not told the condition when you start a session; the My Data page shows it f
 ## Where your data lives
 
 All of the above is stored **only on your device**, in the extension's local storage
-(`browser.storage.local`). StudyLens version 0.4.0 has no server, no account, and makes no network
-requests: nothing is uploaded, synced, or shared, and the developer cannot see your data. The
-themes use only fonts already on your computer; no web fonts or other files are downloaded.
+(`browser.storage.local`). Nothing of it is uploaded, synced, or shared, and the developer cannot
+see it. StudyLens has no account. Up to version 0.4.0 it makes no network requests at all. From
+version 0.5.0, the only network requests are for study groups, and only after you turn them on
+(see "Study groups"). The themes use only fonts already on your computer; no web fonts or other
+files are downloaded.
 
 ## Research CSV export (version 0.4.0 and later)
 
@@ -148,52 +152,72 @@ is entirely optional.
 - **Delete everything** (you type DELETE to confirm). This also stops a running session without a
   check-in. If tracking was paused, it stays paused; if research interventions were turned off,
   they stay off. The theme goes back to the default (Sunrise). Study mode is turned off, session
-  numbering starts again at 1, and the participant ID is replaced by a new random one.
+  numbering starts again at 1, and the participant ID is replaced by a new random one. From
+  version 0.5.0, if you joined a study group, it also deletes your group data from the server
+  (see "Study groups").
 - **Turn research interventions off** (version 0.2.0 and later), on the My Data page or the
   Settings tab.
 - **Export for research (CSV)** (version 0.4.0 and later): numbers only, downloaded to your
   computer (see above).
 - **Lock my site labels (study mode)** (version 0.4.0 and later), on the Settings tab: while it is
   on, site labels can't be changed. You can turn it off at any time.
+- **Study groups** (version 0.5.0 and later, optional): leave a group, change your display name,
+  or delete all your group data from the server, on the Study groups tab. You can also take back
+  StudyLens's permission to contact its server in your browser's add-on settings at any time.
 
 ## No third parties
 
 StudyLens contains no ads, analytics, or third-party trackers, and never sells or shares your data.
 
-## Study groups (coming in a later version — not active yet)
+## Study groups (version 0.5.0 and later, optional)
 
-> **Draft.** This section describes a planned, optional feature. **It is not active in version
-> 0.4.0**: the extension does not contact any server. It will be finalized before study groups
-> ship, and the effective date above will change.
+Study groups are **optional and off by default**. If you never use them, StudyLens never contacts
+any server and nothing about you leaves your device.
 
-Study groups will be **optional and off by default**. Nothing changes for you unless you join or
-create a group.
-
-- **Asking first.** StudyLens will ask the browser for permission to contact the StudyLens server
-  only when you first join or create a group — never at install. Before anything is sent, you
-  will see a preview of exactly what will be shared.
-- **No account.** Joining needs a group code and a display name you choose. No email, no real
-  name, no password. The server gives your browser a random device ID and a secret token; the
-  server keeps only a scrambled (hashed) copy of the token.
-- **What the server stores:** your display name, your random device ID, the groups you are in,
-  your **daily focus minutes** (for example "focused 2h 15m" — one number per day), whether you are
-  in a focus session right now, and for live group sessions: the session's length and times, your
-  status (focusing / finished / left), and — only if you choose to share it — your focus minutes
-  for that session. A live group session can have an optional goal; it is deleted 24 hours after
-  the session ends.
+- **Asking first.** The "Study groups" tab first explains what would be shared and what never is.
+  Only when you click **"Join or create a group"** does StudyLens ask your browser for permission
+  to contact the StudyLens server (`studylens-flame.vercel.app`) — never at install. In Firefox the
+  same prompt also asks to share "personally identifying information": that is the display name
+  you choose. Nothing is sent until you then create or join a group. Before every request,
+  StudyLens checks that it still has this permission; if you take it back in your browser's add-on
+  settings, it sends nothing.
+- **No account.** Creating or joining a group needs only a display name you choose (it doesn't
+  have to be your real name) and, to join, the group's 8-character code. No email, no password. The
+  server gives your browser a random device ID and a secret token. Your browser keeps both (in
+  `browser.storage.local`; the My Data page shows them, with the token hidden, and the export hides
+  the token too). The server keeps only a scrambled (hashed) copy of the token.
+- **What the server stores now (version 0.5.0):** your display name, your random device ID, when
+  it last heard from your browser, the groups you created or joined (group name, join code, who
+  started it, when you joined).
+- **What a later part of version 0.5.0 adds (passive groups),** only for members of your groups:
+  your **daily focus minutes** (one number per day, for example "focused 2 h 15 min") and whether
+  you are in a focus session right now. This policy will say when that part is active.
 - **What the server never stores:** which websites you visit, domain names, web addresses, page
   titles, your site labels, distraction attempts, research conditions, check-in answers, your
-  session goals from solo sessions, your email, or your IP address.
-- **Who sees what:** members of a group see each other's display names, daily focus totals, and
-  who is in a session right now. Never sites.
-- **Error reports.** If something goes wrong after you have joined a group, the extension may send
-  a short error message (no personal data). The server removes anything that looks like a web
-  address, domain, email or IP address before saving it, does not link it to your device, and
-  deletes it after 14 days.
-- **Hosting.** The server runs on Vercel and the database on Turso. Like most hosting providers,
-  Vercel keeps short-lived technical request logs (which include IP addresses) for operating its
-  service; StudyLens does not read or keep them.
-- **Leaving.** You will be able to leave a group at any time, which stops sharing.
+  session goals, your email, or your IP address.
+- **Who sees what:** members of a group see each other's display names (and, once passive groups
+  are active, each other's daily focus totals and who is in a session right now). Never sites.
+  Other members never see your device ID.
+- **Limits and abuse protection.** A group has at most 20 members, and you can be in at most 5
+  groups. To stop people from guessing join codes, the server counts requests per browser (by
+  device ID, stored for at most a day) and per internet address. Internet addresses are counted
+  **in the server's memory only**, as a scrambled value that can't be turned back into the address;
+  they are never written to the database or any log, and are forgotten within an hour.
+- **Leaving and deleting.** On the Study groups tab you can leave a group at any time, change your
+  display name, and **"Delete my group data from the server"**: this deletes your display name,
+  device ID and all your memberships from the server (a group you were the last member of is
+  deleted too), and StudyLens gives back its permission to contact the server. "Delete everything"
+  on the My Data page does the same. If the server can't be reached at that moment, your data on
+  this device is still deleted, you are told, and StudyLens keeps only the secret token so it can
+  finish deleting your server data automatically later (it tries about every 30 minutes while
+  your browser is open and the permission is still granted).
+- **Error reports.** StudyLens 0.5.0 does not send error reports. (The server can accept short,
+  scrubbed error messages for a later version; any address, domain, email or IP address is removed
+  before saving, they are not linked to a device, and they are deleted after 14 days.)
+- **Hosting.** The server runs on Vercel (in Portland, Oregon, USA) and the database on Turso
+  (AWS us-west-2, Oregon, USA). Like most hosting providers, Vercel keeps short-lived technical
+  request logs (which include IP addresses) for operating its service; StudyLens does not read or
+  keep them.
 
 ## Research uploads
 

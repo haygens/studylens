@@ -182,3 +182,51 @@ library code (`dangerouslySetInnerHTML` support); StudyLens never uses `innerHTM
    StudyLens → Inspect → Console, run
    `browser.storage.local.set({ 'interventions:block': ['intention'] })` (or `['friction']`), start
    a session, then open youtube.com.
+
+---
+
+## Version 0.5.0 (study groups, P16 + P18) — changes for the next upload
+
+Not uploaded yet: 0.5.0 ships when study groups (P16) and passive groups (P18) are both done.
+Everything above still applies, with these changes.
+
+**Data collection (Developer Hub → "Data collection" and the manifest).** The manifest declares
+`data_collection_permissions: { required: ["none"], optional: ["personallyIdentifyingInfo"] }`.
+Nothing is collected by default. The optional category covers the **display name** a user picks
+when they create or join a study group (it may be a real name, so it is declared). It is requested
+at runtime, in the same `permissions.request()` as the server origin, only when the user clicks
+"Join or create a group" — never at install. (`technicalAndInteraction` is not used.) If AMO's
+form asks which data is transmitted: display name and group membership, to the developer's own
+server, only after opt-in.
+
+**Notes to reviewer — replace the first paragraph with:**
+
+StudyLens is a local-first focus tracker. Everything it records stays in `storage.local`. Version
+0.5.0 adds **optional study groups**: only if the user opens the "Study groups" tab, reads what is
+shared, and clicks "Join or create a group", StudyLens asks for the optional host permission
+`https://studylens-flame.vercel.app/*` and the optional data collection category
+`personallyIdentifyingInfo` (one prompt). Then, and only then, it sends the server a display name
+the user chooses, a group name or join code, and a random device token the server issued. It never
+sends browsing data (no domains, URLs, titles, labels, goals, check-in answers or research data).
+Users who never open groups make no network requests at all. Server source: `web/` in the same
+repository (Next.js on Vercel, Turso database); API documented in `docs/backend.md`.
+
+**Permissions — add:**
+
+- `optional_host_permissions: ["https://studylens-flame.vercel.app/*"]`: the StudyLens server, for
+  study groups only. Requested with `permissions.request()` from the click on "Join or create a
+  group". Every request first checks `permissions.contains()`, so revoking it in about:addons
+  stops all traffic. "Delete my group data from the server" deletes the server copy and calls
+  `permissions.remove()`.
+
+**How to test study groups (about 3 minutes, add after step 8):**
+
+9. Options page → **Study groups** tab. It explains what is shared and what never is. Nothing has
+   been sent yet.
+10. Click **Join or create a group**. Firefox asks to allow access to studylens-flame.vercel.app
+    and to share "personally identifying information" (the display name). Allow.
+11. Type a display name (e.g. "Reviewer") and a group name, click **Create group**. The group card
+    shows an 8-character join code and you as the only member. "Copy invite message" copies the
+    code and install links.
+12. **Leave group** → Yes, leave. Then **Delete my group data from the server** → Yes, delete: the
+    server copy is deleted and the permission is given back (about:addons → Permissions).

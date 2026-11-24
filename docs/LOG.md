@@ -1433,3 +1433,78 @@ Tests: web + shared unit tests 101 pass (12 files); lint, typecheck, format chec
 Disk space: C: 3.42 GB free, M: 13.82 GB free.
 
 Next piece: P16 stage 2 (server routes).
+
+## Handoff — 2026-11-23 (P16 done)
+
+Done:
+
+- CI was green on `3e77d53` before starting.
+- Stage 2 (`e600a8c`): server routes `POST /api/groups`, `POST /api/groups/join`,
+  `GET /api/groups`, `DELETE /api/groups/:id/membership`, `PATCH` + `DELETE /api/devices/me`.
+  zod validation (strict), consistent JSON errors, `withErrorLogging` via `apiRoute`, CORS. Rate
+  limits per device (database) and per client address (memory only, HMAC with a per-instance key,
+  pruned within ~70 min; IPs never persisted). Registration: 30/hour per address + global backstop
+  1000/hour (fixes the "global registration limit" open question). Join attempts: 20/hour per
+  device + 60/hour per address, counted before the code is looked at.
+- Stage 3 (`73c1ceb`, `501b228`): extension "Study groups" tab (consent screen → "Join or create a
+  group" → browser permission → create/join; members; copy invite; leave; change name; delete
+  server data + give the permission back). `optional_host_permissions` for the production server
+  (E2E build: local server at install, since Playwright can't click the prompt). Firefox:
+  `data_collection_permissions` optional `personallyIdentifyingInfo`, `none` still required,
+  requested in the same prompt. API base is a build-time constant (`extension/server-urls.ts`).
+  Every request checks the permission first; timeouts; clear offline/error states. "Delete
+  everything" deletes the server copy first; if unreachable, local data is deleted anyway, the
+  user is told, and only the token is kept for an automatic retry (background, every ~30 min).
+  Token masked on My Data and in the JSON export. Popup footer link. Version 0.5.0-dev.
+- Stage 4 (`f1cba6e`, `26e1627`): extension unit tests (API client, service, permission request,
+  invite, export masking); E2E against the real web API started by Playwright (`next dev` on
+  127.0.0.1:3101, `web/.next-e2e/`, fresh DB in `web/.data/e2e/`): normal build has no host
+  permission and solo use sends nothing; solo use in the E2E build sends nothing; two-profile flow
+  (create → join by code → both see each other → leave → delete server data → Delete everything
+  deletes the server copy, token rejected); server down (errors + Retry, solo features work,
+  Delete everything still deletes locally). The E2E found a real bug (the list loaded before the
+  first group existed), fixed. `openExecutor` now creates the folder of a local DB file.
+  `web/AGENTS.md` (written by `next dev` when it detects an AI agent) is gitignored.
+- Docs: PRIVACY.md groups section active (by version: 0.5.0+); `docs/store/amo-listing.md` and
+  `edge-listing.md` have a "0.5.0" section (reviewer notes, permissions, test steps); new
+  `docs/store/edge-privacy-answers.md`; `docs/backend.md` (endpoints, group rules, rate limits,
+  E2E server); CLAUDE.md, README.md; PLAN.md P16 checked off. `smoke:edge` updated for 0.5.0 and
+  study groups.
+- Production: Vercel redeployed from main; `GET /api/health` → `{"ok":true,"db":"up"}`;
+  `GET /api/groups` without a token → 401 JSON (new routes are live). No test data was created
+  in production.
+
+Changed files: `web/app/api/{groups/route,groups/join/route,groups/[id]/membership/route,devices/me/route,devices/route}.ts`
+(+ tests), `web/lib/api/{client-limit,group-errors,join-code,rate-limit,validation,test-helpers}.ts`,
+`web/lib/db/{executor,sql-db.test}.ts`, `web/next.config.ts`, `web/tsconfig.json`,
+`extension/server-urls.ts`, `extension/src/groups/*`, `extension/entrypoints/options/{App,StudyGroups,MyData}.tsx`,
+`extension/entrypoints/popup/PopupFooter.tsx`, `extension/entrypoints/background.ts`,
+`extension/src/storage/keys{,.test}.ts`, `extension/src/my-data/export{,.test}.ts`,
+`extension/src/ui/styles.css`, `extension/src/interventions/assignment.test.ts`,
+`extension/{wxt.config,vitest.config,playwright.config}.ts`, `extension/build-flags.d.ts`,
+`extension/e2e/{fixtures,groups.e2e,web-server,global-setup}.ts`,
+`extension/scripts/{check-builds,smoke-edge}.mjs`, `extension/package.json`, `package-lock.json`,
+`.gitignore`, `.prettierignore`, `eslint.config.js`, PRIVACY.md, README.md, CLAUDE.md,
+`docs/{PLAN,LOG,backend}.md`, `docs/store/{amo-listing,edge-listing,edge-privacy-answers}.md`.
+
+Tests: unit 839/839 (50 files). Lint, format, typecheck, web build, Firefox + Edge + E2E builds,
+`check:builds` clean. `smoke:edge`: 11 passed, 0 failed, 1 skipped (zip not built; not
+releasing). E2E: `groups.e2e.ts` 12/12 locally (4 tests × 3 repeats). The full local E2E run was
+stopped by Claude Code at test 38/44 because the PC ran low on memory (37 passed before that, no
+real failure); CI ran the whole suite: check ✓, e2e ✓ on `26e1627`.
+
+Problems / open questions:
+
+- **Real Firefox not tested** (not installed here; CLAUDE.md says not to install browsers).
+  Unverified: that Firefox accepts `origins` + `data_collection` in one `permissions.request()`
+  and shows one prompt. hs's manual steps are in the session handoff. addons-linter was not run
+  (the permission system blocked downloading it via npx); optional for hs.
+- One unit test ("300 real session starts") hit the 5 s default timeout under full parallel load
+  (2.9 s alone): CPU-bound, given an explicit 30 s timeout, not a retry.
+- If someone's create/join fails right after registering, a different display name typed for the
+  retry is ignored (the first registration's name is kept; "Change name" fixes it). Minor.
+- The flaky E2E from 2026-11-22 is still unidentified (not seen again).
+
+Disk space: C: 3.44 GB free, M: 13.94 GB free.
+
+Next piece (from PLAN.md): P18 — Study groups (passive): daily focus totals + who's in a session.
