@@ -1576,3 +1576,18 @@ Problems / open questions:
 Disk space: C: 3.41 GB free, M: 13.94 GB free.
 
 Next piece (from PLAN.md): P18 — Study groups (passive).
+
+## P16 follow-up re-check — 2026-11-23 (hs, real Firefox 160.0.1, fresh profile, production server)
+
+Setup: fresh Firefox 160.0.1 profile with `extensions.dataCollectionPermissions.enabled = true`.
+
+PASS:
+
+- One prompt on "Join or create a group", then straight to the create/join form.
+- In about:addons both "Access your data for studylens-flame.vercel.app" and "Share personally
+  identifying information" were ON.
+- Create group worked.
+- Turning data sharing off showed "Sharing your display name is off" and sent nothing.
+- "Allow again" and then "Delete my group data from the server" worked.
+
+Result: **P16 fully verified in real Firefox.**
