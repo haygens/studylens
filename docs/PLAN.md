@@ -92,16 +92,25 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       server **only when the user first joins or creates a group** (optional host permission requested
       at runtime, never at install). When this ships: update the AMO `data_collection_permissions`,
       PRIVACY.md, and the store listings.
-      Done 2026-11-23 (0.5.0-dev, not released; ships with P18 as v0.5.0): group API (create, join by
-      8-character code, list, leave, rename, delete device; 20 members/group, 5 groups/device;
+      Done 2026-11-23 (ships in v0.5.0 with P18; zips built, not uploaded): group API (create,
+      join by 8-character code, list, leave, rename, delete device; 20 members/group, 5 groups/device;
       per-device + in-memory per-address rate limits), "Study groups" options tab with consent
       screen → permission → create/join, invite message, "Delete everything" also deletes server
       data (retries if offline). Firefox: `personallyIdentifyingInfo` optional. PRIVACY.md groups
       section active; AMO/Edge notes + `docs/store/edge-privacy-answers.md` drafted. Two-profile
       E2E against the local web API. The device ID comes from the server (random UUID), not from
       the extension.
-- [ ] **P18. Study groups (passive)** — members see each other's **daily focus totals** and who is in a
+- [x] **P18. Study groups (passive)** — members see each other's **daily focus totals** and who is in a
       session right now. Never site names. Polling (WebSockets optional; Vercel's are in beta).
+      Done 2026-11-23 (v0.5.0, zips built, not uploaded): per-group switches "Share my focus
+      minutes" / "Show when I'm focusing" (ON after the explanation + live preview on join; off
+      deletes the data on the server). New endpoints: totals (plausibility checks), presence (3-min
+      TTL), sharing switches, group overview (today + 7-day history + focusing now, only what each
+      member shares) and a focusing-now count for the popup; totals kept 14 days. The extension
+      sends on session start/end, every ≤5 min and a heartbeat on the session tick, only while
+      registered + a switch on + permissions; offline retry. Firefox: optional
+      `technicalAndInteraction`. Sessions stay `solo`; local-only `inGroup` covariate. Two-profile
+      E2E. See `docs/backend.md`.
 - [ ] **P18b. Live group focus sessions** _(stretch)_ — someone starts a group session (goal + length)
       and shares a code; others join; everyone gets the same shared timer; live presence list
       (focusing / finished / left); a group "Session complete!" summary showing each member's focus

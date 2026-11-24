@@ -133,11 +133,20 @@ export function useMyActivity(): MyActivity {
   return data;
 }
 
-/** The browser permissions, read once and after a prompt. */
+/**
+ * The browser permissions: read on load, after a prompt, and whenever the page becomes visible
+ * again (e.g. after changing them in the browser's add-on settings).
+ */
 export function useServerAccess() {
   const [access, setAccess] = useState<ServerAccess | null>(null);
   useEffect(() => {
-    void serverAccess.read().then(setAccess);
+    const read = () => void serverAccess.read().then(setAccess);
+    read();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') read();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
   return [access, setAccess] as const;
 }
