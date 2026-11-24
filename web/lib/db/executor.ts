@@ -134,6 +134,10 @@ export function fileUrlToPath(url: string): string {
  */
 export async function openExecutor(url: string, authToken?: string): Promise<SqlExecutor> {
   if (!url.startsWith('file:')) return libsqlExecutor(url, authToken);
+  // SQLite creates the file but not its folder (e.g. a fresh clone has no web/.data/).
+  const { mkdirSync } = await import('node:fs');
+  const { dirname } = await import('node:path');
+  mkdirSync(dirname(fileUrlToPath(url)), { recursive: true });
   try {
     return await libsqlExecutor(url);
   } catch (err) {

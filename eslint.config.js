@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/.output/**',
       '**/.wxt/**',
       '**/.next/**',
+      '**/.next-e2e/**',
       '**/dist/**',
       '**/coverage/**',
       '**/test-results/**',

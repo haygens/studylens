@@ -293,3 +293,23 @@ describe('fileUrlToPath', () => {
     expect(fileUrlToPath('file:///tmp/x.db')).toBe('/tmp/x.db');
   });
 });
+
+describe('openExecutor', () => {
+  it('creates the folder of a local database file if it is missing', async () => {
+    const { openExecutor } = await import('./executor');
+    const { TEST_DB_DIR } = await import('./test-utils');
+    const { existsSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { pathToFileURL } = await import('node:url');
+    const { randomUUID } = await import('node:crypto');
+    const dir = join(TEST_DB_DIR, `new-folder-${randomUUID()}`);
+    try {
+      const ex = await openExecutor(pathToFileURL(join(dir, 'x.db')).href);
+      await ex.execute({ sql: 'SELECT 1' });
+      await ex.close();
+      expect(existsSync(join(dir, 'x.db'))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

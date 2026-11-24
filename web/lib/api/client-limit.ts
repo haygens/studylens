@@ -18,6 +18,9 @@ const KEY = randomBytes(32);
 /** Upper bound on remembered addresses per instance; the oldest windows are dropped first. */
 const MAX_ENTRIES = 50_000;
 let maxEntries = MAX_ENTRIES;
+/** Expired counters are dropped at most this often, so an address is forgotten within ~70 min. */
+const PRUNE_EVERY_MS = 10 * 60 * 1000;
+let lastPrune = 0;
 
 interface Entry {
   windowStart: number;
@@ -44,6 +47,7 @@ function clientKey(rule: RateLimitRule, req: Request): string {
 }
 
 function prune(now: number): void {
+  lastPrune = now;
   for (const [k, v] of counters) if (now - v.windowStart >= HOUR_MAX) counters.delete(k);
   // Still too many (a flood of distinct addresses): drop the oldest entries.
   if (counters.size >= maxEntries) {
@@ -58,7 +62,7 @@ export function enforceClientRateLimit(req: Request, rule: RateLimitRule, now = 
   const key = clientKey(rule, req);
   let entry = counters.get(key);
   if (!entry || entry.windowStart !== windowStart) {
-    if (counters.size >= maxEntries) prune(now);
+    if (counters.size >= maxEntries || now - lastPrune >= PRUNE_EVERY_MS) prune(now);
     entry = { windowStart, count: 0 };
     counters.set(key, entry);
   }
@@ -78,6 +82,7 @@ export function enforceClientRateLimit(req: Request, rule: RateLimitRule, now = 
 /** Tests only: forget every counter. */
 export function resetClientRateLimits(): void {
   counters.clear();
+  lastPrune = 0;
 }
 
 /** Tests only: change the cap on remembered addresses (`undefined` restores the default). */

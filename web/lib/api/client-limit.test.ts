@@ -40,6 +40,14 @@ describe('client address rate limit (memory only)', () => {
     enforceClientRateLimit(a, RULE, T + RULE.windowMs);
   });
 
+  it('forgets an address about an hour after its window, even when the map is not full', () => {
+    enforceClientRateLimit(req({ 'x-forwarded-for': '203.0.113.5' }), RULE, T);
+    expect(clientRateLimitEntries()).toBe(1);
+    // 70 minutes later, any new request prunes the expired entry.
+    enforceClientRateLimit(req({ 'x-forwarded-for': '203.0.113.6' }), RULE, T + 70 * 60_000);
+    expect(clientRateLimitEntries()).toBe(1);
+  });
+
   it('drops windows older than an hour, and never grows past the cap', () => {
     setClientRateLimitCapForTests(10);
     try {

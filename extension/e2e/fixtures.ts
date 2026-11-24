@@ -8,7 +8,9 @@
  * - Override with `E2E_CHANNEL=chromium` or `E2E_CHANNEL=msedge`.
  *
  * Every test gets a fresh, empty browser profile. All http(s) requests are answered by tiny stub
- * pages or blocked, so tests never touch the real internet.
+ * pages or blocked, so tests never touch the real internet — except the local StudyLens web API
+ * that playwright.config.ts starts for the study group tests (P16, `E2E_API_BASE`).
+ * `launchExtension` opens a second, separate profile (a "second person") when a test needs one.
  *
  * Research interventions are on by default from v0.2.0. So that tests about other features don't
  * get random friction/intention pages, each test starts with `interventions:enabled = false`
@@ -27,6 +29,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { E2E_API_BASE } from '../server-urls';
 
 const EXTENSION_DIRS = {
   e2e: fileURLToPath(new URL('../.output/edge-mv3-e2e', import.meta.url)),
@@ -44,7 +47,9 @@ function channel(): string {
 
 async function stubInternet(context: BrowserContext): Promise<void> {
   await context.route(/^https?:\/\//, async (route) => {
-    const host = new URL(route.request().url()).hostname;
+    const url = route.request().url();
+    if (url.startsWith(`${E2E_API_BASE}/`)) return route.fallback(); // the local web API
+    const host = new URL(url).hostname;
     const title = STUB_SITES[host];
     if (!title) return route.abort('blockedbyclient');
     return route.fulfill({
@@ -59,6 +64,7 @@ interface Chrome {
   chrome: {
     action: { getBadgeText(details: object): Promise<string> };
     alarms: { getAll(): Promise<{ name: string }[]> };
+    permissions: { getAll(): Promise<{ permissions?: string[]; origins?: string[] }> };
     storage: {
       local: {
         get(keys: null): Promise<Record<string, unknown>>;
@@ -101,6 +107,13 @@ export class Background {
       sw.evaluate(() => (globalThis as unknown as Chrome).chrome.alarms.getAll()),
     );
     return alarms.map((a) => a.name).sort();
+  }
+
+  /** The permissions the extension holds right now (granted at install or at runtime). */
+  permissions(): Promise<{ permissions?: string[]; origins?: string[] }> {
+    return this.run((sw) =>
+      sw.evaluate(() => (globalThis as unknown as Chrome).chrome.permissions.getAll()),
+    );
   }
 
   storage(): Promise<Record<string, unknown>> {
@@ -151,25 +164,9 @@ export const test = base.extend<Fixtures & Options>({
   welcome: ['close', { option: true }],
 
   context: async ({ headless, build }, use) => {
-    const EXTENSION_DIR = EXTENSION_DIRS[build];
-    if (!existsSync(path.join(EXTENSION_DIR, 'manifest.json'))) {
-      throw new Error(`Build missing: ${EXTENSION_DIR}. Run \`npm run test:e2e\`.`);
-    }
-    const profile = mkdtempSync(path.join(os.tmpdir(), 'studylens-e2e-'));
-    const context = await chromium.launchPersistentContext(profile, {
-      channel: channel(),
-      headless,
-      args: [
-        `--disable-extensions-except=${EXTENSION_DIR}`,
-        `--load-extension=${EXTENSION_DIR}`,
-        // Newer Chrome/Edge versions need this to keep allowing --load-extension.
-        '--disable-features=DisableLoadExtensionCommandLineSwitch',
-      ],
-    });
-    await stubInternet(context);
+    const { context, close } = await openContext(build, headless);
     await use(context);
-    await context.close();
-    rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
+    await close();
   },
 
   extensionId: async ({ context, seed, welcome }, use) => {
@@ -220,6 +217,73 @@ export const test = base.extend<Fixtures & Options>({
 });
 
 export { expect };
+
+/** A fresh browser profile with the extension loaded (internet stubbed). */
+async function openContext(
+  build: keyof typeof EXTENSION_DIRS,
+  headless: boolean,
+): Promise<{ context: BrowserContext; close: () => Promise<void> }> {
+  const EXTENSION_DIR = EXTENSION_DIRS[build];
+  if (!existsSync(path.join(EXTENSION_DIR, 'manifest.json'))) {
+    throw new Error(`Build missing: ${EXTENSION_DIR}. Run \`npm run test:e2e\`.`);
+  }
+  // os.tmpdir() follows TEMP/TMP, which point to M: on hs's PC.
+  const profile = mkdtempSync(path.join(os.tmpdir(), 'studylens-e2e-'));
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: channel(),
+    headless,
+    args: [
+      `--disable-extensions-except=${EXTENSION_DIR}`,
+      `--load-extension=${EXTENSION_DIR}`,
+      // Newer Chrome/Edge versions need this to keep allowing --load-extension.
+      '--disable-features=DisableLoadExtensionCommandLineSwitch',
+    ],
+  });
+  await stubInternet(context);
+  return {
+    context,
+    async close() {
+      await context.close();
+      rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
+    },
+  };
+}
+
+export interface ExtensionProfile {
+  context: BrowserContext;
+  extensionId: string;
+  background: Background;
+  /** Opens an extension page, e.g. `options.html#groups`. */
+  open: (pathAndHash: string) => Promise<Page>;
+  close: () => Promise<void>;
+}
+
+/**
+ * A second, independent browser profile with the extension (the E2E build), set up like the
+ * fixtures' one: seeded storage, welcome page closed. Close it at the end of the test.
+ */
+export async function launchExtension(
+  headless: boolean,
+  seed: Record<string, unknown> = { 'interventions:enabled': false },
+): Promise<ExtensionProfile> {
+  const { context, close } = await openContext('e2e', headless);
+  const sw = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const background = new Background(context);
+  if (Object.keys(seed).length > 0) await background.set(seed);
+  await (await findWelcomePage(context)).close();
+  const extensionId = new URL(sw.url()).host;
+  return {
+    context,
+    extensionId,
+    background,
+    async open(pathAndHash) {
+      const page = await context.newPage();
+      await page.goto(`chrome-extension://${extensionId}/${pathAndHash}`);
+      return page;
+    },
+    close,
+  };
+}
 
 /** The welcome page that a new install opens (P13b). */
 export async function findWelcomePage(context: BrowserContext): Promise<Page> {

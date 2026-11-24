@@ -60,3 +60,23 @@ describe('export', () => {
     expect(exportFileName(Date.UTC(2026, 10, 17, 7, 30))).toBe('studylens-export-2026-11-16.json');
   });
 });
+
+describe('export: secrets', () => {
+  it('masks the study group token but keeps everything else about the registration', () => {
+    const token = `slt_${'x'.repeat(43)}`;
+    const out = buildExport(
+      {
+        'groups:device': { deviceId: 'dev-1', token, displayName: 'Sam', registeredAt: 5 },
+        'groups:pending-server-delete': { token, since: 1, lastAttempt: null },
+      },
+      0,
+    );
+    expect(out.storage['groups:device']).toEqual({
+      deviceId: 'dev-1',
+      token: 'slt_xxx… (hidden)',
+      displayName: 'Sam',
+      registeredAt: 5,
+    });
+    expect(JSON.stringify(out)).not.toContain(token);
+  });
+});

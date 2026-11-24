@@ -805,40 +805,52 @@ function DisplayNameCardStatic({ device }: { device: GroupDevice }) {
 
 export default function StudyGroups() {
   const { state, reload } = useGroupDevice();
-  const [allowed, setAllowed] = useState(false);
+  /**
+   * True from "Join or create a group" until the first create/join has fully finished. The setup
+   * form stays up the whole time, even though registering saves the device (which would otherwise
+   * switch to the groups list before the group exists).
+   */
+  const [settingUp, setSettingUp] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
+  if (state.status === 'loading' || state.status === 'error') {
+    return (
+      <>
+        <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Study groups</h1>
+        {state.status === 'loading' ? (
+          <Loading />
+        ) : (
+          <LoadError what="Study groups" message={state.message} onRetry={reload} />
+        )}
+      </>
+    );
+  }
+
+  const device = state.data;
   return (
     <>
       <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Study groups</h1>
-      {state.status === 'loading' && <Loading />}
-      {state.status === 'error' && (
-        <LoadError what="Study groups" message={state.message} onRetry={reload} />
-      )}
-      {state.status === 'ready' && state.data && (
-        <Groups device={state.data} flash={flash} setFlash={setFlash} />
-      )}
-      {state.status === 'ready' && !state.data && (
+      {settingUp ? (
+        <>
+          <Setup
+            onDone={(message) => {
+              setFlash(message);
+              setSettingUp(false);
+            }}
+          />
+          <WhatIsShared />
+        </>
+      ) : device ? (
+        <Groups device={device} flash={flash} setFlash={setFlash} />
+      ) : (
         <>
           {flash && <Flash>{flash}</Flash>}
-          {allowed ? (
-            <>
-              <Setup
-                onDone={(message) => {
-                  setFlash(message);
-                  setAllowed(false);
-                }}
-              />
-              <WhatIsShared />
-            </>
-          ) : (
-            <Intro
-              onAllowed={() => {
-                setFlash(null);
-                setAllowed(true);
-              }}
-            />
-          )}
+          <Intro
+            onAllowed={() => {
+              setFlash(null);
+              setSettingUp(true);
+            }}
+          />
         </>
       )}
     </>
