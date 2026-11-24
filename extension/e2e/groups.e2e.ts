@@ -9,39 +9,9 @@
  * never contacts it.
  */
 import { readFileSync } from 'node:fs';
-import type { BrowserContext, Page } from '@playwright/test';
 import { E2E_API_BASE, PRODUCTION_API_BASE } from '../server-urls';
 import { expect, launchExtension, startSession, test } from './fixtures';
-
-/** Counts every request the extension makes to `base` in this browser profile. */
-function countRequests(context: BrowserContext, base: string): () => number {
-  let n = 0;
-  context.on('request', (r) => {
-    if (r.url().startsWith(base)) n++;
-  });
-  return () => n;
-}
-
-/** Consent screen → "Join or create a group" → the create/join forms. */
-async function startGroups(page: Page): Promise<void> {
-  await expect(page.getByRole('heading', { name: 'Study groups', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'What a study group shares' })).toBeVisible();
-  await expect(page.getByText('Never shared:')).toBeVisible();
-  await page.getByRole('button', { name: 'Join or create a group' }).click();
-  await expect(page.getByRole('heading', { name: 'Create or join a group' })).toBeVisible();
-}
-
-/** The join code shown on a group card, e.g. `ABCD-EFGH`. */
-async function joinCodeOf(page: Page, groupName: string): Promise<string> {
-  const card = page.getByRole('region', { name: `Group ${groupName}` });
-  const text = await card.getByText(/^Join code:/).innerText();
-  const code = /([A-Z0-9]{4}-[A-Z0-9]{4})/.exec(text)?.[1];
-  if (!code) throw new Error(`No join code in "${text}"`);
-  return code;
-}
-
-const members = (page: Page, groupName: string) =>
-  page.getByRole('list', { name: `Members of ${groupName}` }).getByRole('listitem');
+import { countRequests, joinCodeOf, members, row, startGroups } from './group-helpers';
 
 test.describe('normal build (production server)', () => {
   test.use({ build: 'normal' });
@@ -117,7 +87,7 @@ test('create → a second person joins by code → both see each other → leave
   await a.getByLabel('Group name').fill('E2E Study');
   await a.getByRole('button', { name: 'Create group' }).click();
   await expect(a.getByRole('status').filter({ hasText: 'You created “E2E Study”' })).toBeVisible();
-  await expect(members(a, 'E2E Study')).toHaveText(['Sam (you) · started the group']);
+  await expect(members(a, 'E2E Study')).toHaveText([row('Sam (you) · started the group')]);
   const code = await joinCodeOf(a, 'E2E Study');
   const device = await background.get<{ deviceId: string; token: string; displayName: string }>(
     'groups:device',
@@ -140,11 +110,17 @@ test('create → a second person joins by code → both see each other → leave
     await b.getByLabel('Join code').fill(code.toLowerCase());
     await b.getByRole('button', { name: 'Join group' }).click();
     await expect(b.getByRole('status').filter({ hasText: 'You joined “E2E Study”' })).toBeVisible();
-    await expect(members(b, 'E2E Study')).toHaveText(['Sam · started the group', 'Alex (you)']);
+    await expect(members(b, 'E2E Study')).toHaveText([
+      row('Sam · started the group'),
+      row('Alex (you)'),
+    ]);
 
     // A sees B after refreshing.
     await a.getByRole('button', { name: 'Refresh' }).click();
-    await expect(members(a, 'E2E Study')).toHaveText(['Sam (you) · started the group', 'Alex']);
+    await expect(members(a, 'E2E Study')).toHaveText([
+      row('Sam (you) · started the group'),
+      row('Alex'),
+    ]);
 
     // B leaves; A no longer sees B.
     await b.getByRole('button', { name: 'Leave group' }).click();
@@ -152,7 +128,7 @@ test('create → a second person joins by code → both see each other → leave
     await expect(b.getByText('You left “E2E Study”.')).toBeVisible();
     await expect(b.getByText('You’re not in any group right now.')).toBeVisible();
     await a.getByRole('button', { name: 'Refresh' }).click();
-    await expect(members(a, 'E2E Study')).toHaveText(['Sam (you) · started the group']);
+    await expect(members(a, 'E2E Study')).toHaveText([row('Sam (you) · started the group')]);
 
     // B deletes their group data from the server: back to the start screen, token gone.
     await b.getByRole('button', { name: 'Delete my group data from the server' }).click();

@@ -61,14 +61,19 @@ export function WeekStrip({ history }: { history: NonNullable<OverviewMember['hi
 /** One member: name, today's minutes (or "not shared"), the badge and the strip. */
 export function MemberActivity({ member, you }: { member: OverviewMember; you?: boolean }) {
   return (
-    <div className="sl-row" style={{ flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-      <strong>{member.displayName}</strong>
-      {you && <span className="sl-muted">(you)</span>}
-      {member.role === 'owner' && <span className="sl-muted"> · started the group</span>}
-      <span className="sl-muted" style={{ marginLeft: 8 }}>
-        {todayText(member)}
+    <div className="sl-row" style={{ flexWrap: 'wrap', gap: 0, alignItems: 'center' }}>
+      <span>
+        {member.displayName}
+        {you && ' (you)'}
+        {member.role === 'owner' && <span className="sl-muted"> · started the group</span>}
+        <span className="sl-muted"> · {todayText(member)}</span>
       </span>
-      {member.focusingNow === true && <FocusingBadge />}
+      {member.focusingNow === true && (
+        <>
+          {' '}
+          <FocusingBadge />
+        </>
+      )}
       {member.history && <WeekStrip history={member.history} />}
     </div>
   );

@@ -397,6 +397,10 @@ function Setup({ onDone }: { onDone: (message: string) => void }) {
 
   function onSharingChange(patch: Partial<GroupSharing>) {
     const turningOn = patch.focusMinutes === true || patch.focusingNow === true;
+    if (!turningOn || (access && canShareActivity(access))) {
+      setSharing({ ...chosen, ...patch });
+      return;
+    }
     void ensureActivityConsent(access, turningOn, setAccess).then((ok) => {
       if (ok) setSharing({ ...chosen, ...patch });
     });
@@ -569,21 +573,31 @@ function GroupCard({
   const [sharingBusy, setSharingBusy] = useState(false);
   const [sharingError, setSharingError] = useState<string | null>(null);
 
+  /** Shown at once (it takes effect right away); back to the old state if it didn't work. */
+  const [optimistic, setOptimistic] = useState<GroupSharing | null>(null);
+  const shown = optimistic ?? group.sharing;
+
   function onSharingChange(patch: Partial<GroupSharing>) {
     const turningOn = patch.focusMinutes === true || patch.focusingNow === true;
     // The Firefox prompt (if needed) must start in this click, before anything else.
     const consent = ensureActivityConsent(access, turningOn, setAccess);
     setSharingError(null);
+    setOptimistic({ ...shown, ...patch });
     void consent.then(async (ok) => {
       if (!ok) {
+        setOptimistic(null);
         setSharingError('Firefox didn’t allow sharing focus activity, so nothing changed.');
         return;
       }
       setSharingBusy(true);
       const res = await updateSharing(groupDeps, device, group.id, patch);
       setSharingBusy(false);
-      if (!res.ok) return setSharingError(`${failureText(res)} Nothing changed.`);
+      if (!res.ok) {
+        setOptimistic(null);
+        return setSharingError(`${failureText(res)} Nothing changed.`);
+      }
       onSharingChanged(group.id, res.data);
+      setOptimistic(null);
       if (turningOn) sendSharedNow();
     });
   }
@@ -650,7 +664,7 @@ function GroupCard({
         </summary>
         <SharingSwitches
           idPrefix={`sl-sharing-${group.id}`}
-          sharing={group.sharing}
+          sharing={shown}
           onChange={onSharingChange}
           displayName={device.displayName}
           busy={sharingBusy}
@@ -1023,6 +1037,10 @@ function Groups({
 
   function onNewSharingChange(patch: Partial<GroupSharing>) {
     const turningOn = patch.focusMinutes === true || patch.focusingNow === true;
+    if (!turningOn || (access && canShareActivity(access))) {
+      setNewSharing({ ...chosenNew, ...patch });
+      return;
+    }
     void ensureActivityConsent(access, turningOn, setAccess).then((ok) => {
       if (ok) setNewSharing({ ...chosenNew, ...patch });
     });
