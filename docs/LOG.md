@@ -1525,3 +1525,54 @@ FAIL:
 - After the single prompt, "Access your data for https://studylens-flame.vercel.app" was ON but
   "Share personally identifying information" stayed OFF, and the display name was still sent.
   Follow-up fix: next entry (P16 follow-up).
+
+## Handoff — 2026-11-23 (P16 follow-up: Firefox display-name consent)
+
+Done:
+
+- Logged hs's P16 manual Firefox test (`3239335`).
+- Cause of the FAIL, from Firefox's source (`toolkit/components/extensions/parent/ext-permissions.js`,
+  `browser/modules/ExtensionsUI.sys.mjs`, `browser/app/profile/firefox.js` on main): every
+  `data_collection` check in `permissions.request()` and `permissions.contains()` is behind the pref
+  `extensions.dataCollectionPermissions.enabled` (code fallback `false`; main ships `true`, the
+  release value wasn't confirmed). With the pref off, `request()` drops `data_collection` and grants
+  only the origin, and `contains({origins, data_collection})` ignores the data part and returns
+  true. That matches hs's result exactly. With the pref on, one optional prompt grants both on
+  Allow (no checkbox), so a separate request isn't needed. The other possible explanation is a
+  stale about:addons tab (open before the grant); hs's re-check below tells them apart.
+- Fix (`3252fdf`): consent is read from `permissions.getAll()`. Firefox removes `data_collection`
+  from it when the feature is off, so it can never say "granted" when nothing was recorded. It is
+  checked before every request that sends or reveals the display name (register, rename, create,
+  join). States: granted / missing (ask on its own button "Allow sharing my display name"; "No
+  thanks" gives server access back) / unsupported (explained, nothing sent, groups unavailable) /
+  revoked later ("Sharing your display name is off" with Allow again / Forget / Delete my group
+  data — delete sends only the token). Edge unchanged (no data collection permission).
+- Placeholder "e.g. TCSS 490 study" → "e.g. Finals study crew" (no other class-specific
+  placeholders).
+- Bug fixed: a retry after a failure right after registering now renames on the server first when
+  a different display name was typed.
+- PRIVACY.md and AMO notes describe the consent check.
+
+Changed files: `extension/src/groups/{permission,permission.test,browser-groups,api-client,api-client.test,service,service.test,config,config.test}.ts`,
+`extension/entrypoints/options/{StudyGroups,MyData}.tsx`, PRIVACY.md, `docs/store/amo-listing.md`,
+`docs/LOG.md`.
+
+Tests: unit 857/857 (51 files; new: fake Firefox/Edge permissions API covering granted,
+declined, revoked, not requested yet and the feature switched off, plus "nothing that reveals the
+name is sent without consent"). Groups E2E 4/4 (Edge path unchanged). Lint, format, typecheck,
+web build, Firefox/Edge/E2E builds, `check:builds` clean. `smoke:edge` 11 passed, 0 failed, 1
+skipped (zip). CI on `3252fdf`: check ✓, e2e ✓. Production `/api/health` → `db: "up"`.
+
+Problems / open questions:
+
+- Not verified in real Firefox yet (hs's re-check). If hs's Firefox has
+  `extensions.dataCollectionPermissions.enabled = false`, study groups now say they can't work
+  there. That is correct, but it means the earlier PASS steps can't be repeated in that profile
+  unless the pref is on.
+- The display name sent during hs's manual test is still on the production server only if hs
+  didn't delete it. hs ran "Delete my group data from the server" in both profiles, so nothing
+  should be left.
+
+Disk space: C: 3.41 GB free, M: 13.94 GB free.
+
+Next piece (from PLAN.md): P18 — Study groups (passive).
