@@ -1683,11 +1683,11 @@ Done:
   errors, 0 notices, 2 warnings (React DOM `UNSAFE_VAR_ASSIGNMENT`, as before).
 
 Tests: unit 937/937; group E2E 7/7; lint, format, typecheck, web build, check:builds clean;
-smoke:edge 12 passed, 0 failed, 0 skipped.
+smoke:edge 12 passed, 0 failed, 0 skipped. CI on `7f3f585`: check ✓, e2e ✓.
 
 Problems / open questions: none new. (The previous LOG commit `2ec1921` had a Prettier issue in
 LOG.md; fixed in `e0b86c7`.)
 
-Disk space: C: 3.27 GB free, M: 13.6 GB free.
+Disk space: C: 3.26 GB free, M: 13.90 GB free.
 
 Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
