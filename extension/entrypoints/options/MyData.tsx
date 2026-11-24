@@ -6,9 +6,8 @@ import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } 
 import { browser } from 'wxt/browser';
 import { localStore } from '@/src/background/browser-adapter';
 import { failureText } from '@/src/groups/api-client';
-import { groupDeps } from '@/src/groups/browser-groups';
+import { groupDeps, serverAccess } from '@/src/groups/browser-groups';
 import { asGroupDevice, maskToken } from '@/src/groups/group-store';
-import { removeServerAccess } from '@/src/groups/permission';
 import {
   deleteServerDataBeforeDeleteEverything,
   rememberPendingDelete,
@@ -183,7 +182,7 @@ function DeleteCard({ onDeleted }: { onDeleted: (step: DeleteEverythingServerSte
       } satisfies SessionMessage)) as SessionReply;
       if (!reply.ok) throw new Error(reply.error);
       if (server.status === 'failed') await rememberPendingDelete(groupDeps, server.token);
-      if (server.status === 'deleted') await removeServerAccess();
+      if (server.status === 'deleted') await serverAccess.removeAll();
       setTyped('');
       onDeleted(server);
     } catch (err) {

@@ -75,6 +75,42 @@ describe('study groups service', () => {
     });
   });
 
+  it('retry after a failure right after registering: a newly typed name is set on the server first', async () => {
+    const store = memoryStore();
+    let createFails = true;
+    const { client, calls } = fakeClient({
+      createGroup: () => (createFails ? OFFLINE : { ok: true, data: { group: GROUP } }),
+    });
+    const deps = { store, client, now: () => T };
+    expect(await createGroup(deps, 'Sam', 'Study')).toEqual(OFFLINE); // registered, then failed
+    createFails = false;
+    expect(await createGroup(deps, 'Samira', 'Study')).toEqual({ ok: true, data: GROUP });
+    expect(calls).toEqual([
+      'register(Sam)',
+      'createGroup(slt_tok, Study)',
+      'rename(slt_tok, Samira)',
+      'createGroup(slt_tok, Study)',
+    ]);
+    expect((await loadGroupDevice(store))?.displayName).toBe('Samira');
+  });
+
+  it('retry with the same name does not rename; a failed rename stops the retry', async () => {
+    const device = { deviceId: 'dev-1', token: 'slt_tok', displayName: 'Sam', registeredAt: T };
+    const same = fakeClient();
+    await joinGroup(
+      { store: memoryStore({ [STORAGE_KEYS.groupDevice]: device }), client: same.client },
+      'Sam',
+      'ZZZZZZZZ',
+    );
+    expect(same.calls).toEqual(['joinGroup(slt_tok, ZZZZZZZZ)']);
+
+    const failing = fakeClient({ rename: () => OFFLINE });
+    const store = memoryStore({ [STORAGE_KEYS.groupDevice]: device });
+    expect(await joinGroup({ store, client: failing.client }, 'Alex', 'ZZZZZZZZ')).toEqual(OFFLINE);
+    expect(failing.calls).toEqual(['rename(slt_tok, Alex)']);
+    expect((await loadGroupDevice(store))?.displayName).toBe('Sam');
+  });
+
   it('stores nothing if registration fails', async () => {
     const store = memoryStore();
     const { client, calls } = fakeClient({ register: () => OFFLINE });

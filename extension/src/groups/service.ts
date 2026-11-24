@@ -27,13 +27,24 @@ export interface GroupDeps {
 
 const fail = (failure: ApiFailure) => failure;
 
-/** The registered device, registering it with `displayName` first if needed. */
+/**
+ * The registered device with `displayName` on the server: registers it first if needed, or — if
+ * it is already registered under another name (a create/join failed right after registering and
+ * the user typed a different name for the retry) — changes the name on the server first.
+ */
 export async function ensureDevice(
   deps: GroupDeps,
   displayName: string,
 ): Promise<ApiResult<GroupDevice>> {
   const existing = await loadGroupDevice(deps.store);
-  if (existing) return { ok: true, data: existing };
+  if (existing) {
+    if (existing.displayName === displayName) return { ok: true, data: existing };
+    const renamed = await deps.client.rename(existing.token, displayName);
+    if (!renamed.ok) return renamed;
+    const updated = { ...existing, displayName: renamed.data.displayName };
+    await saveGroupDevice(deps.store, updated);
+    return { ok: true, data: updated };
+  }
   const res = await deps.client.register(displayName);
   if (!res.ok) return fail(res);
   const device: GroupDevice = {

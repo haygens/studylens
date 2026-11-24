@@ -178,9 +178,15 @@ any server and nothing about you leaves your device.
   Only when you click **"Join or create a group"** does StudyLens ask your browser for permission
   to contact the StudyLens server (`studylens-flame.vercel.app`) — never at install. In Firefox the
   same prompt also asks to share "personally identifying information": that is the display name
-  you choose. Nothing is sent until you then create or join a group. Before every request,
-  StudyLens checks that it still has this permission; if you take it back in your browser's add-on
-  settings, it sends nothing.
+  you choose. If Firefox doesn't record that OK, StudyLens asks for it on its own, and if you say
+  no, it sends nothing and doesn't set you up (study groups can't work without a display name).
+  Nothing is sent until you then create or join a group. Before every request, StudyLens checks
+  that it still has server access, and before anything that sends or shows your display name
+  (setting up, changing your name, creating or joining a group) that Firefox still has your OK to
+  share it. If you take either back in your browser's add-on settings, StudyLens stops sending; it
+  can then still delete your group data from the server, which sends only your browser's secret
+  key. If your Firefox can't record data-sharing permissions at all, StudyLens never sends your
+  display name and study groups don't work there.
 - **No account.** Creating or joining a group needs only a display name you choose (it doesn't
   have to be your real name) and, to join, the group's 8-character code. No email, no password. The
   server gives your browser a random device ID and a secret token. Your browser keeps both (in

@@ -14,7 +14,7 @@ function client(fetchImpl: typeof fetch, opts: { permission?: boolean; timeoutMs
   return createApiClient({
     base: BASE,
     fetch: fetchImpl,
-    hasPermission: async () => opts.permission ?? true,
+    hasPermission: async () => ((opts.permission ?? true) ? 'ok' : 'no-permission'),
     timeoutMs: opts.timeoutMs,
   });
 }

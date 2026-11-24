@@ -23,6 +23,11 @@ export type ApiFailure =
   | { ok: false; kind: 'timeout' }
   /** StudyLens doesn't have permission to contact the server (never granted, or taken back). */
   | { ok: false; kind: 'no-permission' }
+  /**
+   * Firefox: the request would send (or reveal to a group) the display name, but the user hasn't
+   * allowed sharing it (data collection consent). Nothing was sent.
+   */
+  | { ok: false; kind: 'no-name-consent' }
   | {
       ok: false;
       kind: 'http';
@@ -38,8 +43,11 @@ export type ApiResult<T> = { ok: true; data: T } | ApiFailure;
 export interface ApiClientDeps {
   base: string;
   fetch: typeof fetch;
-  /** Checked before every request. */
-  hasPermission: () => Promise<boolean>;
+  /**
+   * Checked before every request. `sendsName` is true for requests that send the display name or
+   * make it visible to a group (register, rename, create, join).
+   */
+  hasPermission: (sendsName: boolean) => Promise<'ok' | 'no-permission' | 'no-name-consent'>;
   timeoutMs?: number;
 }
 
@@ -51,9 +59,10 @@ export function createApiClient(deps: ApiClientDeps) {
   async function call<T>(
     method: Method,
     path: string,
-    opts: { token?: string; body?: unknown } = {},
+    opts: { token?: string; body?: unknown; sendsName?: boolean } = {},
   ): Promise<ApiResult<T>> {
-    if (!(await deps.hasPermission())) return { ok: false, kind: 'no-permission' };
+    const allowed = await deps.hasPermission(opts.sendsName === true);
+    if (allowed !== 'ok') return { ok: false, kind: allowed };
 
     const headers: Record<string, string> = {};
     if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
@@ -104,18 +113,25 @@ export function createApiClient(deps: ApiClientDeps) {
 
   return {
     register: (displayName: string) =>
-      call<RegisterDeviceResponse>('POST', '/api/devices', { body: { displayName } }),
+      call<RegisterDeviceResponse>('POST', '/api/devices', {
+        body: { displayName },
+        sendsName: true,
+      }),
     listGroups: (token: string) => call<ListGroupsResponse>('GET', '/api/groups', { token }),
     createGroup: (token: string, name: string) =>
-      call<GroupResponse>('POST', '/api/groups', { token, body: { name } }),
+      call<GroupResponse>('POST', '/api/groups', { token, body: { name }, sendsName: true }),
     joinGroup: (token: string, code: string) =>
-      call<GroupResponse>('POST', '/api/groups/join', { token, body: { code } }),
+      call<GroupResponse>('POST', '/api/groups/join', { token, body: { code }, sendsName: true }),
     leaveGroup: (token: string, groupId: string) =>
       call<{ ok: true }>('DELETE', `/api/groups/${encodeURIComponent(groupId)}/membership`, {
         token,
       }),
     rename: (token: string, displayName: string) =>
-      call<UpdateDeviceResponse>('PATCH', '/api/devices/me', { token, body: { displayName } }),
+      call<UpdateDeviceResponse>('PATCH', '/api/devices/me', {
+        token,
+        body: { displayName },
+        sendsName: true,
+      }),
     deleteDevice: (token: string) =>
       call<DeleteDeviceResponse>('DELETE', '/api/devices/me', { token }),
   };
@@ -137,6 +153,8 @@ export function failureText(failure: ApiFailure): string {
       return 'The StudyLens server took too long to answer. Try again in a moment.';
     case 'no-permission':
       return 'StudyLens doesn’t have permission to contact its server, so nothing was sent.';
+    case 'no-name-consent':
+      return 'Study groups need your OK to share your display name, and Firefox doesn’t have it, so nothing was sent.';
     case 'http':
       switch (failure.code) {
         case 'validation_failed':

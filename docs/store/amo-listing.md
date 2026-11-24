@@ -205,7 +205,8 @@ StudyLens is a local-first focus tracker. Everything it records stays in `storag
 0.5.0 adds **optional study groups**: only if the user opens the "Study groups" tab, reads what is
 shared, and clicks "Join or create a group", StudyLens asks for the optional host permission
 `https://studylens-flame.vercel.app/*` and the optional data collection category
-`personallyIdentifyingInfo` (one prompt). Then, and only then, it sends the server a display name
+`personallyIdentifyingInfo` (one prompt; if Firefox didn't grant the data category, a second
+prompt asks for it alone from its own button). Then, and only then, it sends the server a display name
 the user chooses, a group name or join code, and a random device token the server issued. It never
 sends browsing data (no domains, URLs, titles, labels, goals, check-in answers or research data).
 Users who never open groups make no network requests at all. Server source: `web/` in the same
@@ -224,7 +225,10 @@ repository (Next.js on Vercel, Turso database); API documented in `docs/backend.
 9. Options page → **Study groups** tab. It explains what is shared and what never is. Nothing has
    been sent yet.
 10. Click **Join or create a group**. Firefox asks to allow access to studylens-flame.vercel.app
-    and to share "personally identifying information" (the display name). Allow.
+    and to share "personally identifying information" (the display name). Allow. (StudyLens reads
+    the data category back with `permissions.getAll()` and sends the display name only if it is
+    granted; `contains()` is not trusted for it, because it ignores `data_collection` when
+    `extensions.dataCollectionPermissions.enabled` is off.)
 11. Type a display name (e.g. "Reviewer") and a group name, click **Create group**. The group card
     shows an 8-character join code and you as the only member. "Copy invite message" copies the
     code and install links.

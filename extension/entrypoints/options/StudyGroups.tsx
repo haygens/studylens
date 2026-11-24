@@ -28,11 +28,11 @@ import {
 } from '@studylens/shared';
 import { localStore } from '@/src/background/browser-adapter';
 import { failureText, isUnknownDevice, type ApiFailure } from '@/src/groups/api-client';
-import { groupDeps } from '@/src/groups/browser-groups';
+import { groupDeps, serverAccess } from '@/src/groups/browser-groups';
 import { API_BASE } from '@/src/groups/config';
 import { clearGroupDevice, loadGroupDevice, type GroupDevice } from '@/src/groups/group-store';
 import { inviteMessage } from '@/src/groups/invite';
-import { hasServerAccess, removeServerAccess, requestServerAccess } from '@/src/groups/permission';
+import { canShareName, type ServerAccess } from '@/src/groups/permission';
 import {
   createGroup,
   deleteServerData,
@@ -146,15 +146,82 @@ function WhatIsShared() {
   );
 }
 
+/** Firefox's data collection feature is switched off: consent can't be recorded, so no groups. */
+function NameSharingUnsupported() {
+  return (
+    <Alert>
+      This version of Firefox can’t record your permission to share a display name (its “data
+      collection” permissions are switched off), so StudyLens won’t send it and study groups can’t
+      work here. Nothing was sent. Updating Firefox usually fixes this. Your solo features work as
+      usual.
+    </Alert>
+  );
+}
+
+/**
+ * Firefox: server access is allowed but sharing the display name isn't (declined, or not granted
+ * by the first prompt). Groups can't work without it, so ask on its own click — or give up.
+ */
+function NameSharingStep({ onAllowed, onCancel }: { onAllowed: () => void; onCancel: () => void }) {
+  const [declined, setDeclined] = useState(false);
+  const [unsupported, setUnsupported] = useState(false);
+
+  function onClick() {
+    // Straight from the click: Firefox only shows its prompt during a user action.
+    const asked = serverAccess.requestNameSharing();
+    setDeclined(false);
+    void asked.then((a) => {
+      if (canShareName(a)) return onAllowed();
+      if (a.nameSharing === 'unsupported') return setUnsupported(true);
+      setDeclined(true);
+    });
+  }
+
+  return (
+    <section className="sl-card" style={{ marginTop: 16 }} aria-labelledby="sl-groups-name-ok">
+      <h2 id="sl-groups-name-ok" style={h2}>
+        One more step: sharing your display name
+      </h2>
+      <p style={{ margin: '8px 0' }}>
+        Firefox also asks your OK before StudyLens may send personal information. For study groups
+        that is only the <strong>display name</strong> you’ll choose, which the members of your
+        groups see. Study groups can’t work without it. Nothing has been sent.
+      </p>
+      <div className="sl-row" style={{ flexWrap: 'wrap' }}>
+        <button type="button" className="sl-btn-primary" onClick={onClick}>
+          Allow sharing my display name
+        </button>
+        <button type="button" className="sl-btn-quiet" onClick={onCancel}>
+          No thanks
+        </button>
+      </div>
+      {declined && (
+        <Alert>
+          Without your OK to share a display name, StudyLens can’t set up study groups, so it sent
+          nothing and didn’t register you. You can try again any time.
+        </Alert>
+      )}
+      {unsupported && <NameSharingUnsupported />}
+    </section>
+  );
+}
+
 function Intro({ onAllowed }: { onAllowed: () => void }) {
-  const [denied, setDenied] = useState(false);
+  const [result, setResult] = useState<'idle' | 'denied' | 'need-name' | 'unsupported'>('idle');
 
   function onClick() {
     // The browser only shows its permission prompt during a click, so ask before anything else.
-    const asked = requestServerAccess();
-    setDenied(false);
-    void asked.then((granted) => (granted ? onAllowed() : setDenied(true)));
+    const asked = serverAccess.requestAll();
+    setResult('idle');
+    void asked.then((a: ServerAccess) => {
+      if (!a.server) return setResult('denied');
+      if (canShareName(a)) return onAllowed();
+      setResult(a.nameSharing === 'unsupported' ? 'unsupported' : 'need-name');
+    });
   }
+
+  /** "No thanks": give back server access too, so nothing stays granted. */
+  const giveBack = () => void serverAccess.removeAll().then(() => setResult('idle'));
 
   return (
     <>
@@ -176,13 +243,15 @@ function Intro({ onAllowed }: { onAllowed: () => void }) {
         <button type="button" className="sl-btn-primary" onClick={onClick}>
           Join or create a group
         </button>
-        {denied && (
+        {result === 'denied' && (
           <Alert>
             StudyLens didn’t get permission, so nothing was sent. You can try again whenever you
             like; your solo features work the same either way.
           </Alert>
         )}
+        {result === 'unsupported' && <NameSharingUnsupported />}
       </section>
+      {result === 'need-name' && <NameSharingStep onAllowed={onAllowed} onCancel={giveBack} />}
     </>
   );
 }
@@ -220,7 +289,7 @@ function CreateForm({
             value={name}
             maxLength={GROUP_NAME_MAX_LENGTH}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. TCSS 490 study"
+            placeholder="e.g. Finals study crew"
             autoComplete="off"
           />
         </label>
@@ -560,7 +629,7 @@ function DeleteServerDataCard({ onDeleted }: { onDeleted: (message: string) => v
     const res = await deleteServerData(groupDeps);
     setBusy(false);
     if (!res.ok) return setError(`${failureText(res)} Nothing was deleted yet; try again.`);
-    await removeServerAccess();
+    await serverAccess.removeAll();
     onDeleted(
       'Your group data was deleted from the StudyLens server: your display name, your device ID and all your group memberships. StudyLens no longer contacts the server.',
     );
@@ -634,8 +703,8 @@ function NoPermission({ onAllowed, onForget }: { onAllowed: () => void; onForget
           type="button"
           className="sl-btn-primary"
           onClick={() => {
-            const asked = requestServerAccess();
-            void asked.then((granted) => (granted ? onAllowed() : setDenied(true)));
+            const asked = serverAccess.requestAll();
+            void asked.then((a) => (a.server ? onAllowed() : setDenied(true)));
           }}
         >
           Allow again
@@ -653,6 +722,57 @@ function NoPermission({ onAllowed, onForget }: { onAllowed: () => void; onForget
   );
 }
 
+/** Firefox: sharing the display name was turned off after joining. StudyLens stops sending. */
+function NameSharingOff({
+  unsupported,
+  onAllowed,
+  onForget,
+}: {
+  unsupported: boolean;
+  onAllowed: () => void;
+  onForget: () => void;
+}) {
+  const [denied, setDenied] = useState(false);
+  return (
+    <section
+      className="sl-card"
+      style={{ marginTop: 16 }}
+      role="alert"
+      aria-label="Sharing your display name is off"
+    >
+      <h2 style={h2}>Sharing your display name is off</h2>
+      <p style={{ margin: '8px 0' }}>
+        {unsupported
+          ? 'This version of Firefox can’t record your permission to share a display name (its “data collection” permissions are switched off), so StudyLens has stopped sending anything for study groups.'
+          : 'Your OK to share your display name (“Share personally identifying information” in Firefox’s add-on settings) is turned off, so StudyLens has stopped sending anything for study groups.'}{' '}
+        Your groups and display name are still on the server until you delete them.
+      </p>
+      <div className="sl-row" style={{ flexWrap: 'wrap' }}>
+        {!unsupported && (
+          <button
+            type="button"
+            className="sl-btn-primary"
+            onClick={() => {
+              const asked = serverAccess.requestNameSharing();
+              void asked.then((a) => (canShareName(a) ? onAllowed() : setDenied(true)));
+            }}
+          >
+            Allow again
+          </button>
+        )}
+        <button type="button" className="sl-btn-quiet" onClick={onForget}>
+          Forget my group registration on this device
+        </button>
+      </div>
+      <p className="sl-muted" style={{ marginBottom: 0 }}>
+        “Delete my group data from the server” below still works: it sends only this browser’s
+        secret key, not your name.
+      </p>
+      {denied && <Alert>Not allowed. Nothing was sent.</Alert>}
+    </section>
+  );
+}
+
 function Groups({
   device,
   flash,
@@ -663,20 +783,37 @@ function Groups({
   setFlash: (m: string | null) => void;
 }) {
   const [remote, setRemote] = useState<Remote>({ status: 'loading' });
-  const [permission, setPermission] = useState<'checking' | 'granted' | 'missing'>('checking');
+  const [permission, setPermission] = useState<
+    'checking' | 'granted' | 'missing' | 'no-name-consent' | 'name-unsupported'
+  >('checking');
 
-  /** Checks the permission and fetches the groups (no state changes; see `show`). */
-  const fetchGroups = useCallback(async (): Promise<Remote | 'no-permission'> => {
-    if (!(await hasServerAccess())) return 'no-permission';
+  /**
+   * Checks both permissions and fetches the groups (no state changes; see `show`). Without
+   * Firefox's OK to share the display name, nothing is sent at all (not even the list request).
+   */
+  const fetchGroups = useCallback(async (): Promise<
+    Remote | 'no-permission' | 'no-name-consent' | 'name-unsupported'
+  > => {
+    const access = await serverAccess.read();
+    if (!access.server) return 'no-permission';
+    if (!canShareName(access)) {
+      return access.nameSharing === 'unsupported' ? 'name-unsupported' : 'no-name-consent';
+    }
     const res = await listGroups(groupDeps, device);
     return res.ok ? { status: 'ready', data: res.data } : { status: 'error', failure: res };
   }, [device]);
 
-  const show = useCallback((result: Remote | 'no-permission') => {
-    if (result === 'no-permission') return setPermission('missing');
-    setPermission('granted');
-    setRemote(result);
-  }, []);
+  const show = useCallback(
+    (result: Remote | 'no-permission' | 'no-name-consent' | 'name-unsupported') => {
+      if (result === 'no-permission') return setPermission('missing');
+      if (result === 'no-name-consent' || result === 'name-unsupported') {
+        return setPermission(result);
+      }
+      setPermission('granted');
+      setRemote(result);
+    },
+    [],
+  );
 
   useEffect(() => {
     void fetchGroups().then(show);
@@ -695,6 +832,21 @@ function Groups({
       <>
         <DisplayNameCardStatic device={device} />
         <NoPermission onAllowed={refresh} onForget={forget} />
+      </>
+    );
+  }
+
+  if (permission === 'no-name-consent' || permission === 'name-unsupported') {
+    return (
+      <>
+        {flash && <Flash>{flash}</Flash>}
+        <DisplayNameCardStatic device={device} />
+        <NameSharingOff
+          unsupported={permission === 'name-unsupported'}
+          onAllowed={refresh}
+          onForget={forget}
+        />
+        <DeleteServerDataCard onDeleted={setFlash} />
       </>
     );
   }

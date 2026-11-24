@@ -1,20 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { E2E_API_BASE, OPTIONAL_DATA_COLLECTION, PRODUCTION_API_BASE } from '../../server-urls';
 import { inviteMessage } from './invite';
-import { INSTALL_LINKS, SERVER_ORIGIN_PATTERN, serverPermissions } from './config';
+import { INSTALL_LINKS, SERVER_ORIGIN_PATTERN } from './config';
 
-describe('server permission request', () => {
-  it('asks only for the server origin (from the build-time constant)', () => {
+describe('server config', () => {
+  it('uses the build-time base URL and the display-name data category', () => {
     // Unit tests build with a dummy base URL (vitest.config.ts).
     expect(SERVER_ORIGIN_PATTERN).toBe('https://api.test.invalid/*');
-    expect(serverPermissions(false)).toEqual({ origins: [SERVER_ORIGIN_PATTERN] });
-  });
-
-  it('on Firefox also asks for the optional data collection category, in the same request', () => {
-    expect(serverPermissions(true)).toEqual({
-      origins: [SERVER_ORIGIN_PATTERN],
-      data_collection: ['personallyIdentifyingInfo'],
-    });
     expect(OPTIONAL_DATA_COLLECTION).toEqual(['personallyIdentifyingInfo']);
   });
 
