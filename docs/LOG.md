@@ -1327,3 +1327,30 @@ limit, daily_totals retention to decide in P18).
 Disk space: C: 3.15 GB free, M: 14.07 GB free.
 
 Next piece (from PLAN.md): P15d — Backend deployment (hs), then P16 — Group join.
+
+## Handoff — 2026-11-23 (Vercel build fix)
+
+Done:
+
+- Cause of the first Vercel failure ("Please install typescript"): with Root Directory = `web`,
+  the install runs inside `web/`, so npm installs only `web/`'s own dependencies. `typescript`
+  lived only in the root `package.json`. Reproduced exactly in a fresh clone on M:.
+- Added `typescript` (~6.0.3) and `vitest` (^5.1.0) to `web/` devDependencies (same versions as
+  root; `next build` type-checks the test files, so it needs vitest's types too). `@types/*` were
+  already declared. `@studylens/shared` already resolves (workspace dep + `transpilePackages`).
+- Verified in a fresh clone on M: (`M:\temp\vercel-repro`, deleted afterwards): `npm ci` inside
+  `web/` then `npm run build` succeeds; also succeeds with `npm ci` at the repo root.
+- Note in `docs/backend.md` (Deploying, step 3) explaining why `web/` must declare its build deps.
+- Vercel settings: no changes needed — keep Install/Build Command on defaults.
+
+Changed files: `web/package.json`, `package-lock.json`, `docs/backend.md`, `docs/LOG.md`.
+
+Tests: 768 unit tests pass (41 files); E2E 41/41 on the second run (first run had one flaky
+failure, extension untouched); lint, format, typecheck, web build, both extension builds and
+check:builds clean.
+
+Problems / open questions: one flaky E2E test on the first local run (passed on rerun).
+
+Disk space: C: 3.46 GB free, M: 14.02 GB free.
+
+Next piece (from PLAN.md): P15d — Backend deployment (hs: redeploy on Vercel), then P16 — Group join.

@@ -209,6 +209,10 @@ Never paste the token or secret into a chat, an issue, or a file in the repo.
    click **Adjust GitHub App Permissions** and give Vercel access to it) → **Import**.
 3. **Root Directory**: click **Edit**, choose `web`, confirm. Framework Preset should say
    **Next.js**. Leave the build/install commands on their defaults.
+   (Vercel runs the install from inside `web/`, which makes npm install only `web/`'s own
+   dependencies — not the root `package.json`'s. So `web/package.json` must list everything
+   `next build` needs, including `typescript` and `vitest` (the build type-checks test files).
+   If you add a build-time tool to the root, add it to `web/` too, at the same version.)
 4. Before clicking Deploy, open **Environment Variables** and add the three in step (c).
 5. Click **Deploy**. When it finishes, open `https://<your-project>.vercel.app/api/health` —
    it should show `"ok":true` and `"db":"up"`.
