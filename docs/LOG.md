@@ -1662,3 +1662,32 @@ Bugs found (fixed in the next entry):
    before B joined).
 2. The "Others in this group see" preview showed "0 min focused today" while the member's own row
    showed "1 min".
+
+## Handoff — 2026-11-23 (P18 manual-test fixes, 0.5.0 zips rebuilt)
+
+Done:
+
+- Logged hs's P18 manual Firefox test (pass; two small UI bugs).
+- Fix 1 (`e0b86c7`): "Members (N of 20)" and the member rows now come from the same list (the
+  overview, refreshed every 60 s), so the count can't lag behind the rows.
+- Fix 2: the "Others in this group see" preview and my own row use the same newest minutes
+  (this browser's count or the server's, whichever is higher).
+- Tests: unit tests for both (`activity-view.test.ts`); E2E: A's page open since before B joined
+  → after the automatic refresh, "Members (2 of 20)" and preview = row.
+- Rebuilt 0.5.0 zips (still not uploaded):
+  - `M:\Projects\studylens\extension\.output\studylens-0.5.0-firefox.zip` (SHA-256 `a52e032c…8e68e`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.5.0-edge.zip` (SHA-256 `53d995a0…a5dbd9`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.5.0-sources.zip` (SHA-256 `666b2375…38b4e`)
+- Sources zip rebuilt in a clean `M:\temp\studylens-verify-0.5.0`: 21/21 files identical, folder
+  deleted. addons-linter 10.16.0 temporarily in `M:\temp\addons-linter-tmp`, then deleted: 0
+  errors, 0 notices, 2 warnings (React DOM `UNSAFE_VAR_ASSIGNMENT`, as before).
+
+Tests: unit 937/937; group E2E 7/7; lint, format, typecheck, web build, check:builds clean;
+smoke:edge 12 passed, 0 failed, 0 skipped.
+
+Problems / open questions: none new. (The previous LOG commit `2ec1921` had a Prettier issue in
+LOG.md; fixed in `e0b86c7`.)
+
+Disk space: C: 3.27 GB free, M: 13.6 GB free.
+
+Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
