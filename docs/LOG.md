@@ -1380,3 +1380,56 @@ Problems / open questions:
 Disk space: C: 3.43 GB free, M: 14.01 GB free.
 
 Next piece (from PLAN.md): P16 — Group join (no accounts).
+
+## P16 in progress — 2026-11-23 (paused by hs after stage 1)
+
+Done (committed and pushed):
+
+- Housekeeping: `web/vercel.json` now has `"regions": ["pdx1"]` (function region saved in git);
+  `docs/backend.md` updated (`267e89b`).
+- Stage 1 (`ca66824`): shared group contract in `packages/shared/src/groups.ts` (join codes: 8
+  characters from `23456789ABCDEFGHJKMNPQRSTWXYZ`, case-insensitive, dash/spaces ignored; limits
+  20 members/group, 5 groups/device; request/response types) + new error codes (`not_found`,
+  `group_full`, `too_many_groups`). `Db` interface + libSQL and in-memory implementations:
+  `createGroup`, `joinGroup`, `listGroups`, `leaveGroup`, `updateDisplayName`, `deleteDevice`.
+  Limits are checked inside single INSERT statements (no race past 20 members). Leaving/deleting
+  hands ownership to the longest-standing member and deletes empty groups. Device deletion uses
+  explicit deletes (works even if the remote DB doesn't enforce foreign keys; tested with
+  `foreign_keys = OFF`). 17 new tests (contract on node:sqlite + memory, SQL, shared).
+
+Flaky E2E investigation (housekeeping, not finished): CI annotations for the last 13 e2e runs
+show no flaky or retried tests (CI uses Chromium). Locally (Edge) a 3× repeat of the whole suite
+(`--repeat-each=3`): 123/123 passed (14.0 min), no failure reproduced. Which test flaked on 2026-11-23 was not recorded,
+so no timing fix has been made yet.
+
+Firefox research (for stage 4/docs): required stays `["none"]`; plan is optional
+`["personallyIdentifyingInfo"]` (display name), requested in the same `permissions.request` as
+the server origin. `technicalAndInteraction` is optional-only and MDN says optional-only
+permissions can't be combined with other optional permissions in one request, so it is avoided.
+Sources: MDN browser_specific_settings, MDN permissions.request, Extension Workshop "Firefox
+built-in consent for data collection and transmission".
+
+Left (not started):
+
+- Stage 2: server routes — `POST /api/groups`, `POST /api/groups/join`, `GET /api/groups`,
+  `DELETE /api/groups/:id/membership`, `PATCH`/`DELETE /api/devices/me`; in-memory per-client-
+  address rate limits (joins, creates, registrations — fixes the "global registration limit"
+  question; IPs never persisted); route tests; backend.md.
+- Stage 3: extension plumbing — build-time API base constant (prod vs local E2E server),
+  `optional_host_permissions`, Firefox optional data collection, API client with timeouts,
+  storage keys (device token, pending server delete), check:builds updates, version 0.5.0-dev.
+- Stage 4: "Study groups" options tab (consent screen → permission → create/join, members, copy
+  invite, leave, rename, delete server data), popup footer link, "Delete everything" also
+  deletes server data (with offline handling).
+- Stage 5: E2E with a local web API (two profiles), smoke:edge, docs (PRIVACY.md groups section
+  active, AMO/Edge listing notes, Edge privacy answers), all checks, CI, health check, PLAN.md.
+
+Changed files: `web/vercel.json`, `docs/backend.md`, `packages/shared/src/{api,index,groups,
+groups.test}.ts`, `web/lib/db/{types,index,sql-db,sql-db.test,memory,contract}.ts`,
+`docs/LOG.md`.
+
+Tests: web + shared unit tests 101 pass (12 files); lint, typecheck, format check clean.
+
+Disk space: C: 3.42 GB free, M: 13.82 GB free.
+
+Next piece: P16 stage 2 (server routes).
