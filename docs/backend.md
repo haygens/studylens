@@ -9,8 +9,8 @@ Status: deployed (P15d, 2026-11-23).
 
 - Production URL: **https://studylens-flame.vercel.app** — health check:
   https://studylens-flame.vercel.app/api/health (returns `"ok":true` and `"db":"up"`).
-- Vercel project root directory `web`; function region **`pdx1`** (Portland, Oregon), set in the
-  Vercel dashboard (Project → Settings → Functions), not in `vercel.json`.
+- Vercel project root directory `web`; function region **`pdx1`** (Portland, Oregon), saved in
+  `web/vercel.json` (`"regions": ["pdx1"]`), which overrides the dashboard setting.
 - Turso database in **`aws-us-west-2`** (Oregon), next to the function region.
 
 ## What is stored — and what never is
