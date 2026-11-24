@@ -90,6 +90,125 @@ export function describeDbContract(
       expect(await db.hitRateLimit('errors:d1', 2000)).toBe(1);
     });
 
+    describe('groups (P16)', () => {
+      const LIMITS = { maxMembers: 3, maxGroupsPerDevice: 2 };
+      const device = (id: string, name = `name-${id}`) =>
+        db.createDevice({
+          id,
+          displayName: name,
+          tokenHash: id.padEnd(64, '0'),
+          createdAt: NOW,
+        });
+      const group = (id: string, code: string, owner: string, at = NOW) =>
+        db.createGroup(
+          { id, name: `Group ${id}`, joinCode: code, deviceId: owner, createdAt: at },
+          LIMITS.maxGroupsPerDevice,
+        );
+
+      it('creates a group with the creator as owner and lists it with members', async () => {
+        await device('d1', 'Sam');
+        await device('d2', 'Alex');
+        expect(await group('g1', 'ABCDEFGH', 'd1')).toEqual({ status: 'created' });
+        expect(await db.joinGroup('ABCDEFGH', 'd2', NOW + 1, LIMITS)).toEqual({
+          status: 'joined',
+          groupId: 'g1',
+        });
+        expect(await db.listGroups('d2')).toEqual([
+          {
+            id: 'g1',
+            name: 'Group g1',
+            joinCode: 'ABCDEFGH',
+            role: 'member',
+            joinedAt: NOW + 1,
+            members: [
+              { displayName: 'Sam', role: 'owner', isMe: false },
+              { displayName: 'Alex', role: 'member', isMe: true },
+            ],
+          },
+        ]);
+        expect((await db.listGroups('d1'))[0]?.role).toBe('owner');
+        expect(await db.listGroups('nobody')).toEqual([]);
+      });
+
+      it('reports a taken join code and the per-device group limit', async () => {
+        await device('d1');
+        await device('d2');
+        await group('g1', 'AAAAAAAA', 'd1');
+        expect(await group('g2', 'AAAAAAAA', 'd2')).toEqual({ status: 'code_taken' });
+        await group('g3', 'BBBBBBBB', 'd1');
+        expect(await group('g4', 'CCCCCCCC', 'd1')).toEqual({ status: 'too_many_groups' });
+        expect((await db.listGroups('d1')).map((g) => g.id)).toEqual(['g1', 'g3']);
+        expect(await db.listGroups('d2')).toEqual([]);
+      });
+
+      it('join: not found, already a member, group full, too many groups', async () => {
+        for (const d of ['d1', 'd2', 'd3', 'd4']) await device(d);
+        await group('g1', 'AAAAAAAA', 'd1');
+        expect(await db.joinGroup('ZZZZZZZZ', 'd2', NOW, LIMITS)).toEqual({
+          status: 'not_found',
+        });
+        expect(await db.joinGroup('AAAAAAAA', 'd1', NOW, LIMITS)).toEqual({
+          status: 'already_member',
+          groupId: 'g1',
+        });
+        await db.joinGroup('AAAAAAAA', 'd2', NOW, LIMITS);
+        await db.joinGroup('AAAAAAAA', 'd3', NOW, LIMITS);
+        expect(await db.joinGroup('AAAAAAAA', 'd4', NOW, LIMITS)).toEqual({
+          status: 'group_full',
+        });
+        // A member of a full group asking again is still "already a member".
+        expect((await db.joinGroup('AAAAAAAA', 'd3', NOW, LIMITS)).status).toBe('already_member');
+        await group('g2', 'BBBBBBBB', 'd4');
+        await group('g3', 'CCCCCCCC', 'd4');
+        await group('g5', 'DDDDDDDD', 'd2');
+        expect(await db.joinGroup('DDDDDDDD', 'd4', NOW, LIMITS)).toEqual({
+          status: 'too_many_groups',
+        });
+      });
+
+      it('leaving: the oldest member becomes owner; the last one out deletes the group', async () => {
+        for (const d of ['d1', 'd2', 'd3']) await device(d);
+        await group('g1', 'AAAAAAAA', 'd1');
+        await db.joinGroup('AAAAAAAA', 'd2', NOW + 1, LIMITS);
+        await db.joinGroup('AAAAAAAA', 'd3', NOW + 2, LIMITS);
+        expect(await db.leaveGroup('g1', 'd1')).toBe(true);
+        expect(await db.leaveGroup('g1', 'd1')).toBe(false);
+        const [g] = await db.listGroups('d3');
+        expect(g?.members).toEqual([
+          { displayName: 'name-d2', role: 'owner', isMe: false },
+          { displayName: 'name-d3', role: 'member', isMe: true },
+        ]);
+        await db.leaveGroup('g1', 'd2');
+        await db.leaveGroup('g1', 'd3');
+        // The group is gone: its code no longer works.
+        expect((await db.joinGroup('AAAAAAAA', 'd1', NOW, LIMITS)).status).toBe('not_found');
+      });
+
+      it('renames a device; members see the new name', async () => {
+        await device('d1', 'Sam');
+        await group('g1', 'AAAAAAAA', 'd1');
+        await db.updateDisplayName('d1', 'Samira');
+        expect((await db.findDeviceByTokenHash('d1'.padEnd(64, '0')))?.displayName).toBe('Samira');
+        expect((await db.listGroups('d1'))[0]?.members[0]?.displayName).toBe('Samira');
+      });
+
+      it('deleteDevice removes the device and its memberships and hands over ownership', async () => {
+        for (const d of ['d1', 'd2']) await device(d);
+        await group('g1', 'AAAAAAAA', 'd1'); // shared with d2
+        await group('g2', 'BBBBBBBB', 'd1'); // only d1
+        await db.joinGroup('AAAAAAAA', 'd2', NOW + 1, LIMITS);
+        await db.deleteDevice('d1');
+
+        expect(await db.findDeviceByTokenHash('d1'.padEnd(64, '0'))).toBeNull();
+        expect(await db.listGroups('d1')).toEqual([]);
+        const [g1] = await db.listGroups('d2');
+        expect(g1?.members).toEqual([{ displayName: 'name-d2', role: 'owner', isMe: true }]);
+        expect((await db.joinGroup('BBBBBBBB', 'd2', NOW, LIMITS)).status).toBe('not_found');
+        // Deleting a device that doesn't exist is fine.
+        await expect(db.deleteDevice('d1')).resolves.toBeUndefined();
+      });
+    });
+
     it('cleanup deletes error logs older than 14 days and old rate-limit rows', async () => {
       const old = NOW - ERROR_LOG_MAX_AGE_MS - 1;
       const recent = NOW - ERROR_LOG_MAX_AGE_MS + 60_000;

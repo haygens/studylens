@@ -4,7 +4,16 @@ import { runMigrations } from './migrate';
 import { createSqlDb } from './sql-db';
 import type { Db } from './types';
 
-export type { Db, Device, ErrorLog, NewErrorLog, CleanupResult } from './types';
+export type {
+  CleanupResult,
+  CreateGroupResult,
+  Db,
+  Device,
+  ErrorLog,
+  JoinGroupResult,
+  NewErrorLog,
+  NewGroup,
+} from './types';
 
 type Env = Record<string, string | undefined>;
 

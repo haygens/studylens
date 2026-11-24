@@ -162,6 +162,71 @@ for (const driver of await testDrivers()) {
       expect(counts.rows[0]).toEqual({ m: 0, t: 0, by: null });
     });
 
+    it('deleteDevice leaves no row anywhere that points to the device', async () => {
+      await insertDevice('d1');
+      await insertDevice('d2');
+      await db.createGroup(
+        { id: 'g1', name: 'G', joinCode: 'AAAAAAAA', deviceId: 'd1', createdAt: NOW },
+        5,
+      );
+      await db.createGroup(
+        { id: 'g2', name: 'Solo', joinCode: 'BBBBBBBB', deviceId: 'd1', createdAt: NOW },
+        5,
+      );
+      await db.joinGroup('AAAAAAAA', 'd2', NOW + 1, { maxMembers: 20, maxGroupsPerDevice: 5 });
+      // P18/P18b rows (no API writes them yet).
+      await sql.execute({
+        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?)',
+        args: ['s1', 'g1', 'd1', 'goal', 25, NOW, null],
+      });
+      await sql.execute({
+        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?)',
+        args: ['s2', 'g2', 'd1', null, 25, NOW, null],
+      });
+      await sql.execute({
+        sql: 'INSERT INTO session_participants VALUES (?, ?, ?, ?, ?, ?)',
+        args: ['s1', 'd1', 'focusing', NOW, NOW, null],
+      });
+      await sql.execute({
+        sql: 'INSERT INTO device_presence VALUES (?, ?, ?)',
+        args: ['d1', NOW, NOW + HOUR],
+      });
+      await sql.execute({
+        sql: 'INSERT INTO daily_totals VALUES (?, ?, ?, ?)',
+        args: ['d1', '2026-11-22', 30, NOW],
+      });
+
+      // Even with foreign keys off (as a remote database might have them), nothing is left.
+      await sql.execute({ sql: 'PRAGMA foreign_keys = OFF' });
+      await db.deleteDevice('d1');
+
+      const { rows } = await sql.execute({
+        sql: `SELECT
+          (SELECT COUNT(*) FROM devices WHERE id = 'd1') AS devices,
+          (SELECT COUNT(*) FROM memberships WHERE device_id = 'd1') AS memberships,
+          (SELECT COUNT(*) FROM session_participants WHERE device_id = 'd1') AS participants,
+          (SELECT COUNT(*) FROM device_presence WHERE device_id = 'd1') AS presence,
+          (SELECT COUNT(*) FROM daily_totals WHERE device_id = 'd1') AS totals,
+          (SELECT COUNT(*) FROM groups WHERE created_by = 'd1') AS created,
+          (SELECT COUNT(*) FROM group_sessions WHERE host_device_id = 'd1') AS hosted,
+          (SELECT COUNT(*) FROM groups WHERE id = 'g2') AS emptyGroup,
+          (SELECT COUNT(*) FROM group_sessions WHERE id = 's2') AS emptyGroupSession,
+          (SELECT role FROM memberships WHERE group_id = 'g1' AND device_id = 'd2') AS d2role`,
+      });
+      expect(rows[0]).toEqual({
+        devices: 0,
+        memberships: 0,
+        participants: 0,
+        presence: 0,
+        totals: 0,
+        created: 0,
+        hosted: 0,
+        emptyGroup: 0,
+        emptyGroupSession: 0,
+        d2role: 'owner',
+      });
+    });
+
     it('cleanup clears goals 24 h after the end and deletes stale presence rows', async () => {
       await insertDevice('d1');
       await insertDevice('d2');

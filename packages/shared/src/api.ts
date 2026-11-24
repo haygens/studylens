@@ -1,7 +1,7 @@
 /**
- * Request/response shapes of the StudyLens server API (web/app/api). The extension does not call
- * the server yet (that starts in P16); these types are shared so both sides agree.
- * See docs/backend.md.
+ * Request/response shapes of the StudyLens server API (web/app/api), shared so both sides agree.
+ * The extension calls the server only for study groups (P16), after the user opts in.
+ * Group shapes are in groups.ts. See docs/backend.md.
  */
 
 export const DISPLAY_NAME_MAX_LENGTH = 30;
@@ -52,6 +52,9 @@ export const API_ERROR_CODES = [
   'payload_too_large',
   'unauthorized',
   'origin_not_allowed',
+  'not_found',
+  'group_full',
+  'too_many_groups',
   'rate_limited',
   'not_configured',
   'internal_error',
