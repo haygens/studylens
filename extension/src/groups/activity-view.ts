@@ -73,3 +73,61 @@ export function friendsFocusingText(count: number | null): string | null {
   if (count === null || count < 1) return null;
   return count === 1 ? '1 friend focusing now' : `${count} friends focusing now`;
 }
+
+/** A member as a group card lists them: the overview's view when loaded, else the plain list. */
+export interface CardMember {
+  displayName: string;
+  role: 'owner' | 'member';
+  isMe: boolean;
+  /** Null until the overview has loaded (then the row shows activity). */
+  activity: OverviewMember | null;
+}
+
+/**
+ * The members a group card shows. The count ("Members (N of 20)") and the rows must come from this
+ * same list: the overview refreshes every 60 s, the group list doesn't, so mixing them made the
+ * count stale (hs's manual test, 2026-11-23).
+ */
+export function cardMembers(
+  listed: readonly { displayName: string; role: 'owner' | 'member'; isMe: boolean }[],
+  overview: readonly OverviewMember[] | null,
+): CardMember[] {
+  if (overview) {
+    return overview.map((m) => ({
+      displayName: m.displayName,
+      role: m.role,
+      isMe: m.isMe,
+      activity: m,
+    }));
+  }
+  return listed.map((m) => ({ ...m, activity: null }));
+}
+
+/**
+ * The newest known focus minutes per date: this browser's own count or what the server has,
+ * whichever is higher (a day's minutes only grow; each side updates on its own schedule). Used for
+ * both my row and the "Others in this group see" preview, so they always agree.
+ */
+export function latestMinutes(
+  local: ReadonlyMap<string, number>,
+  server: OverviewMember | null | undefined,
+): Map<string, number> {
+  const out = new Map(local);
+  for (const d of server?.history ?? []) {
+    out.set(d.localDate, Math.max(out.get(d.localDate) ?? 0, d.focusMinutes));
+  }
+  return out;
+}
+
+/** My row with the newest known minutes (only where minutes are shared). */
+export function withLatestMinutes(
+  member: OverviewMember,
+  latest: ReadonlyMap<string, number>,
+): OverviewMember {
+  if (!member.history) return member;
+  const history = member.history.map((d) => ({
+    localDate: d.localDate,
+    focusMinutes: Math.max(d.focusMinutes, latest.get(d.localDate) ?? 0),
+  }));
+  return { ...member, history, todayMinutes: history[history.length - 1]!.focusMinutes };
+}

@@ -57,10 +57,12 @@ import { localDayId } from '@/src/tracker/local-day';
 import { LOAD_TIMEOUT_MS, settle, type LoadState } from '@/src/popup/popup-data';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 import { LoadError, Loading } from '../popup/LoadStatus';
+import { cardMembers, latestMinutes, withLatestMinutes } from '@/src/groups/activity-view';
 import {
   MemberActivity,
   SharingSwitches,
   ensureActivityConsent,
+  useMyActivity,
   useServerAccess,
 } from './GroupActivity';
 
@@ -602,22 +604,30 @@ function GroupCard({
     });
   }
 
-  const members: { key: string; view: ReactNode }[] =
-    overview?.status === 'ready'
-      ? overview.data.members.map((m, i) => ({
-          key: `${i}`,
-          view: <MemberActivity member={m} you={m.isMe} />,
-        }))
-      : group.members.map((m, i) => ({
-          key: `${i}`,
-          view: (
-            <>
-              {m.displayName}
-              {m.isMe && ' (you)'}
-              {m.role === 'owner' && <span className="sl-muted"> · started the group</span>}
-            </>
-          ),
-        }));
+  // One list for both the count and the rows (the overview is newer than the group list).
+  const shownMembers = cardMembers(
+    group.members,
+    overview?.status === 'ready' ? overview.data.members : null,
+  );
+  // My row and the preview use the same, newest minutes (local or server, whichever is newer).
+  const mine = useMyActivity();
+  const myRow = shownMembers.find((m) => m.isMe)?.activity ?? null;
+  const latest = latestMinutes(mine.minutes, myRow);
+  const members: { key: string; view: ReactNode }[] = shownMembers.map((m, i) => ({
+    key: `${i}`,
+    view: m.activity ? (
+      <MemberActivity
+        member={m.isMe ? withLatestMinutes(m.activity, latest) : m.activity}
+        you={m.isMe}
+      />
+    ) : (
+      <>
+        {m.displayName}
+        {m.isMe && ' (you)'}
+        {m.role === 'owner' && <span className="sl-muted"> · started the group</span>}
+      </>
+    ),
+  }));
 
   async function leave() {
     setBusy(true);
@@ -642,7 +652,7 @@ function GroupCard({
         </span>
       </div>
       <p className="sl-muted" style={{ margin: '8px 0 4px' }}>
-        Members ({group.members.length} of {MAX_GROUP_MEMBERS}):
+        Members ({shownMembers.length} of {MAX_GROUP_MEMBERS}):
       </p>
       <ul
         style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 6 }}
@@ -665,6 +675,7 @@ function GroupCard({
         <SharingSwitches
           idPrefix={`sl-sharing-${group.id}`}
           sharing={shown}
+          minutesByDate={latest}
           onChange={onSharingChange}
           displayName={device.displayName}
           busy={sharingBusy}

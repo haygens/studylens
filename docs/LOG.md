@@ -1634,7 +1634,7 @@ Next piece (from PLAN.md): P19b — Preregistration draft + analysis script (or 
 
 - CI on `f165f2c`: check ✓, e2e ✓.
 - Production: `/api/health` → `db: "up"`; new routes live (`POST /api/totals`, `POST
-  /api/presence`, `GET /api/groups/focusing` answer 401 without a token).
+/api/presence`, `GET /api/groups/focusing` answer 401 without a token).
 - addons-linter 10.16.0, temporarily in `M:\temp\addons-linter-tmp` (30 MB), then deleted, on
   `studylens-0.5.0-firefox.zip`: 0 errors, 0 notices, 2 warnings (`UNSAFE_VAR_ASSIGNMENT` in
   React DOM, same as earlier releases). Data collection permissions accepted.

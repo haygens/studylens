@@ -122,6 +122,17 @@ test('totals and focusing-now reach the other member; switches hide them; leavin
     expect(totalsSent()).toBeGreaterThan(0);
     expect(presenceSent()).toBeGreaterThan(0);
 
+    // hs's manual test (2026-11-23): A's page was open since before B joined. The automatic
+    // refresh (here: coming back to the tab) updates the members, and the count must match.
+    await a.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await expect(members(a, GROUP)).toHaveCount(2);
+    await expect(card(a).getByText('Members (2 of 20):')).toBeVisible();
+    // The preview and my own row show the same, newest minutes.
+    const myRow = members(a, GROUP).first();
+    await expect(myRow).toContainText(today);
+    const preview = card(a).locator('[id^="sl-sharing-"]');
+    await expect(preview).toContainText(today);
+
     // B's popup: "1 friend focusing now", linking to Study groups.
     const popupB = await personB.open('popup.html');
     await expect(popupB.getByText('1 friend focusing now')).toBeVisible();

@@ -193,6 +193,7 @@ export function SharingSwitches({
   busy = false,
   idPrefix,
   access,
+  minutesByDate,
 }: {
   sharing: GroupSharing;
   onChange: (patch: Partial<GroupSharing>) => void;
@@ -200,12 +201,17 @@ export function SharingSwitches({
   busy?: boolean;
   idPrefix: string;
   access: ServerAccess | null;
+  /**
+   * The newest known minutes per date (on a group card: local or server, whichever is newer — the
+   * same numbers as my own row). Left out: this browser's own count.
+   */
+  minutesByDate?: ReadonlyMap<string, number>;
 }) {
   const mine = useMyActivity();
   const preview = previewMember(
     displayName || 'You',
     sharing,
-    mine.minutes,
+    minutesByDate ?? mine.minutes,
     mine.focusing,
     mine.today,
   );
