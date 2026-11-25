@@ -103,11 +103,8 @@ describe('live group sessions (P18b)', () => {
       50,
       30,
     );
-    expect(c.startLive).toHaveBeenLastCalledWith('slt_secret', 'g1', {
-      minutes: 50,
-      goal: 'Read',
-      testSeconds: 30,
-    });
+    // Test seconds only ever leave the E2E build (vitest runs as a normal build).
+    expect(c.startLive).toHaveBeenLastCalledWith('slt_secret', 'g1', { minutes: 50, goal: 'Read' });
   });
 
   it('join: when the local session can’t start, leaves on the server again', async () => {

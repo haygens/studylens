@@ -166,7 +166,8 @@ export function startLiveSession(
       deps.client.startLive(device.token, groupId, {
         minutes,
         ...(trimmed && { goal: trimmed }),
-        ...(testSeconds !== null && { testSeconds }),
+        // A build-time literal: normal builds compile this away (scripts/check-builds.mjs).
+        ...(__STUDYLENS_E2E__ && testSeconds !== null && { testSeconds }),
       }),
     true,
   );
