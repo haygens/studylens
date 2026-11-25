@@ -1,0 +1,54 @@
+# StudyLens research analysis (P19b): runs the R scripts on SIMULATED data only — no participant
+# data exists or is ever put in this repository. Separate from CI; runs when analysis/ changes, or
+# by hand (Actions → Analysis (R) → Run workflow, optionally with more simulations).
+name: Analysis (R)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'analysis/**'
+      - '.github/workflows/analysis.yml'
+  workflow_dispatch:
+    inputs:
+      nsim:
+        description: 'Simulations per power cell'
+        required: false
+        default: '100'
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::glmmTMB
+            any::lme4
+            any::ordinal
+      - name: Simulate a research CSV
+        run: Rscript analysis/simulate.R
+      - name: Fit the preregistered models
+        run: Rscript analysis/analyze.R analysis/output/simulated-research.csv analysis/output
+      - name: Power simulation
+        run: Rscript analysis/power.R ${{ inputs.nsim || '100' }}
+      - name: Results in the job summary
+        if: always()
+        run: |
+          for f in results.md power-results.md; do
+            if [ -f "analysis/output/$f" ]; then cat "analysis/output/$f" >> "$GITHUB_STEP_SUMMARY"; fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: analysis-output
+          path: analysis/output/
+          if-no-files-found: ignore
