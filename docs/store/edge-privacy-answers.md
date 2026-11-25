@@ -2,7 +2,22 @@
 
 Answers for the Privacy tab in Partner Center (Edge program → the product → Privacy) for version
 0.5.0 (study groups P16 + passive groups P18). Partner Center's exact wording changes over time;
-match each question to the closest answer below. Not submitted yet (zips built 2026-11-23).
+match each question to the closest answer below. **Submitted 2026-11-23** with the 0.5.0 update
+(status: In review). This file now records what was actually submitted.
+
+**Data usage boxes ticked in Partner Center (as submitted for 0.5.0):**
+
+- **Personally identifiable information** — the optional display name for study groups.
+- **Web history** — ticked as the **cautious disclosure**. StudyLens reads the active tab's domain
+  and keeps it **only on the device**; no web history is ever transmitted. Partner Center's boxes
+  ask what the extension collects or uses, not only what it sends, so ticking it is the safer
+  reading and avoids a rejection for under-disclosure.
+- **User activity** — focus minutes and "focusing now" (sent only after opt-in, per-group switches)
+  and the on-device idle check. Ticked for the same cautious reason, even though no clicks,
+  keystrokes or mouse data are recorded.
+
+The single-purpose description mentions study groups, and the certification notes describe the
+optional host permission (requested at runtime, never at install).
 
 **Privacy policy URL:** https://github.com/haygens/studylens/blob/main/PRIVACY.md
 
@@ -13,8 +28,8 @@ opts in to study groups.** Without study groups (the default), nothing leaves th
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Personally identifiable information              | **Yes, optional:** the display name the user types when creating or joining a study group (may be a real name). Sent to the StudyLens server only after opt-in.                                                                                                                                                                                                                                                                   |
 | Authentication information                       | A random device token the server issues (not a password; no account). Stored locally; the server keeps only its SHA-256 hash.                                                                                                                                                                                                                                                                                                     |
-| Web history / browsing activity                  | **Accessed locally, never transmitted.** Domain names of the active tab are stored only on the device.                                                                                                                                                                                                                                                                                                                            |
-| User activity (clicks, keystrokes, mouse)        | **No.** Only whether the user is idle (`idle` API), on the device. Focus minutes (below) are time in StudyLens's own timer, not input activity.                                                                                                                                                                                                                                                                                   |
+| Web history / browsing activity                  | **Ticked (cautious disclosure). Accessed locally, never transmitted.** Domain names of the active tab are stored only on the device.                                                                                                                                                                                                                                                                                              |
+| User activity (clicks, keystrokes, mouse)        | **Ticked (cautious disclosure).** No clicks, keystrokes or mouse data. Only whether the user is idle (`idle` API), on the device, and the opt-in focus minutes below (time in StudyLens's own timer).                                                                                                                                                                                                                             |
 | Website content                                  | **No.**                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Location, health, financial, communications      | **No.**                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Study group data (P18, opt-in, per-group switch) | **Yes, optional:** focus minutes per day (one number, last 7 days visible to the group; deleted from the server after 14 days) and whether a focus session is running now ("focusing now", expires 3 min after the last heartbeat), shared only with members of the user's groups. Switches are on by default after an in-app explanation with a live preview; turning one off deletes that data on the server. Never site names. |
