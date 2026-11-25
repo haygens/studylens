@@ -168,7 +168,7 @@ export interface ConditionRow {
  */
 export function conditionComparison(sessions: readonly FocusSession[]): {
   rows: ConditionRow[];
-  excluded: { optedOut: number; noCondition: number };
+  excluded: { optedOut: number; noCondition: number; group: number };
 } {
   const rows = INTERVENTION_IDS.map((condition): ConditionRow => {
     const group = sessions.filter((s) => s.condition === condition);
@@ -206,6 +206,8 @@ export function conditionComparison(sessions: readonly FocusSession[]): {
     excluded: {
       optedOut: sessions.filter((s) => s.condition === OPTED_OUT).length,
       noCondition: sessions.filter((s) => s.condition === null).length,
+      // P18b: live group sessions are never randomized and not part of the comparison.
+      group: sessions.filter((s) => s.mode === 'group').length,
     },
   };
 }
@@ -213,8 +215,9 @@ export function conditionComparison(sessions: readonly FocusSession[]): {
 const sessions = (n: number) => `${n} session${n === 1 ? '' : 's'}`;
 
 /** " Not included: …" naming only the groups that have sessions, or '' if none. */
-export function excludedText(optedOut: number, noCondition: number): string {
+export function excludedText(optedOut: number, noCondition: number, group = 0): string {
   const parts = [
+    group > 0 && `${sessions(group)} with a study group (live group sessions)`,
     optedOut > 0 && `${sessions(optedOut)} with research interventions turned off`,
     noCondition > 0 &&
       `${sessions(noCondition)} without a condition (from before research interventions were on)`,

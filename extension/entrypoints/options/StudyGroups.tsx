@@ -13,6 +13,8 @@
  *    strip (only what they share), refreshed every 60 s while this page is open and visible; my
  *    two switches per group with a live preview of exactly what others see. On join both
  *    switches are ON after the explanation (the user can turn them off before joining).
+ * 6. Live group sessions (P18b): start one, join one, see who's focusing, leave; the shared
+ *    summary at the end (LiveSessions.tsx).
  *
  * The server can be down or the computer offline: every request has a timeout and a clear error
  * with Retry, and none of this affects the solo features.
@@ -55,6 +57,9 @@ import {
 } from '@/src/groups/service';
 import { localDayId } from '@/src/tracker/local-day';
 import { LOAD_TIMEOUT_MS, settle, type LoadState } from '@/src/popup/popup-data';
+import { loadActiveSession } from '@/src/storage/sessions-store';
+import { leaveLocalSession } from '@/src/ui/live';
+import LiveSessions from './LiveSessions';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 import { LoadError, Loading } from '../popup/LoadStatus';
 import { cardMembers, latestMinutes, withLatestMinutes } from '@/src/groups/activity-view';
@@ -636,6 +641,9 @@ function GroupCard({
     setBusy(false);
     // Already not a member (left on another try): that's what the user wanted.
     if (res.ok || (res.kind === 'http' && res.status === 404)) {
+      // P18b: the server also took me out of the group's live session; end it here too.
+      const active = await loadActiveSession(localStore).catch(() => null);
+      if (active?.group?.groupId === group.id) await leaveLocalSession().catch(() => undefined);
       onLeft(`You left “${group.name}”.`);
     } else {
       setError(failureText(res));
@@ -1132,6 +1140,7 @@ function Groups({
               You’re not in any group right now. Create one or join one with a code below.
             </p>
           )}
+          <LiveSessions groups={groups} access={access} setAccess={setAccess} />
           {groups.map((g) => (
             <GroupCard
               key={g.id}

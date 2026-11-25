@@ -16,6 +16,7 @@ import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
 import type { FocusSession } from '@/src/sessions/session';
 import { checkInBlockReason } from '@/src/popup/popup-view';
 import SessionComplete from './SessionComplete';
+import { LiveSummary } from '@/src/ui/live';
 import { CheckIcon, CrossIcon, HalfIcon, InfoIcon, ShieldIcon } from '@/src/ui/icons';
 
 const GOAL_ICONS = { yes: CheckIcon, partly: HalfIcon, no: CrossIcon } as const;
@@ -77,6 +78,7 @@ export default function CheckIn({
   return (
     <form onSubmit={onSubmit} className="sl-card sl-stack" aria-label="Session check-in">
       <SessionComplete session={session} />
+      {session.group && <LiveSummary sessionId={session.group.sessionId} />}
 
       <fieldset className="sl-field">
         <legend>Did you finish your goal?</legend>

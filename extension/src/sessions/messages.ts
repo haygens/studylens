@@ -1,7 +1,9 @@
 /** Messages from the popup to the background script about focus sessions. */
 import type { ChoiceMessage } from '../interventions/interstitial';
+import { asGroupLink } from '../storage/sessions-store';
 import type { CheckInError } from './check-in';
 import type { StartError } from './session';
+import type { GroupSessionInput, GroupStartError } from './session-controller';
 
 export type SessionMessage =
   | {
@@ -12,6 +14,11 @@ export type SessionMessage =
       testSeconds?: number;
     }
   | { type: 'session:end-early' }
+  /**
+   * P18b: the server said yes to starting/joining a live group session; start the local session
+   * ending at the shared end time. Validated by `asGroupSessionInput` in the background.
+   */
+  | { type: 'session:start-group'; input: unknown }
   /** The popup saw the countdown reach zero: end the session now if it is due. */
   | { type: 'session:check' }
   /** End-of-session check-in answers (P5). The background validates them. */
@@ -27,10 +34,15 @@ export type SessionMessage =
   | ChoiceMessage;
 
 export type SessionReply =
-  { ok: true } | { ok: false; error: StartError | CheckInError | 'invalid-message' | 'unknown' };
+  | { ok: true }
+  | {
+      ok: false;
+      error: StartError | GroupStartError | CheckInError | 'invalid-message' | 'unknown';
+    };
 
 const TYPES = new Set([
   'session:start',
+  'session:start-group',
   'session:end-early',
   'session:check',
   'checkin:answer',
@@ -42,4 +54,14 @@ const TYPES = new Set([
 export function isSessionMessage(value: unknown): value is SessionMessage {
   const v = value as { type?: unknown } | null;
   return typeof v === 'object' && v !== null && typeof v.type === 'string' && TYPES.has(v.type);
+}
+
+/** P18b: a well-formed `session:start-group` input, or null. */
+export function asGroupSessionInput(value: unknown): GroupSessionInput | null {
+  const v = value as Partial<GroupSessionInput> | null;
+  if (typeof v !== 'object' || v === null) return null;
+  const link = asGroupLink(v.link);
+  if (!link || typeof v.plannedEnd !== 'number' || !Number.isFinite(v.plannedEnd)) return null;
+  if (v.goal !== null && typeof v.goal !== 'string') return null;
+  return { link, goal: v.goal, plannedEnd: v.plannedEnd };
 }

@@ -32,13 +32,19 @@ import {
   asLabelSetVersion,
   nextSessionNumber,
 } from '../storage/research-store';
+import { GROUP_CONDITION } from '@studylens/shared';
 import type { Segment } from '../tracker/tracker';
+import { NO_ATTEMPTS } from '../interventions/attempts';
+import { NO_COUNTS } from '../interventions/interstitial';
 import {
+  MAX_CUSTOM_MINUTES,
   badgeText,
   createSession,
   isDue,
+  normalizeGoal,
   type ActiveSession,
   type FocusSession,
+  type GroupLink,
   type StartError,
 } from './session';
 import {
@@ -119,6 +125,106 @@ export async function startSession(
   await deps.effects.scheduleAlarms(session);
   await deps.effects.setBadge(badgeText(session, now));
   return { ok: true, session };
+}
+
+/** P18b: what the popup / Study groups tab tells the background after the server said yes. */
+export interface GroupSessionInput {
+  link: GroupLink;
+  /** The group's goal (visible to the group), or null. */
+  goal: string | null;
+  /** The shared end time in this browser's clock (server end − clock offset). */
+  plannedEnd: number;
+}
+
+export type GroupStartError = 'already-running' | 'session-over' | 'invalid-group-session';
+
+export type GroupStartResult =
+  { ok: true; session: ActiveSession } | { ok: false; error: GroupStartError };
+
+const SECOND_MS = 1000;
+/** A shared end closer than this is not worth starting a session for. */
+const MIN_GROUP_REMAINING_MS = 5 * SECOND_MS;
+
+/**
+ * P18b: starts the local focus session for a live group session I just started or joined (or
+ * rejoin after a restart). It ends at the SHARED end time. Research: `mode: "group"`, condition
+ * `group`, and the block randomization is NOT touched, so the solo conditions stay balanced. It
+ * still gets the next session number (session order on this device). No helper pages appear.
+ * The research notice doesn't have to be answered first: no condition is assigned.
+ */
+export async function startGroupSession(
+  deps: SessionDeps,
+  input: GroupSessionInput,
+  now: number,
+): Promise<GroupStartResult> {
+  if (await loadActiveSession(deps.store)) return { ok: false, error: 'already-running' };
+  const remaining = input.plannedEnd - now;
+  if (remaining < MIN_GROUP_REMAINING_MS) return { ok: false, error: 'session-over' };
+  // The server never allows more than 180 minutes; anything longer is a broken message.
+  if (remaining > (MAX_CUSTOM_MINUTES + 1) * 60_000) {
+    return { ok: false, error: 'invalid-group-session' };
+  }
+  const history = await loadSessions(deps.store);
+  const skipped = applyAutoSkips(history, now, true);
+  if (skipped) await saveSessions(deps.store, skipped);
+  const [research, inGroup] = await Promise.all([
+    deps.store.get([SESSION_COUNTER_KEY, LABEL_LOCK_KEY, LABEL_VERSION_KEY]),
+    isInGroup(deps.store),
+  ]);
+  const sessionNumber = nextSessionNumber(research[SESSION_COUNTER_KEY], history.length);
+  const session: ActiveSession = {
+    id: deps.newId(),
+    goal: normalizeGoal(input.goal ?? '') ?? `Group session: ${input.link.groupName}`,
+    // From when I joined: a late joiner's planned length is the time left.
+    plannedMinutes: Math.round(remaining / 6_000) / 10,
+    start: now,
+    plannedEnd: input.plannedEnd,
+    condition: GROUP_CONDITION,
+    ...NO_COUNTS,
+    ...NO_ATTEMPTS,
+    mode: 'group',
+    sessionNumber,
+    labelSetVersion: asLabelSetVersion(research[LABEL_VERSION_KEY]),
+    labelsLocked: asLabelLock(research[LABEL_LOCK_KEY]).locked,
+    inGroup,
+    group: input.link,
+  };
+  // No BLOCK_KEY here: group sessions never use up a randomization slot.
+  await deps.store.set({ [ACTIVE_SESSION_KEY]: session, [SESSION_COUNTER_KEY]: sessionNumber });
+  await deps.effects.scheduleAlarms(session);
+  await deps.effects.setBadge(badgeText(session, now));
+  return { ok: true, session };
+}
+
+/** End times closer than this to the current one are left alone (no alarm churn). */
+export const END_CORRECTION_THRESHOLD_MS = 2 * SECOND_MS;
+
+/**
+ * P18b: the server's shared end time, measured again (heartbeat / poll), in this browser's clock.
+ * Moves the running group session's end if it differs by more than 2 s (clock drift or a
+ * corrected offset), and ends it at once if that end has already passed.
+ * @returns the finished session if it ended now.
+ */
+export async function correctGroupSessionEnd(
+  deps: SessionDeps,
+  serverSessionId: string,
+  plannedEnd: number,
+  clockOffsetMs: number,
+  now: number,
+): Promise<FocusSession | null> {
+  const session = await loadActiveSession(deps.store);
+  if (!session?.group || session.group.sessionId !== serverSessionId) return null;
+  if (Math.abs(plannedEnd - session.plannedEnd) <= END_CORRECTION_THRESHOLD_MS) return null;
+  const updated: ActiveSession = {
+    ...session,
+    plannedEnd: Math.max(session.start, plannedEnd),
+    group: { ...session.group, clockOffsetMs },
+  };
+  if (isDue(updated, now)) return endAt(deps, updated, updated.plannedEnd, false);
+  await deps.store.set({ [ACTIVE_SESSION_KEY]: updated });
+  await deps.effects.scheduleAlarms(updated);
+  await deps.effects.setBadge(badgeText(updated, now));
+  return null;
 }
 
 /** Finished segments that may overlap [start, end], plus the tracker's open segment so far. */

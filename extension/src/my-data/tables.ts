@@ -129,6 +129,7 @@ const CONDITION_TEXT: Record<SessionCondition, string> = {
   friction: 'Friction (short countdown)',
   intention: 'Intention ("What did you come here for?")',
   'opted-out': 'Opted out (research interventions off)',
+  group: 'Group session (live with a study group; not part of the study)',
 };
 
 /** The session's research condition in words. */

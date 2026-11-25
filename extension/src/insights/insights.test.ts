@@ -216,7 +216,7 @@ describe('conditionComparison', () => {
     const { rows, excluded } = conditionComparison(sessions);
     expect(rows.map((r) => r.sessions)).toEqual([0, 0, 3]);
     expect(rows[2]).toMatchObject({ averageVisits: 2, averageRating: null, goalPercent: null });
-    expect(excluded).toEqual({ optedOut: 1, noCondition: 2 });
+    expect(excluded).toEqual({ optedOut: 1, noCondition: 2, group: 0 });
   });
 
   it('rounds goal percentages to whole numbers', () => {
@@ -267,6 +267,9 @@ describe('buildInsights', () => {
 describe('excludedText', () => {
   it('names only the groups that have sessions', () => {
     expect(excludedText(0, 0)).toBe('');
+    expect(excludedText(0, 0, 1)).toBe(
+      ' Not included: 1 session with a study group (live group sessions).',
+    );
     expect(excludedText(1, 0)).toBe(
       ' Not included: 1 session with research interventions turned off.',
     );

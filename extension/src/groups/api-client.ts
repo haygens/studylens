@@ -7,6 +7,7 @@
  * device token). No cookies, no referrer, no browsing data.
  */
 import type {
+  ActiveLiveSessionsResponse,
   ApiErrorBody,
   ApiErrorCode,
   DailyTotal,
@@ -16,9 +17,11 @@ import type {
   GroupResponse,
   GroupSharing,
   ListGroupsResponse,
+  LiveSessionResponse,
   PresenceResponse,
   PresenceState,
   RegisterDeviceResponse,
+  StartLiveSessionRequest,
   TotalsResponse,
   UpdateDeviceResponse,
   UpdateSharingRequest,
@@ -183,6 +186,46 @@ export function createApiClient(deps: ApiClientDeps) {
       ),
     focusingNow: (token: string) =>
       call<FocusingNowResponse>('GET', '/api/groups/focusing', { token }),
+    /**
+     * P18b live group sessions. Starting/joining shows my name in the participants list and
+     * shares my live status (`live`: both Firefox OKs); heartbeats share the status only. Leaving
+     * reveals nothing new, and reading sends only the token. `testSeconds` is accepted only by the
+     * local E2E test server (the E2E build alone ever sends it).
+     */
+    startLive: (
+      token: string,
+      groupId: string,
+      body: StartLiveSessionRequest & { testSeconds?: number },
+    ) =>
+      call<LiveSessionResponse>('POST', `/api/groups/${encodeURIComponent(groupId)}/sessions`, {
+        token,
+        body,
+        need: 'live',
+      }),
+    listLive: (token: string) =>
+      call<ActiveLiveSessionsResponse>('GET', '/api/group-sessions', { token }),
+    getLive: (token: string, sessionId: string) =>
+      call<LiveSessionResponse>('GET', `/api/group-sessions/${encodeURIComponent(sessionId)}`, {
+        token,
+      }),
+    joinLive: (token: string, sessionId: string) =>
+      call<LiveSessionResponse>(
+        'POST',
+        `/api/group-sessions/${encodeURIComponent(sessionId)}/join`,
+        { token, need: 'live' },
+      ),
+    leaveLive: (token: string, sessionId: string) =>
+      call<LiveSessionResponse>(
+        'POST',
+        `/api/group-sessions/${encodeURIComponent(sessionId)}/leave`,
+        { token },
+      ),
+    heartbeatLive: (token: string, sessionId: string) =>
+      call<LiveSessionResponse>(
+        'POST',
+        `/api/group-sessions/${encodeURIComponent(sessionId)}/heartbeat`,
+        { token, need: 'activity' },
+      ),
   };
 }
 
@@ -213,6 +256,8 @@ export function failureText(failure: ApiFailure): string {
         case 'not_found':
         case 'group_full':
         case 'too_many_groups':
+        case 'session_running':
+        case 'session_over':
         case 'rate_limited':
           return failure.message;
         case 'unauthorized':

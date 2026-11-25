@@ -18,6 +18,11 @@ export interface StartFormState {
   /** Whether the chosen length is allowed (whole minutes in range). */
   lengthOk: boolean;
   busy: boolean;
+  /**
+   * P18b: starting a live group session instead. Its goal is optional (the group sees it) and the
+   * research notice doesn't matter (group sessions get no condition).
+   */
+  group?: boolean;
 }
 
 /**
@@ -25,10 +30,12 @@ export interface StartFormState {
  * the button, so a disabled button is never a mystery.
  */
 export function startBlockReason(s: StartFormState): string | null {
-  if (s.gate === 'loading') return 'Loading…';
-  if (s.gate === 'blocked')
-    return 'First choose “Keep on” or “Turn off” in the research notice above.';
-  if (normalizeGoal(s.goal) === null) return 'Write what you’ll work on to start.';
+  if (!s.group) {
+    if (s.gate === 'loading') return 'Loading…';
+    if (s.gate === 'blocked')
+      return 'First choose “Keep on” or “Turn off” in the research notice above.';
+    if (normalizeGoal(s.goal) === null) return 'Write what you’ll work on to start.';
+  }
   if (!s.lengthOk) {
     return `Pick a length from ${MIN_CUSTOM_MINUTES} to ${MAX_CUSTOM_MINUTES} minutes.`;
   }

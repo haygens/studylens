@@ -61,8 +61,12 @@ export const canShareName = (a: ServerAccess): boolean => a.server && allowed(a.
 export const canShareActivity = (a: ServerAccess): boolean =>
   a.server && allowed(a.activitySharing);
 
-/** What a request needs besides server access. */
-export type ConsentNeed = 'none' | 'name' | 'activity';
+/**
+ * What a request needs besides server access. `live` (P18b: starting or joining a live group
+ * session) shows my display name in its participants list AND shares my live focus status, so it
+ * needs both Firefox OKs.
+ */
+export type ConsentNeed = 'none' | 'name' | 'activity' | 'live';
 
 export function createServerAccess(api: PermissionsApi, isFirefox: boolean) {
   const origins = [SERVER_ORIGIN_PATTERN];
@@ -154,8 +158,10 @@ export function permissionGate(access: Pick<ServerAccessApi, 'read'>) {
   return async (need: ConsentNeed): Promise<GateResult> => {
     const a = await access.read();
     if (!a.server) return 'no-permission';
-    if (need === 'name' && !canShareName(a)) return 'no-name-consent';
-    if (need === 'activity' && !canShareActivity(a)) return 'no-activity-consent';
+    if ((need === 'name' || need === 'live') && !canShareName(a)) return 'no-name-consent';
+    if ((need === 'activity' || need === 'live') && !canShareActivity(a)) {
+      return 'no-activity-consent';
+    }
     return 'ok';
   };
 }

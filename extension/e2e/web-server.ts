@@ -36,6 +36,9 @@ export function webServerConfig() {
       TURSO_DATABASE_URL: `file:${dbFile}`,
       TURSO_AUTH_TOKEN: '',
       STUDYLENS_NEXT_DIST: '.next-e2e',
+      // P18b: live group sessions of a few seconds (`testSeconds`). Only this local test server
+      // accepts them; never Vercel or a production build (web/lib/api/live.ts).
+      STUDYLENS_LIVE_TEST_SECONDS: '1',
       NEXT_TELEMETRY_DISABLED: '1',
     },
   };

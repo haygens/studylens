@@ -5,7 +5,14 @@
  */
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { browser } from 'wxt/browser';
+import { LIVE_GOAL_MAX_LENGTH } from '@studylens/shared';
 import { localStore } from '@/src/background/browser-adapter';
+import { groupDeps, serverAccess } from '@/src/groups/browser-groups';
+import { loadGroupDevice, loadSharingCache } from '@/src/groups/group-store';
+import { startLiveSession } from '@/src/groups/live';
+import { canShareName } from '@/src/groups/permission';
+import { listGroups } from '@/src/groups/service';
+import { ParticipantList, beginDeps, beginErrorText, useLiveSession } from '@/src/ui/live';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
 import {
   MAX_CUSTOM_MINUTES,
@@ -94,8 +101,31 @@ function useNoticeGate(): 'loading' | 'blocked' | 'open' {
   return state.status === 'ready' && shouldShowNotice(state.data) ? 'blocked' : 'open';
 }
 
+/**
+ * P18b: my groups (ID and name), to start a live group session from the popup. Asked only when
+ * this browser is in a group and may share its display name (the same rule as the Study groups
+ * tab); otherwise nothing is requested and the popup offers solo sessions only.
+ */
+function usePopupGroups(): { id: string; name: string }[] {
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    void (async () => {
+      const device = await loadGroupDevice(localStore);
+      if (!device || Object.keys(await loadSharingCache(localStore)).length === 0) return;
+      if (!canShareName(await serverAccess.read())) return;
+      const res = await listGroups(groupDeps, device);
+      if (res.ok) setGroups(res.data.groups.map((g) => ({ id: g.id, name: g.name })));
+    })().catch(() => undefined);
+  }, []);
+  return groups;
+}
+
 function StartForm() {
   const gate = useNoticeGate();
+  const groups = usePopupGroups();
+  /** '' = just me (a solo session); otherwise the group to start a live session for. */
+  const [withGroup, setWithGroup] = useState('');
+  const groupMode = withGroup !== '' && groups.some((g) => g.id === withGroup);
   const [goal, setGoal] = useState('');
   const [choice, setChoice] = useState<number | 'custom'>(25);
   const [custom, setCustom] = useState('30');
@@ -109,7 +139,7 @@ function StartForm() {
   const minutes = choice === 'custom' ? Number(custom) : choice;
   // `seconds` is always null outside the E2E build, so this compiles to isValidDuration(minutes).
   const lengthOk = seconds !== null || isValidDuration(minutes);
-  const reason = startBlockReason({ gate, goal, lengthOk, busy });
+  const reason = startBlockReason({ gate, goal, lengthOk, busy, group: groupMode });
   const canStart = reason === null;
   const reasonId = useId();
 
@@ -118,6 +148,13 @@ function StartForm() {
     if (!canStart) return;
     setBusy(true);
     setError(null);
+    if (groupMode) {
+      // P18b: the server first (it sets the shared end time), then the local session.
+      const res = await startLiveSession(beginDeps, withGroup, goal, minutes, seconds);
+      if (!res.ok) setError(beginErrorText(res));
+      setBusy(false);
+      return;
+    }
     try {
       const reply = await send({
         type: 'session:start',
@@ -140,12 +177,25 @@ function StartForm() {
       aria-label="Start a focus session"
     >
       <h2 className="sl-card-title">Ready to focus?</h2>
+      {groups.length > 0 && (
+        <label className="sl-field">
+          Focus with
+          <select value={groupMode ? withGroup : ''} onChange={(e) => setWithGroup(e.target.value)}>
+            <option value="">Just me</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                Group: {g.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="sl-field">
-        What will you work on?
+        {groupMode ? 'Goal (optional, your group sees it)' : 'What will you work on?'}
         <input
           type="text"
           value={goal}
-          maxLength={MAX_GOAL_LENGTH}
+          maxLength={groupMode ? LIVE_GOAL_MAX_LENGTH : MAX_GOAL_LENGTH}
           placeholder="e.g. Finish problem set 3"
           autoFocus
           onChange={(e) => setGoal(e.target.value)}
@@ -214,7 +264,7 @@ function StartForm() {
         disabled={!canStart}
         aria-describedby={reason ? reasonId : undefined}
       >
-        Start focus session
+        {groupMode ? 'Start group session' : 'Start focus session'}
       </button>
       {reason && gate !== 'loading' && !busy && (
         <p role="note" id={reasonId} className="sl-hint">
@@ -255,7 +305,9 @@ function RunningSession({ session }: { session: ActiveSession }) {
 
   return (
     <section className="sl-card sl-run" aria-label="Focus session">
-      <p className="sl-eyebrow">Focusing on</p>
+      <p className="sl-eyebrow">
+        {session.group ? `Group session · ${session.group.groupName}` : 'Focusing on'}
+      </p>
       <p className="sl-goal">{session.goal}</p>
       <div className="sl-ring">
         <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -278,6 +330,7 @@ function RunningSession({ session }: { session: ActiveSession }) {
       <p className="sl-muted" style={{ margin: 0 }}>
         Ends at {ends} · {progress >= 0.5 ? 'past halfway, keep going!' : 'you can do this!'}
       </p>
+      {session.group && <GroupParticipants sessionId={session.group.sessionId} />}
       {paused.status === 'ready' && paused.data && (
         <p className="sl-hint" style={{ justifyContent: 'center' }}>
           <PauseIcon />
@@ -295,9 +348,20 @@ function RunningSession({ session }: { session: ActiveSession }) {
             .finally(() => setBusy(false));
         }}
       >
-        End early
+        {session.group ? 'Leave session' : 'End early'}
       </button>
     </section>
+  );
+}
+
+/** P18b: who else is in my group session, refreshed every 15 s while the popup is open. */
+function GroupParticipants({ sessionId }: { sessionId: string }) {
+  const state = useLiveSession(sessionId);
+  if (state.status !== 'ready') return null;
+  return (
+    <div style={{ textAlign: 'left', width: '100%' }}>
+      <ParticipantList session={state.session} />
+    </div>
   );
 }
 

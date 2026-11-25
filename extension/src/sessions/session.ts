@@ -17,6 +17,24 @@ export const MAX_GOAL_LENGTH = 200;
 const MINUTE_MS = 60_000;
 
 /**
+ * P18b: the live group session a local session belongs to (`mode: "group"`). Kept on the finished
+ * session for its "Session complete!" summary. Stays on this device like every session field.
+ */
+export interface GroupLink {
+  /** The live session's ID on the server. */
+  sessionId: string;
+  groupId: string;
+  groupName: string;
+  /** I started it. */
+  isHost: boolean;
+  /**
+   * Server clock minus this browser's clock (ms), measured on the last answer. The shared end
+   * time is the server's; `plannedEnd` is it in this browser's clock.
+   */
+  clockOffsetMs: number;
+}
+
+/**
  * The session that is running right now. At most one exists. The friction (P9) and intention
  * (P10) counts are updated while it runs and stay on the finished session (0 unless the condition
  * matches).
@@ -35,7 +53,7 @@ export interface ActiveSession extends InterventionCounts, AttemptFields {
    * Never shown when starting a session; My Data shows it.
    */
   condition: SessionCondition | null;
-  /** P13c: `solo` for every session until group sessions exist (P18b). */
+  /** P13c: `solo`, or `group` for a live group session (P18b, condition `group`). */
   mode: SessionMode;
   /**
    * P13c: session order on this device (1, 2, 3, …), given when the session starts. Null for
@@ -53,6 +71,8 @@ export interface ActiveSession extends InterventionCounts, AttemptFields {
    * a session a group session: `mode` stays `solo`.
    */
   inGroup?: boolean;
+  /** P18b: set only on live group sessions (`mode: "group"`). */
+  group?: GroupLink;
 }
 
 /** P13c fields as they are before the session is started (filled in by startSession). */

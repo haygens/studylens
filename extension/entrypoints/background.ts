@@ -18,6 +18,7 @@ import {
 } from '@/src/interventions/interstitial-controller';
 import { syncActivity, type SyncReason } from '@/src/groups/activity-sync';
 import { groupDeps } from '@/src/groups/browser-groups';
+import { syncLiveSession, type LiveSyncReason } from '@/src/groups/live';
 import { retryPendingDelete } from '@/src/groups/service';
 import { cryptoRandomInt } from '@/src/interventions/randomize';
 import { deleteEverything } from '@/src/my-data/delete-all';
@@ -25,12 +26,19 @@ import { installPlan } from '@/src/onboarding/onboarding';
 import { applyInstallPlan } from '@/src/storage/onboarding-store';
 import { runRetentionIfDue } from '@/src/retention/retention';
 import { ensureParticipantId, randomParticipantId } from '@/src/storage/research-store';
-import { isSessionMessage, type SessionMessage, type SessionReply } from '@/src/sessions/messages';
 import {
+  asGroupSessionInput,
+  isSessionMessage,
+  type SessionMessage,
+  type SessionReply,
+} from '@/src/sessions/messages';
+import {
+  correctGroupSessionEnd,
   endSessionEarly,
   expireCheckIns,
   reconcileSession,
   refreshBadge,
+  startGroupSession,
   startSession,
   submitCheckIn,
   type SessionDeps,
@@ -118,6 +126,41 @@ export default defineBackground(() => {
       );
   }
 
+  /**
+   * Live group sessions (P18b): the heartbeat with clock correction while a group session runs,
+   * and telling the server when I left one early. Same network chain as above (never inside
+   * `queue`); changes to the local session go back through `queue`.
+   */
+  function syncLive(reason: LiveSyncReason): void {
+    groupQueue = groupQueue
+      .then(() =>
+        syncLiveSession(
+          {
+            ...groupDeps,
+            correctEnd: async (sessionId, plannedEnd, offsetMs) => {
+              dispatch(() => ({ type: 'heartbeat' }));
+              const ended = await enqueue(() =>
+                correctGroupSessionEnd(sessionDeps, sessionId, plannedEnd, offsetMs, Date.now()),
+              );
+              if (ended) syncGroups('session-end');
+            },
+            endEarly: async () => {
+              dispatch(() => ({ type: 'heartbeat' }));
+              if (await enqueue(() => endSessionEarly(sessionDeps, Date.now()))) {
+                syncGroups('session-end');
+              }
+            },
+          },
+          Date.now(),
+          reason,
+        ),
+      )
+      .then(
+        () => undefined,
+        (err: unknown) => console.error('[StudyLens] live session sync failed', err),
+      );
+  }
+
   /** Bring the tracker up to date first so a session that ends now includes the current site. */
   async function reconcile(): Promise<void> {
     dispatch(() => ({ type: 'heartbeat' }));
@@ -161,10 +204,19 @@ export default defineBackground(() => {
         if (result.ok) syncGroups('session-start');
         return result.ok ? { ok: true } : { ok: false, error: result.error };
       }
+      case 'session:start-group': {
+        const input = asGroupSessionInput(msg.input);
+        if (!input) return { ok: false, error: 'invalid-message' };
+        const result = await enqueue(() => startGroupSession(sessionDeps, input, Date.now()));
+        if (result.ok) syncGroups('session-start');
+        return result.ok ? { ok: true } : { ok: false, error: result.error };
+      }
       case 'session:end-early':
         dispatch(() => ({ type: 'heartbeat' }));
         if (await enqueue(() => endSessionEarly(sessionDeps, Date.now()))) {
           syncGroups('session-end');
+          // P18b: a group session left early → tell the server (kept and retried if offline).
+          syncLive('session-end');
         }
         return { ok: true };
       case 'session:check':
@@ -266,6 +318,8 @@ export default defineBackground(() => {
       // Passive groups (P18): only retries focus minutes that couldn't be sent (offline); no
       // request at all when nothing is waiting.
       syncGroups('heartbeat');
+      // Live group sessions (P18b): only retries a "leave" that couldn't be sent.
+      syncLive('heartbeat');
     }
     if (alarm.name === SESSION_END_ALARM) void reconcile().catch(() => undefined);
     if (alarm.name === SESSION_TICK_ALARM) {
@@ -273,6 +327,8 @@ export default defineBackground(() => {
       // Passive groups (P18): "focusing now" heartbeat, and focus minutes every 5 minutes. This
       // alarm only exists while a session runs.
       syncGroups('tick');
+      // Live group sessions (P18b): heartbeat + clock correction, only in a group session.
+      syncLive('tick');
     }
   });
 

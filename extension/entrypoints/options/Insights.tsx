@@ -272,7 +272,7 @@ function ConditionCells({ row }: { row: ConditionRow }) {
 }
 
 function Conditions({ data }: { data: InsightsData['conditions'] }) {
-  const { optedOut, noCondition } = data.excluded;
+  const { optedOut, noCondition, group } = data.excluded;
   return (
     <Section title="Focus helpers compared">
       <p
@@ -318,7 +318,7 @@ function Conditions({ data }: { data: InsightsData['conditions'] }) {
         Each focus session gets one condition at random. Averages appear once a condition has at
         least {MIN_SESSIONS_PER_CONDITION} sessions. Focus rating and goal use answered check-ins
         only.
-        {excludedText(optedOut, noCondition)}
+        {excludedText(optedOut, noCondition, group)}
       </p>
     </Section>
   );

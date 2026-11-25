@@ -33,6 +33,12 @@ describe('startBlockReason', () => {
     expect(startBlockReason({ ...ready, busy: true })).toMatch(/Starting/);
   });
 
+  it('P18b: a group session needs no goal and no answered notice, only a length', () => {
+    const group = { ...ready, group: true, goal: '', gate: 'blocked' as const };
+    expect(startBlockReason(group)).toBeNull();
+    expect(startBlockReason({ ...group, lengthOk: false })).toMatch(/5 to 180 minutes/);
+  });
+
   it('puts the research notice first', () => {
     expect(startBlockReason({ ...ready, gate: 'blocked', goal: '' })).toMatch(/research notice/);
   });

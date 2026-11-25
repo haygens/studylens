@@ -2,6 +2,7 @@ import ErrorBoundary from './ErrorBoundary';
 import FocusSession from './FocusSession';
 import FriendsFocusing from './FriendsFocusing';
 import InterventionsNotice from './InterventionsNotice';
+import LiveSessionLine from './LiveSessionLine';
 import PopupFooter from './PopupFooter';
 import TodayActivity from './TodayActivity';
 import { PausedBanner, TrackingPill } from './TrackingStatus';
@@ -30,6 +31,7 @@ export default function App() {
         <FocusSession />
       </ErrorBoundary>
       <ErrorBoundary name="Study groups">
+        <LiveSessionLine />
         <FriendsFocusing />
       </ErrorBoundary>
       <ErrorBoundary name="Today">

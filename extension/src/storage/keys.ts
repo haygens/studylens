@@ -90,6 +90,12 @@ export const STORAGE_KEYS = {
    * "focusing now". Used to send only changes and to retry after being offline.
    */
   groupActivitySync: 'groups:activity-sync',
+  /**
+   * Live group sessions (P18b): if leaving a live session early couldn't reach the server
+   * (offline), the live session's ID and when, so the background can tell the server later.
+   * Removed once sent (or after 24 h).
+   */
+  groupLivePendingLeave: 'groups:live-pending-leave',
 } as const;
 
 /** Finished activity records, one key per local day: `activity:2026-11-16`. */

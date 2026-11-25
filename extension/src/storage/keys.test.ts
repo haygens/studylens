@@ -3,6 +3,7 @@
  * kind of write the app does and check that each key it leaves behind is in the one key list
  * (keys.ts), and that deleting removes all of it.
  */
+import { savePendingLeave } from '../groups/live';
 import { describe, expect, it } from 'vitest';
 import { checkTab, recordChoice } from '../interventions/interstitial-controller';
 import { deleteEverything } from '../my-data/delete-all';
@@ -114,6 +115,8 @@ async function useEverything(store: FullStore) {
     { sent: { '2026-11-15': 5 }, lastTotalsAttempt: T0, presenceOn: false },
     '2026-11-15',
   );
+  // Live group sessions (P18b): a "leave" that couldn't be sent yet.
+  await savePendingLeave(store, 'live-1', T0);
   // Onboarding (P13b): welcome page and the "New: themes!" hint.
   await applyInstallPlan(store, installPlan('install'));
   await finishWelcome(store);

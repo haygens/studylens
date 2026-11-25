@@ -9,7 +9,7 @@
 import { isCheckIn, isSessionCondition, isSessionMode } from '@studylens/shared';
 import { countsOf } from '../interventions/interstitial';
 import { attemptFieldsOf } from '../interventions/attempts';
-import type { ActiveSession, FocusSession } from '../sessions/session';
+import type { ActiveSession, FocusSession, GroupLink } from '../sessions/session';
 import type { KeyValueStore } from './activity-store';
 import { STORAGE_KEYS } from './keys';
 
@@ -46,6 +46,22 @@ function conditionOf(value: unknown) {
   return isSessionCondition(value) ? value : null;
 }
 
+/** P18b: a well-formed link to a live group session, or undefined. */
+export function asGroupLink(value: unknown): GroupLink | undefined {
+  const v = value as Partial<GroupLink> | null;
+  if (typeof v !== 'object' || v === null) return undefined;
+  const text = (x: unknown): x is string => typeof x === 'string' && x.length > 0;
+  if (!text(v.sessionId) || !text(v.groupId) || typeof v.groupName !== 'string') return undefined;
+  return {
+    sessionId: v.sessionId,
+    groupId: v.groupId,
+    groupName: v.groupName,
+    isHost: v.isHost === true,
+    clockOffsetMs:
+      typeof v.clockOffsetMs === 'number' && Number.isFinite(v.clockOffsetMs) ? v.clockOffsetMs : 0,
+  };
+}
+
 const positiveInt = (v: unknown): number | null =>
   typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : null;
 
@@ -59,6 +75,8 @@ function researchFieldsOf(v: Record<string, unknown>) {
     labelsLocked: v.labelsLocked === true,
     // P18 covariate: kept only when recorded (sessions before v0.5.0 don't have it).
     ...(typeof v.inGroup === 'boolean' && { inGroup: v.inGroup }),
+    // P18b: only on live group sessions; a broken link is dropped.
+    group: asGroupLink(v.group),
   };
 }
 
