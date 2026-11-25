@@ -1699,3 +1699,90 @@ data collection permissions) and to Microsoft Edge Add-ons as an update (Privacy
 single purpose mentions study groups; data usage now Personally identifiable information + Web
 history + User activity; certification notes describe the optional host permission). Edge status:
 In review. v0.4.0 remains live on both until approval.
+
+## Handoff — 2026-11-25 (P18b live group sessions, for v0.6.0)
+
+Done:
+
+- Housekeeping (`256ec94`): `docs/store/edge-privacy-answers.md` now matches what was submitted for
+  0.5.0. Ticked: Personally identifiable information, Web history, User activity. Web history
+  stays on the device; it is ticked as the cautious disclosure (Partner Center asks what is
+  collected or used, not only what is sent).
+- P18b server (`5800f63`): migration 3 adds `group_sessions.ends_at` (the shared end, server clock)
+  and `session_participants.left_at`. Db methods for libSQL and the in-memory stub, with contract
+  tests. Six endpoints: start `POST /api/groups/:id/sessions`, list running `GET /api/group-sessions`,
+  state `GET /api/group-sessions/:id`, and join / leave / heartbeat (`POST …/:id/<action>`).
+  - One running session per group and one per device, both checked inside the INSERT.
+  - Host leaving keeps the session running. When nobody is focusing any more, it ends.
+  - Summary minutes come from server times and show only if the member shares focus minutes in
+    that group.
+  - The cleanup cron ends expired sessions and deletes them, goal included, 24 h after the end.
+    The API hides the goal from 24 h even before the cron runs.
+  - Strict zod validation (goal ≤120, no email or URL; 5–180 min), per-device rate limits,
+    `withErrorLogging` via `apiRoute`.
+  - `testSeconds` is accepted only by the local E2E server (`STUDYLENS_LIVE_TEST_SECONDS=1`, not
+    on Vercel, not in production builds).
+- P18b extension (`b89c8cd`, `5c7bec0`):
+  - Start from the Study groups tab ("Live group sessions" card) or from the popup ("Focus with:
+    Group …"): optional goal the group sees, 25 / 50 / custom 5–180 min.
+  - "Live session in <group> · N min left · Join" in the popup (only while it's open) and on the
+    tab.
+  - The local session ends at the shared end. The clock offset is measured on every answer, and
+    the heartbeat on the existing 1-minute tick moves the end if it is more than 2 s off.
+  - Participants list (Focusing / Finished / Left early, plus "not seen for a few minutes") polls
+    every 15 s only while the popup or tab is open and visible.
+  - Leave session: a leave sent while offline is kept in `groups:live-pending-leave` and retried
+    by the background. Leaving the group also ends the local group session.
+  - Shared "Session complete!" card on the check-in screen and on the tab (12 h). The check-in
+    itself stays local.
+- Research: group sessions get `mode: "group"` and condition `group` (new shared constant). They
+  never take a block-randomization slot (unit test: the next solo session gets the slot it would
+  have had), show no helper pages, and log no attempts. My Data shows them as a group session;
+  Insights lists them under "Not included".
+- Firefox: start/join need both data permissions (new gate need `live`), the heartbeat needs the
+  activity permission, leave/list need nothing extra. The popup sends people to the Study groups
+  tab for the Firefox prompt.
+- Docs (`2316e46`): `docs/backend.md` (schema, endpoints, rules, rate limits, cleanup, why polling
+  instead of WebSockets), `PRIVACY.md` (new "Live group sessions" section, header now 0.6.0),
+  `docs/research/codebook.md` (`group` mode/condition, exclusion, no block slot), `PLAN.md` P18b
+  checked.
+
+Changed files: `packages/shared/src/{live.ts,live.test.ts,api.ts,types.ts,types.test.ts,index.ts}`;
+`web/lib/db/{schema,types,live,sql-db,memory,retention,contract,sql-db.test}.ts`,
+`web/lib/api/{live,rate-limit,group-errors}.ts`, `web/app/api/groups/[id]/sessions/route.ts`,
+`web/app/api/group-sessions/**` (5 routes + test), `web/app/api/cleanup/route.test.ts`;
+`extension/src/groups/{live,live-view,api-client,permission}.ts` (+ tests),
+`extension/src/sessions/{session,session-controller,messages}.ts`,
+`extension/src/sessions/group-session.test.ts`, `extension/src/storage/{keys,sessions-store}.ts`,
+`extension/src/ui/live.tsx`, `extension/src/{insights/insights,my-data/tables,popup/popup-view}.ts`,
+`extension/entrypoints/background.ts`, `extension/entrypoints/options/{LiveSessions,StudyGroups,Insights}.tsx`,
+`extension/entrypoints/popup/{LiveSessionLine,FocusSession,CheckIn,App}.tsx`,
+`extension/e2e/{live-groups.e2e.ts,web-server.ts}`; `docs/backend.md`, `docs/PLAN.md`,
+`docs/research/codebook.md`, `docs/store/edge-privacy-answers.md`, `PRIVACY.md`, `docs/LOG.md`.
+
+Tests:
+
+- Unit: 993/993 pass (63 files), including the new DB contract tests (memory + node:sqlite), live
+  API route tests, controller, live service and view tests.
+- E2E: 49/49 pass, including the new two-profile `live-groups.e2e.ts` (start, join late, host
+  leaves, shared end, summary with shared vs. not-shared minutes, block untouched). Re-ran it
+  after the last change: pass.
+- lint, format:check, typecheck, web build (6 new routes), both extension builds +
+  `check:builds`: all clean.
+- `smoke:edge`, zips and addons-linter not run (not releasing).
+
+Problems / open questions:
+
+- The extension version is still 0.5.0. Bump it to 0.6.0 when we build the release.
+- Pushing to `main` makes Vercel deploy. Migration 3 then runs on Turso on the first request. It
+  is additive, and the released 0.5.0 never calls the new endpoints.
+- The goal is deleted by the daily cron, so up to about 48 h after the end, although the API
+  hides it at 24 h. PRIVACY.md says so. An hourly cron would need Vercel Pro.
+- Leaving is final for a session (rejoining gives `session_over`). Reconnecting while still
+  "focusing" just continues. Is that the behaviour we want?
+- Manual check still to do in two real browsers (production server after deploy): start, join,
+  leave, summary, and the Firefox permission prompt from the Study groups tab.
+
+Disk space: C: 3.36 GB free, M: 14.45 GB free.
+
+Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
