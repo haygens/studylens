@@ -1845,3 +1845,61 @@ Problems / open questions:
 Disk space: C: 3.35 GB free, M: 14.45 GB free.
 
 Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
+
+## Handoff — 2026-11-25 (P19b preregistration draft + analysis scripts)
+
+Done:
+
+- Everything is marked **"DRAFT – not registered; pending advisor and IRB review"**. No data from
+  other people was collected, and no extension or server code changed.
+- `docs/research/preregistration.md`, following the OSF Preregistration template:
+  - Study information: RQ1–3 and directional H1 (friction and intention < control on attempts/hour
+    and distraction minutes/hour), H2 (intention > friction on focus), H3 (turn-back rate:
+    intention > friction). Theory: hyperbolic delay discounting; habit interruption named as an
+    alternative this design can't separate.
+  - Design: within-subject, block-randomized per solo session, hypotheses not told, labels frozen,
+    group sessions excluded.
+  - Sampling: recruitment after IRB; stopping rule at target N or 10 weeks; ≥ 5 solo sessions per
+    condition; target N from the power table (placeholder 20).
+  - Variables mapped to the CSV columns.
+  - Analysis plan: NB GLMM with log-hours offset (H1a), Tweedie GLMM (H1b), CLMM (H2), binomial
+    GLMM (H3), ordinal goal completion, robustness models; Holm across the 4 H1 tests;
+    exclusions 1–7; missing data; deviations.
+  - Exploratory analyses; limitations and ethics.
+- `analysis/` (R): `common.R` (columns, exclusions, derived variables), `simulate.R` (exact 22 CSV
+  columns, stated effect-size assumptions), `analyze.R` (all preregistered models with the
+  slope → intercept fallback, writes results.csv/.md + exclusions), `power.R` (N = 8/12/20/30 ×
+  5/8 sessions per condition, 100 simulations per cell), and a README (packages, how to run,
+  per-user R install on M:).
+- R is **not installed** on this PC, so I installed nothing. A new, separate workflow
+  `.github/workflows/analysis.yml` ("Analysis (R)") runs on changes to `analysis/` or by hand. It
+  installs R + glmmTMB/lme4/ordinal, runs simulate → analyze → power on simulated data, and puts
+  the tables in the job summary and the `analysis-output` artifact.
+- `docs/research/power-results.md`: method, assumptions and grid; the numbers are **pending** the
+  first workflow run.
+- `docs/research/summary-for-advisor.md`: one page for Dr. Su with 4 questions (IRB route, Kirby
+  MCQ, target N and duration, measures).
+- `docs/PLAN.md`: P19b checked off (as a draft).
+
+Changed files: `docs/research/preregistration.md`, `docs/research/power-results.md`,
+`docs/research/summary-for-advisor.md`, `analysis/{common,simulate,analyze,power}.R`,
+`analysis/README.md`, `.github/workflows/analysis.yml`, `.gitignore`, `docs/PLAN.md`,
+`docs/LOG.md`.
+
+Tests: the R scripts have **not been run yet** (no R locally). The first "Analysis (R)" run on
+GitHub is their first test. format:check clean. No app code changed, so the unit/E2E suites
+weren't re-run.
+
+Problems / open questions:
+
+- If the Analysis workflow fails, that's the first real run of the R code. Send me the failing
+  step's log and I'll fix it.
+- After a green run: copy the power table from the run summary into `power-results.md`, write the
+  plain-words paragraph, and set the target N in preregistration section 3.3.
+- Running `analyze.R` on hs's own pilot CSV needs R locally (see `analysis/README.md`). The pilot
+  has fewer than 5 sessions per condition, the analysis may exclude it entirely; that's expected.
+- Advisor decisions are open (summary-for-advisor.md).
+
+Disk space: C: 3.35 GB free, M: 14.44 GB free.
+
+Next piece (from PLAN.md): P20 — Results + show and tell.

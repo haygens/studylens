@@ -131,9 +131,16 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       Vercel Cron cleanup (14 days, `CRON_SECRET`), optional Discord webhook alerts _(stretch)_, tests
       in CI. _(Wrapper, `error_logs`, cleanup cron and their CI tests were built in P15; left:
       Discord alerts.)_
-- [ ] **P19b. Preregistration draft + analysis script** — OSF-style preregistration draft
+- [x] **P19b. Preregistration draft + analysis script** — OSF-style preregistration draft
       (hypotheses, design, measures, exclusions, analysis plan below) and an analysis script that
       reads the research CSV (P13c) and fits the planned models. Run it on hs's own N=1 pilot data.
+      Done 2026-11-25 as a **DRAFT pending advisor and IRB review**:
+      `docs/research/preregistration.md` (OSF template; H1–H3, delay discounting vs habit
+      interruption), `analysis/` in R (simulate / analyze / power; glmmTMB, lme4, ordinal),
+      `docs/research/summary-for-advisor.md`. R is not installed locally, so the scripts run in the
+      separate **Analysis (R)** workflow on simulated data; `power-results.md` waits for its first
+      run. Still to do: run `analyze.R` on hs's own pilot CSV (needs R locally or a manual
+      upload), and fill in the target N from the power table.
 - [ ] **P20. Results + show and tell** — present the study **design + preregistration draft + hs's
       own N=1 pilot** (2–3 charts from the pilot), the usability feedback from friends, demo script,
       portfolio card (title, link, reflection).
