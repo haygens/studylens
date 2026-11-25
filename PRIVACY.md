@@ -1,7 +1,8 @@
 # StudyLens Privacy Policy
 
-_Updated: November 23, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.5.0
-(study groups) and earlier. Versions up to 0.4.0 have no study groups._
+_Updated: November 25, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.6.0
+(live group sessions, not released yet), 0.5.0 (study groups) and earlier. Versions up to 0.4.0
+have no study groups._
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
 browsing stays yours: **everything it records about your browsing stays on your device.** Up to
@@ -33,8 +34,8 @@ as a session goal, a site label, or (for study groups) a display name and group 
 - **From version 0.3.0:** your chosen theme (Sunrise, Ocean or Pastel), whether you have finished
   the welcome page, and whether the "New: themes!" hint was dismissed. These are settings only.
 - **From version 0.4.0 (research measurements):** for each focus session, its number on this
-  device (1, 2, 3, … — the order of your sessions), its mode (`solo`; `group` is for a possible
-  later version), the version number of your site labels when it started and whether they were
+  device (1, 2, 3, … — the order of your sessions), its mode (`solo`, or `group` for a live
+  group session from version 0.6.0), the version number of your site labels when it started and whether they were
   locked, and its **distraction attempts**: each time you open a site you labeled Distraction
   during a session (in every condition, including control), the site's domain name, the time,
   the condition, what happened next (the site loaded / "Continue" / "Back to studying"), and for
@@ -233,7 +234,8 @@ any server and nothing about you leaves your device.
   expires **3 minutes** after your browser last confirmed it (and ends immediately when your session
   ends). Leaving a group, turning a switch off, or deleting your group data removes it at once.
 - **Research.** Being in a study group doesn't change the research: your sessions stay "solo"
-  sessions, and nothing about groups is in the research CSV.
+  sessions, and nothing about groups is in the research CSV. (Only live group sessions, from
+  version 0.6.0, are marked "group"; see below.)
 - **What the server never stores:** which websites you visit, domain names, web addresses, page
   titles, your site labels, distraction attempts, research conditions, check-in answers, your
   session goals, your email, or your IP address.
@@ -261,6 +263,37 @@ any server and nothing about you leaves your device.
   (AWS us-west-2, Oregon, USA). Like most hosting providers, Vercel keeps short-lived technical
   request logs (which include IP addresses) for operating its service; StudyLens does not read or
   keep them.
+
+## Live group sessions (version 0.6.0 and later, optional)
+
+In a study group, any member can start a **live group session** for one of their groups: everyone
+who joins gets the same timer and sees who is in it. Nothing changes unless you start or join one.
+
+- **What is sent when you start one:** an optional goal (the group sees it; at most 120
+  characters, no email or web address) and the length. **When you join:** only that you joined.
+  **While it runs:** a heartbeat once a minute from your browser (only your browser's secret key)
+  and, while the popup or the Study groups tab is open, a check every 15 seconds for who is in it.
+  **When you leave early:** that you left (sent again later if you were offline).
+- **What the group sees:** the goal, the end time, and each participant's display name and status
+  ("Focusing", "Finished", "Left early"). When it's over, a shared "Session complete!" card shows
+  each participant's minutes in the session — **only for members who share focus minutes in that
+  group**; for everyone else it says "minutes not shared". The server works the minutes out from
+  when you joined and left; your browser doesn't send them.
+- **What stays on your device:** your end-of-session check-in (exactly as for solo sessions), your
+  sites and labels, and everything else listed above. Never sent: web addresses, sites, labels,
+  research conditions, check-in answers.
+- **Research:** these sessions are marked `mode: group` and condition `group` on your device. They
+  get no friction/intention helper, they don't change the random order of the research conditions
+  for your solo sessions, and they are left out of the main analysis (the research CSV keeps the
+  mode column).
+- **Permissions:** the same as study groups. In Firefox, starting or joining needs your OK for
+  both "personally identifying information" (your display name in the participants list) and
+  "technical and interaction data" (your live status and minutes); without them StudyLens sends
+  nothing for live sessions.
+- **How long the server keeps it:** the goal and the whole session (who joined, statuses, times)
+  are deleted 24 hours after the session ended — by the daily cleanup, so at the latest about a day
+  after that; the app stops showing the goal at 24 hours. Leaving the group or deleting your group
+  data removes you from it at once.
 
 ## Research uploads
 

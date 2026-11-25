@@ -112,11 +112,21 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       registered + a switch on + permissions; offline retry. Firefox: optional
       `technicalAndInteraction`. Sessions stay `solo`; local-only `inGroup` covariate. Two-profile
       E2E. See `docs/backend.md`.
-- [ ] **P18b. Live group focus sessions** _(stretch)_ — someone starts a group session (goal + length)
+- [x] **P18b. Live group focus sessions** _(stretch)_ — someone starts a group session (goal + length)
       and shares a code; others join; everyone gets the same shared timer; live presence list
       (focusing / finished / left); a group "Session complete!" summary showing each member's focus
       minutes only if they choose to share. Handle joining late, leaving early, reconnecting, and the
       host leaving. Group sessions get `mode: "group"`.
+      Done 2026-11-25 (code + tests; goes into **v0.6.0**, not built or uploaded yet). Any member
+      starts one for a group from the Study groups tab or the popup (optional goal the group sees;
+      25 / 50 / custom 5–180 min); members see "Live session in … · time left · Join" there (no
+      code needed: groups already have one). Shared end time from the server clock with clock-offset
+      correction on every answer and on the heartbeat (1-minute session tick); participants list
+      polled every 15 s only while the popup/tab is open (polling, not WebSockets: Vercel Hobby).
+      Host leaving keeps it running; reconnecting just continues; a "leave" sent while offline is
+      retried. Summary minutes only for members who share focus minutes in that group. Research:
+      `mode`/`condition` `group`, no block slot used (codebook). Server: migration 3, 6 endpoints,
+      cleanup ends sessions and deletes them (goal included) 24 h after the end. Two-profile E2E.
 - [ ] **P19. Reliability** _(partly stretch)_ — `withErrorLogging` wrapper → `error_logs` table,
       Vercel Cron cleanup (14 days, `CRON_SECRET`), optional Discord webhook alerts _(stretch)_, tests
       in CI. _(Wrapper, `error_logs`, cleanup cron and their CI tests were built in P15; left:

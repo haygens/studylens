@@ -19,6 +19,11 @@ match each question to the closest answer below. **Submitted 2026-11-23** with t
 The single-purpose description mentions study groups, and the certification notes describe the
 optional host permission (requested at runtime, never at install).
 
+**0.6.0 (not submitted yet): live group sessions (P18b)** add no new kind of data: the same
+display name and focus activity (whether I'm focusing in a live session, my minutes in it), plus
+an optional session goal the group sees (deleted from the server 24 h after the session). Same
+three boxes; same optional permissions.
+
 **Privacy policy URL:** https://github.com/haygens/studylens/blob/main/PRIVACY.md
 
 **Does the extension access, collect or transmit personal information?** **Yes, only if the user

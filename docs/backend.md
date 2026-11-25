@@ -1,4 +1,4 @@
-# StudyLens backend (P15, P16, P18)
+# StudyLens backend (P15, P16, P18, P18b)
 
 The backend is the Next.js app in `web/`, deployed on Vercel (Hobby), with a Turso (libSQL)
 database. It exists for **study groups** (P16, P18, P18b). The extension calls it **only** after the
@@ -6,7 +6,8 @@ user clicks "Join or create a group" on the Study groups tab and grants the opti
 contact the server (`extension/src/groups/`); solo users never contact it.
 
 Status: deployed (P15d, 2026-11-23). Study group endpoints added in P16; passive groups (focus
-minutes, "focusing now") in P18.
+minutes, "focusing now") in P18; live group focus sessions in P18b (2026-11-25, for v0.6.0 — not
+deployed until that is pushed).
 
 - Production URL: **https://studylens-flame.vercel.app** — health check:
   https://studylens-flame.vercel.app/api/health (returns `"ok":true` and `"db":"up"`).
@@ -23,6 +24,7 @@ minutes, "focusing now") in P18.
 | Groups (name, join code), who is in which group              | Browsing data: sites, hostnames, URLs, titles    |
 | Daily **focus minutes** per device (P18)                     | Site categories, distraction data, research data |
 | Live group session: optional goal, length, times, status     | IP addresses (not stored, not logged by the app) |
+| (goal + whole session deleted 24 h after it ended, P18b)     | Check-ins, conditions, labels (never sent)       |
 | Error messages, scrubbed of URLs/domains/emails/IPs, 14 days | Request bodies, headers, user agents             |
 | Rate-limit counters keyed by device ID (deleted after a day) | Anything in error logs that links to a device    |
 
@@ -40,21 +42,27 @@ Defined as numbered migrations in `web/lib/db/schema.ts`; applied by `runMigrati
 each runs in a transaction. Never edit a shipped migration — add a new version. Times are epoch
 milliseconds.
 
-| Table                  | Columns                                                                                                                                | For     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `devices`              | `id`, `display_name` (1–30), `token_hash` (unique, 64 hex), `created_at`, `last_seen_at`                                               | P15/P16 |
-| `groups`               | `id`, `name` (1–40), `join_code` (unique), `created_by` → devices, `created_at`                                                        | P16     |
-| `memberships`          | `group_id`, `device_id`, `role` (`owner`/`member`), `joined_at`, `share_minutes`, `share_presence` (0/1, P18: my switches per group)   | P16/P18 |
-| `group_sessions`       | `id`, `group_id`, `host_device_id`, `goal` (optional, ≤120), `planned_minutes` (1–240), `started_at`, `ended_at`                       | P18b    |
-| `session_participants` | `session_id`, `device_id`, `status` (`focusing`/`finished`/`left`), `joined_at`, `last_heartbeat_at`, `focus_minutes` (only if shared) | P18b    |
-| `device_presence`      | `device_id`, `since`, `expires_at` — "who's in a session right now" in passive groups                                                  | P18     |
-| `daily_totals`         | `device_id`, `local_date` (`YYYY-MM-DD`), `focus_minutes` (0–1440), `updated_at`                                                       | P18     |
-| `error_logs`           | `id`, `source` (`server`/`extension`), `route`, `message` (≤500), `extension_version`, `created_at`                                    | P15     |
-| `rate_limits`          | `key`, `window_start`, `count`                                                                                                         | P15     |
-| `schema_migrations`    | `version`, `name`, `applied_at`                                                                                                        | —       |
+| Table                  | Columns                                                                                                                                          | For     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| `devices`              | `id`, `display_name` (1–30), `token_hash` (unique, 64 hex), `created_at`, `last_seen_at`                                                         | P15/P16 |
+| `groups`               | `id`, `name` (1–40), `join_code` (unique), `created_by` → devices, `created_at`                                                                  | P16     |
+| `memberships`          | `group_id`, `device_id`, `role` (`owner`/`member`), `joined_at`, `share_minutes`, `share_presence` (0/1, P18: my switches per group)             | P16/P18 |
+| `group_sessions`       | `id`, `group_id`, `host_device_id`, `goal` (optional, ≤120), `planned_minutes` (1–240), `started_at`, `ended_at`, `ends_at` (m. 3)               | P18b    |
+| `session_participants` | `session_id`, `device_id`, `status` (`focusing`/`finished`/`left`), `joined_at`, `last_heartbeat_at`, `focus_minutes` (unused), `left_at` (m. 3) | P18b    |
+| `device_presence`      | `device_id`, `since`, `expires_at` — "who's in a session right now" in passive groups                                                            | P18     |
+| `daily_totals`         | `device_id`, `local_date` (`YYYY-MM-DD`), `focus_minutes` (0–1440), `updated_at`                                                                 | P18     |
+| `error_logs`           | `id`, `source` (`server`/`extension`), `route`, `message` (≤500), `extension_version`, `created_at`                                              | P15     |
+| `rate_limits`          | `key`, `window_start`, `count`                                                                                                                   | P15     |
+| `schema_migrations`    | `version`, `name`, `applied_at`                                                                                                                  | —       |
 
 Deleting a device cascades to its memberships, participation, presence and daily totals; groups
 and sessions it created keep existing with `created_by` / `host_device_id` set to NULL.
+
+Migration 3 (`live-group-sessions`, P18b) adds `group_sessions.ends_at` — the **shared end time**
+(server clock), normally `started_at + planned_minutes`, stored on its own so the local E2E test
+server can run sessions of a few seconds — and `session_participants.left_at`. Minutes in a
+session are computed from `joined_at` → `left_at` / `ends_at`, so the extension never sends them;
+`focus_minutes` stays unused.
 
 ## Data layer
 
@@ -99,6 +107,7 @@ generic 500.
 | 403    | `origin_not_allowed`                             |
 | 404    | `not_found` (unknown join code / not in group)   |
 | 409    | `group_full`, `too_many_groups`                  |
+| 409    | `session_running`, `session_over` (P18b)         |
 | 413    | `payload_too_large` (bodies are max 4 KB)        |
 | 415    | `unsupported_media_type` (send JSON)             |
 | 429    | `rate_limited` (with `Retry-After` seconds)      |
@@ -145,6 +154,59 @@ the member doesn't share it **in this group**; `history` is 7 `{ localDate, focu
 entries ending on `today`, missing days as 0. `focusingNow` is true while the last
 start/heartbeat is less than 3 minutes old. No device IDs, sites, categories, goals, conditions or
 check-in answers exist on the server, so none can appear.
+
+Live group focus sessions (P18b), all with the device token:
+
+| Method + path                            | Body                 | Success                                                                                 |
+| ---------------------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
+| `POST /api/groups/:id/sessions`          | `{ goal?, minutes }` | `201 { serverNow, session }` — I'm the host; 409 `session_running`; 404 if not a member |
+| `GET /api/group-sessions`                | —                    | `200 { serverNow, sessions }` — running sessions in my groups (≤ 1 per group)           |
+| `GET /api/group-sessions/:id`            | —                    | `200 { serverNow, session }` — running or ended (summary); 404                          |
+| `POST /api/group-sessions/:id/join`      | —                    | `201` joined / `200` already in it (reconnect); 409 `session_over` / `session_running`  |
+| `POST /api/group-sessions/:id/leave`     | —                    | `200 { serverNow, session }` — status `left`; again or after the end: no change; 404    |
+| `POST /api/group-sessions/:id/heartbeat` | —                    | `200 { serverNow, session }` — I'm still focusing; 404 if not in it                     |
+
+`session` is `{ id, groupId, groupName, goal, plannedMinutes, startedAt, endsAt, state, me,
+participants }`; `state` is `running` / `ended`, `me` my status or null; each participant is
+`{ displayName, isMe, isHost, status, recentlySeen, focusMinutes }`. Types:
+`packages/shared/src/live.ts`.
+
+**Live session rules (P18b).**
+
+- **One running session per group, one per device.** Both are checked inside the INSERT (one
+  statement, one transaction), so two members starting at once can't both succeed. "Running" =
+  not ended, before `ends_at`, and at least one participant still `focusing`.
+- **Shared end time.** The server's clock sets `ends_at`; every answer carries `serverNow`. The
+  extension measures the offset (server − local, taking the middle of the request as "now") and
+  turns `ends_at` into its own clock. The heartbeat re-measures it each minute and moves the local
+  end when it is more than 2 s off.
+- **Joining late** is allowed; the joiner's local session runs from joining to the same `ends_at`.
+  **Joining again** while still focusing is a reconnect (200). **Leaving** is final for that
+  session (`session_over` on a rejoin).
+- **Host leaving:** nothing special — the session keeps running for everyone else until
+  `ends_at`. When **nobody** is focusing any more (all left, left the group, or deleted their
+  device), the session ends at once (`ended_at` = now), so the group can start a new one.
+- **Status:** `focusing` → `finished` at `ends_at` (computed on read; the cleanup writes it down),
+  or `left` with `left_at`. `recentlySeen` is false while focusing with no heartbeat for 3 minutes
+  (offline or browser closed).
+- **Summary minutes:** `focusMinutes` = whole minutes from joining to leaving / the end, shown only
+  once the participant is done and **only if they share focus minutes in that group** (the P18
+  switch); `null` = "not shared".
+- **Who sees it:** members of the group only (404 for anyone else). Leaving the group removes me
+  from its live sessions. No device IDs, sites, labels, conditions or check-ins exist here.
+- **Goal:** optional, ≤120 characters, no email or web address. Hidden by the API 24 h after the
+  end, and deleted (with the whole session and its participant rows) by the daily cleanup after
+  that — so at the latest about 48 h after the end (the cron runs once a day on Hobby).
+- **Test seconds:** `testSeconds` (1–600) in the start body is accepted **only** when
+  `STUDYLENS_LIVE_TEST_SECONDS=1`, outside Vercel and outside production builds — set only by the
+  E2E test server (`extension/e2e/web-server.ts`). Everywhere else it is an unknown field (400).
+
+**Why polling, not WebSockets.** Vercel Hobby functions are short-lived request handlers: they
+can't hold a socket open, and Vercel's WebSocket support is in beta. Plain requests keep working
+through laptop sleep, flaky school Wi-Fi and serverless restarts, need no extra service, and are
+easy to rate-limit. The extension asks every 15 s **only while the popup or the Study groups tab is
+open and visible**, plus one heartbeat per minute while a group session runs; a 15 s delay is fine
+for "who is focusing".
 
 **Passive group rules (P18).**
 
@@ -200,18 +262,24 @@ Two kinds, both fixed one-hour windows:
   are generous because a whole class on school Wi-Fi shares one public address. Locally there is no
   proxy header, so every request counts as one client (`local`).
 
-| Endpoint                   | Per device (database) | Per client address (memory) |
-| -------------------------- | --------------------- | --------------------------- |
-| `POST /api/devices`        | — (no device yet)     | 30 / hour                   |
-| `POST /api/groups/join`    | 20 attempts / hour    | 60 attempts / hour          |
-| `POST /api/groups`         | 10 / hour             | 30 / hour                   |
-| `PATCH /api/devices/me`    | 20 / hour             | —                           |
-| `POST /api/errors`         | 20 / hour             | —                           |
-| `POST /api/totals`         | 60 / hour             | —                           |
-| `POST /api/presence`       | 150 / hour            | —                           |
-| `PATCH …/sharing`          | 60 / hour             | —                           |
-| `GET …/overview`           | 600 / hour            | —                           |
-| `GET /api/groups/focusing` | 240 / hour            | —                           |
+| Endpoint                      | Per device (database) | Per client address (memory) |
+| ----------------------------- | --------------------- | --------------------------- |
+| `POST /api/devices`           | — (no device yet)     | 30 / hour                   |
+| `POST /api/groups/join`       | 20 attempts / hour    | 60 attempts / hour          |
+| `POST /api/groups`            | 10 / hour             | 30 / hour                   |
+| `PATCH /api/devices/me`       | 20 / hour             | —                           |
+| `POST /api/errors`            | 20 / hour             | —                           |
+| `POST /api/totals`            | 60 / hour             | —                           |
+| `POST /api/presence`          | 150 / hour            | —                           |
+| `PATCH …/sharing`             | 60 / hour             | —                           |
+| `GET …/overview`              | 600 / hour            | —                           |
+| `GET /api/groups/focusing`    | 240 / hour            | —                           |
+| `POST …/sessions` (start)     | 20 / hour             | —                           |
+| `POST …/join`                 | 60 / hour             | —                           |
+| `POST …/leave`                | 60 / hour             | —                           |
+| `POST …/heartbeat`            | 150 / hour            | —                           |
+| `GET /api/group-sessions`     | 600 / hour            | —                           |
+| `GET /api/group-sessions/:id` | 900 / hour            | —                           |
 
 Every join attempt counts — wrong codes too — before the code is looked at, so guessing one of
 ~6.6 × 10^11 codes is hopeless. `POST /api/devices` also has a **global backstop** of 1000
@@ -245,8 +313,9 @@ pass without CORS headers. CORS is not authentication — the bearer token is.
 `Authorization: Bearer <CRON_SECRET>` automatically when the `CRON_SECRET` env var is set. It:
 
 - deletes `error_logs` older than **14 days**
-- clears group session goals **24 h after the session ended** (or after its planned end, if the
-  host never ended it)
+- live group sessions (P18b): marks sessions past `ends_at` as ended (participants still in →
+  `finished`, `groupSessionsEnded`); clears goals **24 h after the session ended** (`ended_at`, else
+  `ends_at`) and deletes those sessions with their participant rows (`groupSessionsDeleted`)
 - deletes `device_presence` rows past `expires_at`, and `session_participants` rows with no
   heartbeat for 24 h
 - deletes rate-limit counters older than a day
