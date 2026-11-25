@@ -119,6 +119,11 @@ If a requested change would break one of these rules, stop and tell hs instead o
   — watch in a visible browser: `npm run test:e2e -- --headed`. Never install extra browsers locally.
 - Smoke test of the real production Edge build (`.output/edge-mv3`, installed Edge, headless):
   `npm run smoke:edge` — replaces the manual Edge check before store submission.
+- Production check of live group sessions (P18b), two temporary Edge profiles on M:, the normal Edge
+  build against https://studylens-flame.vercel.app (registers smoke-A/smoke-B, deletes their server
+  data at the end): `npm run smoke:live` — replaces the manual two-browser test. Only the copy's
+  manifest is changed (store `key` for the store ID that production CORS accepts; server origin as a
+  granted host permission because the prompt can't be clicked).
 - Prove normal builds have no E2E-only code (after both builds): `npm run check:builds -w extension`
 - Icons (after editing `extension/assets/icon.svg`): `npm run icons -w extension`
 - Store screenshots → `docs/store/screenshots/`: `npm run screenshots -w extension`

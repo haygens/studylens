@@ -1786,3 +1786,62 @@ Problems / open questions:
 Disk space: C: 3.36 GB free, M: 14.45 GB free.
 
 Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
+
+## Handoff — 2026-11-25 (P18b production check: smoke:live)
+
+Done:
+
+- New `npm run smoke:live` (`extension/scripts/smoke-live.mjs`, separate from the E2E suite, like
+  `smoke:edge`). It replaces hs's manual two-browser test of live group sessions. It runs two
+  temporary headless Edge profiles on M: with the normal (non-E2E) Edge build against
+  **https://studylens-flame.vercel.app**.
+- Two manifest-only changes in a temp copy of the build. The script checks that all other 20 files
+  are byte-identical to `.output/edge-mv3`:
+  - `key` = the Edge Add-ons store's public key (from the store CRX header; it's public, Edge
+    writes it into every installed manifest). The copy then gets the store ID
+    `phepgpemnllainhhjemgknaeedjjekad`, which production CORS requires. An unpacked build gets a
+    random ID and would get 403.
+  - The server origin moves from optional to granted `host_permissions`. That's the state after
+    clicking "Allow", which Playwright can't click (checked first: in headless Edge the click
+    leaves the permission ungranted).
+- Result on 2026-11-25 (Edge 139.0.3405.125, extension 0.5.0 code with P18b, server deployed from
+  `main`): **15 passed, 0 failed**.
+  1. ✓ extension copy: only the manifest differs (20 files identical)
+  2. ✓ two temporary Edge profiles load the extension with the store ID
+  3. ✓ server is up (`/api/health` ok, db up)
+  4. ✓ A registers as smoke-A and creates a group (`smoke-rn45e`, both switches on)
+  5. ✓ B joins by code as smoke-B with "Share my focus minutes" OFF (2 members)
+  6. ✓ A starts a 5-minute group session from the Study groups tab (local mode/condition `group`,
+     ~300 s left; no E2E-only field in the normal build)
+  7. ✓ B sees "Live session in … · N min left" with the goal in the popup and joins late (planned
+     4.9 min)
+  8. ✓ both have the same end time (local ends 20 ms apart, "Ends at 3:44 PM" on both) and show
+     each other as "Focusing"
+  9. ✓ B leaves → A sees "smoke-B · Left early · minutes not shared"; B's session `endedEarly`, no
+     pending leave left
+  10. ✓ A ends early → "Session complete!" on both: "smoke-A (you, started it) · Left early · 0 min"
+      (shared), "smoke-B · Left early · minutes not shared"; the server state has no check-ins,
+      conditions or URLs
+  11. ✓ B deletes its group data from the server in the extension (local registration removed)
+  12. ✓ A deletes its group data from the server in the extension
+  13. ✓ nothing left on the server: A and B tokens → 401; a fresh `smoke-check` device gets 404 for
+      the join code and 404 for the live session, then deletes itself (200)
+  14. ✓ no uncaught errors in the extension pages
+  15. ✓ temporary profiles and the extension copy deleted (none left in `M:\temp`)
+- No app code changed (no step failed). Documented the command in `CLAUDE.md`.
+
+Changed files: `extension/scripts/smoke-live.mjs` (new), `extension/package.json`, `package.json`,
+`CLAUDE.md`, `docs/LOG.md`.
+
+Tests: smoke:live 15/15 pass. No app code changed, so the unit/E2E suites weren't re-run (993/993
+and 49/49 from the previous session).
+
+Problems / open questions:
+
+- Not covered by smoke:live: the Firefox permission prompts (Edge only) and a session reaching its
+  natural end (5 min; the E2E covers the shared end with test seconds).
+- The extension version is still 0.5.0; bump it to 0.6.0 at release.
+
+Disk space: C: 3.35 GB free, M: 14.45 GB free.
+
+Next piece (from PLAN.md): P19b — Preregistration draft + analysis script.
