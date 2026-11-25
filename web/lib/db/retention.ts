@@ -7,10 +7,13 @@ const DAY = 24 * HOUR;
 export const ERROR_LOG_MAX_AGE_MS = 14 * DAY;
 
 /**
- * A group session's optional goal is cleared 24 h after the session ends: its `ended_at`, or — if
- * the host never ended it — its planned end (`started_at + planned_minutes`).
+ * A live group session's optional goal is cleared 24 h after the session ends: its `ended_at`
+ * (everyone left early, or the cleanup marked it ended), else its shared end time `ends_at`. The
+ * whole session and its participant rows are deleted at the same point (P18b): after that nobody
+ * needs its summary. (The API already hides the goal from then on, even before the cleanup.)
  */
 export const GOAL_AFTER_END_MS = 24 * HOUR;
+export const LIVE_SESSION_KEEP_MS = GOAL_AFTER_END_MS;
 
 /** Live-session participant rows with no heartbeat for 24 h are deleted. */
 export const PARTICIPANT_STALE_MS = 24 * HOUR;

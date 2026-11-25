@@ -4,13 +4,14 @@
  * - `createMemoryDb` (memory.ts): in-memory stub for quick dev without a database file.
  *
  * P15: devices, error logs, rate limits, cleanup. P16: groups and memberships. P18: sharing
- * switches, daily totals, presence, group overview. P18b methods are added with their endpoints.
+ * switches, daily totals, presence, group overview. P18b: live group focus sessions.
  */
 import type {
   DailyTotal,
   GroupRole,
   GroupSharing,
   GroupSummary,
+  LiveSession,
   OverviewMember,
   PresenceState,
 } from '@studylens/shared';
@@ -55,7 +56,33 @@ export interface CleanupResult {
   participantRowsDeleted: number;
   rateLimitRowsDeleted: number;
   dailyTotalsDeleted: number;
+  /** P18b: live sessions past their end time, marked ended (participants still in: finished). */
+  groupSessionsEnded: number;
+  /** P18b: live sessions (with their participants) deleted 24 h after they ended. */
+  groupSessionsDeleted: number;
 }
+
+/** P18b: a new live group session. The host joins it at once. */
+export interface NewLiveSession {
+  id: string;
+  groupId: string;
+  hostDeviceId: string;
+  goal: string | null;
+  /** 5–180 (the E2E test server: rounded up from its seconds, at least 1). */
+  plannedMinutes: number;
+  startedAt: number;
+  /** The shared end time (server clock). */
+  endsAt: number;
+}
+
+export type StartLiveSessionResult =
+  | { status: 'started' }
+  /** Not a member of the group (or it doesn't exist). */
+  | { status: 'not_member' }
+  /** The group already has a running live session. */
+  | { status: 'session_running' }
+  /** I'm still focusing in another live session (one at a time). */
+  | { status: 'busy' };
 
 export interface NewGroup {
   id: string;
@@ -101,7 +128,7 @@ export interface OverviewQuery {
   historyDays: number;
 }
 
-export type { GroupRole, GroupSharing, GroupSummary };
+export type { GroupRole, GroupSharing, GroupSummary, LiveSession };
 
 export interface Db {
   /** Throws if the database can't be reached. */
@@ -117,7 +144,7 @@ export interface Db {
    * session participation. Groups it was the last member of are deleted; in other groups the
    * longest-standing member becomes the owner if the device was the owner.
    */
-  deleteDevice(id: string): Promise<void>;
+  deleteDevice(id: string, now?: number): Promise<void>;
 
   /** Creates a group with the creator as owner, unless the device is in too many groups. */
   createGroup(group: NewGroup, maxGroupsPerDevice: number): Promise<CreateGroupResult>;
@@ -138,8 +165,10 @@ export interface Db {
    * Removes the device from the group. Returns false if it wasn't a member. An empty group is
    * deleted; if the owner left, the longest-standing member becomes the owner. Daily totals and
    * presence that no remaining group of the device shares any more are deleted at once (P18).
+   * The device also drops out of the group's live sessions (P18b); a session nobody is focusing
+   * in any more ends.
    */
-  leaveGroup(groupId: string, deviceId: string): Promise<boolean>;
+  leaveGroup(groupId: string, deviceId: string, now?: number): Promise<boolean>;
 
   /**
    * P18: changes my switches for one group (only the ones given). Returns the new switches, or
@@ -165,6 +194,28 @@ export interface Db {
   groupOverview(groupId: string, deviceId: string, q: OverviewQuery): Promise<GroupOverview | null>;
   /** P18: other members (any of my groups, counted once) focusing now who share it with me. */
   countFocusingNow(deviceId: string, now: number): Promise<number>;
+
+  /**
+   * P18b: starts a live session in a group I'm in, unless one is already running there (checked
+   * in the same INSERT, so two members starting at once can't both succeed). I join it as host.
+   */
+  startLiveSession(session: NewLiveSession): Promise<StartLiveSessionResult>;
+  /** P18b: the running live sessions in my groups (at most one per group), oldest group first. */
+  listLiveSessions(deviceId: string, now: number): Promise<LiveSession[]>;
+  /** P18b: one live session as I see it; null if it doesn't exist or I'm not in its group. */
+  liveSession(sessionId: string, deviceId: string, now: number): Promise<LiveSession | null>;
+  /**
+   * P18b: joins a running session of one of my groups. Returns true if I was added now; false if
+   * I was already in it (heartbeat refreshed), had left it, or it isn't running / isn't mine.
+   */
+  joinLiveSession(sessionId: string, deviceId: string, now: number): Promise<boolean>;
+  /**
+   * P18b: I leave early (status `left`). Returns true if my status changed. When nobody is
+   * focusing any more, the session ends.
+   */
+  leaveLiveSession(sessionId: string, deviceId: string, now: number): Promise<boolean>;
+  /** P18b: I'm still focusing in it. Returns true if my heartbeat was recorded. */
+  heartbeatLiveSession(sessionId: string, deviceId: string, now: number): Promise<boolean>;
 
   addErrorLog(entry: NewErrorLog): Promise<void>;
   /** Newest first. */

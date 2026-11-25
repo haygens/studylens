@@ -1,10 +1,19 @@
-import { addDays, utcDate, type GroupRole, type GroupSummary } from '@studylens/shared';
+import {
+  addDays,
+  utcDate,
+  type GroupRole,
+  type GroupSummary,
+  type LiveSession,
+  type ParticipantStatus,
+} from '@studylens/shared';
 import type { SqlExecutor, SqlStatement, SqlValue } from './executor';
+import { buildLiveSession } from './live';
 import { buildOverviewMembers, historyStart } from './overview';
 import {
   DAILY_TOTALS_KEEP_DAYS,
   ERROR_LOG_MAX_AGE_MS,
   GOAL_AFTER_END_MS,
+  LIVE_SESSION_KEEP_MS,
   PARTICIPANT_STALE_MS,
   RATE_LIMIT_ROW_MAX_AGE_MS,
 } from './retention';
@@ -65,6 +74,34 @@ function pruneUnshared(deviceId: string): SqlStatement[] {
 const bit = (b: boolean) => (b ? 1 : 0);
 
 /**
+ * P18b: live session `alias` is running at the `?` time (one argument): not ended, before its
+ * shared end, and someone is still focusing in it. Same rule as `isRunning` in live.ts.
+ */
+const runningSql = (alias: string) =>
+  `${alias}.ended_at IS NULL AND ${alias}.ends_at > ? AND EXISTS (SELECT 1 FROM
+     session_participants rp WHERE rp.session_id = ${alias}.id AND rp.status = 'focusing')`;
+
+/**
+ * P18b: the device (`?`) is focusing in a live session (other than `alias`, if given) that hasn't
+ * reached its end at the `?` time. One live session at a time per device.
+ */
+const busySql = (alias: string | null) =>
+  `EXISTS (SELECT 1 FROM session_participants bp JOIN group_sessions bs ON bs.id = bp.session_id
+     WHERE bp.device_id = ? AND bp.status = 'focusing'${alias ? ` AND bs.id <> ${alias}.id` : ''}
+       AND bs.ended_at IS NULL AND bs.ends_at > ?)`;
+
+/** P18b: live sessions nobody is focusing in any more (everyone left) end now. */
+function endAbandoned(now: number): SqlStatement {
+  return {
+    sql: `UPDATE group_sessions SET ended_at = ?
+          WHERE ended_at IS NULL AND ends_at > ? AND started_at <= ?
+            AND NOT EXISTS (SELECT 1 FROM session_participants p
+                            WHERE p.session_id = group_sessions.id AND p.status = 'focusing')`,
+    args: [now, now, now],
+  };
+}
+
+/**
  * The libSQL implementation of `Db`. The executor must already be migrated (see `openDb` in
  * index.ts, or `runMigrations`).
  */
@@ -112,7 +149,7 @@ export function createSqlDb(sql: SqlExecutor): Db {
       });
     },
 
-    async deleteDevice(id) {
+    async deleteDevice(id, now = Date.now()) {
       const { rows } = await sql.execute({
         sql: 'SELECT group_id FROM memberships WHERE device_id = ?',
         args: [id],
@@ -122,6 +159,7 @@ export function createSqlDb(sql: SqlExecutor): Db {
         { sql: 'DELETE FROM memberships WHERE device_id = ?', args: [id] },
         ...groupIds.flatMap((g) => [promoteOwner(g), ...pruneGroup(g)]),
         { sql: 'DELETE FROM session_participants WHERE device_id = ?', args: [id] },
+        endAbandoned(now),
         { sql: 'DELETE FROM device_presence WHERE device_id = ?', args: [id] },
         { sql: 'DELETE FROM daily_totals WHERE device_id = ?', args: [id] },
         { sql: 'UPDATE groups SET created_by = NULL WHERE created_by = ?', args: [id] },
@@ -251,12 +289,19 @@ export function createSqlDb(sql: SqlExecutor): Db {
       }));
     },
 
-    async leaveGroup(groupId, deviceId) {
+    async leaveGroup(groupId, deviceId, now = Date.now()) {
       const [removed] = await sql.batch([
         {
           sql: 'DELETE FROM memberships WHERE group_id = ? AND device_id = ?',
           args: [groupId, deviceId],
         },
+        // P18b: out of the group's live sessions too (non-members can't see them any more).
+        {
+          sql: `DELETE FROM session_participants WHERE device_id = ?
+                  AND session_id IN (SELECT id FROM group_sessions WHERE group_id = ?)`,
+          args: [deviceId, groupId],
+        },
+        endAbandoned(now),
         promoteOwner(groupId),
         ...pruneGroup(groupId),
         ...pruneUnshared(deviceId),
@@ -388,6 +433,98 @@ export function createSqlDb(sql: SqlExecutor): Db {
       return num(rows[0]?.n);
     },
 
+    async startLiveSession(n) {
+      const [insert] = await sql.batch([
+        {
+          sql: `INSERT INTO group_sessions
+                  (id, group_id, host_device_id, goal, planned_minutes, started_at, ends_at)
+                SELECT ?, ?, ?, ?, ?, ?, ?
+                WHERE EXISTS (SELECT 1 FROM memberships WHERE group_id = ? AND device_id = ?)
+                  AND NOT EXISTS (SELECT 1 FROM group_sessions s
+                                  WHERE s.group_id = ? AND ${runningSql('s')})
+                  AND NOT ${busySql(null)}`,
+          args: [
+            n.id,
+            n.groupId,
+            n.hostDeviceId,
+            n.goal,
+            n.plannedMinutes,
+            n.startedAt,
+            n.endsAt,
+            n.groupId,
+            n.hostDeviceId,
+            n.groupId,
+            n.startedAt,
+            n.hostDeviceId,
+            n.startedAt,
+          ],
+        },
+        {
+          sql: `INSERT INTO session_participants
+                  (session_id, device_id, status, joined_at, last_heartbeat_at)
+                SELECT ?, ?, 'focusing', ?, ?
+                WHERE EXISTS (SELECT 1 FROM group_sessions WHERE id = ? AND host_device_id = ?)
+                ON CONFLICT DO NOTHING`,
+          args: [n.id, n.hostDeviceId, n.startedAt, n.startedAt, n.id, n.hostDeviceId],
+        },
+      ]);
+      if (insert?.rowsAffected === 1) return { status: 'started' };
+      const { rows } = await sql.execute({
+        sql: `SELECT EXISTS (SELECT 1 FROM memberships WHERE group_id = ? AND device_id = ?) AS member,
+                     EXISTS (SELECT 1 FROM group_sessions s
+                             WHERE s.group_id = ? AND ${runningSql('s')}) AS running`,
+        args: [n.groupId, n.hostDeviceId, n.groupId, n.startedAt],
+      });
+      if (num(rows[0]?.member) !== 1) return { status: 'not_member' };
+      return num(rows[0]?.running) === 1 ? { status: 'session_running' } : { status: 'busy' };
+    },
+
+    async listLiveSessions(deviceId, now) {
+      return loadLive(sql, runningSql('s'), [now], deviceId, now);
+    },
+
+    async liveSession(sessionId, deviceId, now) {
+      return (await loadLive(sql, 's.id = ?', [sessionId], deviceId, now))[0] ?? null;
+    },
+
+    async joinLiveSession(sessionId, deviceId, now) {
+      const [insert] = await sql.batch([
+        {
+          sql: `INSERT INTO session_participants
+                  (session_id, device_id, status, joined_at, last_heartbeat_at)
+                SELECT s.id, ?, 'focusing', ?, ? FROM group_sessions s
+                WHERE s.id = ?
+                  AND EXISTS (SELECT 1 FROM memberships m
+                              WHERE m.group_id = s.group_id AND m.device_id = ?)
+                  AND ${runningSql('s')}
+                  AND NOT ${busySql('s')}
+                ON CONFLICT DO NOTHING`,
+          args: [deviceId, now, now, sessionId, deviceId, now, deviceId, now],
+        },
+        heartbeat(sessionId, deviceId, now),
+      ]);
+      return (insert?.rowsAffected ?? 0) > 0;
+    },
+
+    async leaveLiveSession(sessionId, deviceId, now) {
+      const [left] = await sql.batch([
+        {
+          sql: `UPDATE session_participants SET status = 'left', left_at = ?
+                WHERE session_id = ? AND device_id = ? AND status = 'focusing'
+                  AND EXISTS (SELECT 1 FROM group_sessions s
+                              WHERE s.id = session_participants.session_id
+                                AND s.ended_at IS NULL AND s.ends_at > ?)`,
+          args: [now, sessionId, deviceId, now],
+        },
+        endAbandoned(now),
+      ]);
+      return (left?.rowsAffected ?? 0) > 0;
+    },
+
+    async heartbeatLiveSession(sessionId, deviceId, now) {
+      return (await sql.execute(heartbeat(sessionId, deviceId, now))).rowsAffected > 0;
+    },
+
     async addErrorLog(e) {
       await sql.execute({
         sql: `INSERT INTO error_logs (source, route, message, extension_version, created_at)
@@ -423,16 +560,16 @@ export function createSqlDb(sql: SqlExecutor): Db {
     },
 
     async cleanup(now) {
-      const [errors, goals, presence, participants, limits, totals] = await sql.batch([
+      const liveCutoff = now - LIVE_SESSION_KEEP_MS;
+      const results = await sql.batch([
         {
           sql: 'DELETE FROM error_logs WHERE created_at < ?',
           args: [now - ERROR_LOG_MAX_AGE_MS],
         },
         {
-          // Ended (or past the planned end, if the host never ended it) more than 24 h ago.
+          // Ended (or past the shared end time) more than 24 h ago.
           sql: `UPDATE group_sessions SET goal = NULL
-                WHERE goal IS NOT NULL
-                  AND COALESCE(ended_at, started_at + planned_minutes * 60000) < ?`,
+                WHERE goal IS NOT NULL AND COALESCE(ended_at, ends_at) < ?`,
           args: [now - GOAL_AFTER_END_MS],
         },
         { sql: 'DELETE FROM device_presence WHERE expires_at < ?', args: [now] },
@@ -448,7 +585,31 @@ export function createSqlDb(sql: SqlExecutor): Db {
           sql: 'DELETE FROM daily_totals WHERE local_date < ?',
           args: [addDays(utcDate(now), -DAILY_TOTALS_KEEP_DAYS)],
         },
+        // P18b: live sessions past their shared end time: whoever was still in it finished.
+        {
+          sql: `UPDATE session_participants SET status = 'finished'
+                WHERE status = 'focusing'
+                  AND session_id IN (SELECT id FROM group_sessions WHERE ends_at <= ?)`,
+          args: [now],
+        },
+        {
+          sql: 'UPDATE group_sessions SET ended_at = ends_at WHERE ended_at IS NULL AND ends_at <= ?',
+          args: [now],
+        },
+        // 24 h after the end the whole session goes (its goal is already cleared above), with
+        // its participant rows.
+        {
+          sql: `DELETE FROM session_participants WHERE session_id IN
+                  (SELECT id FROM group_sessions WHERE COALESCE(ended_at, ends_at) < ?)`,
+          args: [liveCutoff],
+        },
+        {
+          sql: 'DELETE FROM group_sessions WHERE COALESCE(ended_at, ends_at) < ?',
+          args: [liveCutoff],
+        },
       ]);
+      const [errors, goals, presence, participants, limits, totals, , ended, , liveDeleted] =
+        results;
       return {
         errorLogsDeleted: errors?.rowsAffected ?? 0,
         goalsCleared: goals?.rowsAffected ?? 0,
@@ -456,6 +617,8 @@ export function createSqlDb(sql: SqlExecutor): Db {
         participantRowsDeleted: participants?.rowsAffected ?? 0,
         rateLimitRowsDeleted: limits?.rowsAffected ?? 0,
         dailyTotalsDeleted: totals?.rowsAffected ?? 0,
+        groupSessionsEnded: ended?.rowsAffected ?? 0,
+        groupSessionsDeleted: liveDeleted?.rowsAffected ?? 0,
       };
     },
 
@@ -463,4 +626,75 @@ export function createSqlDb(sql: SqlExecutor): Db {
       await sql.close();
     },
   };
+}
+
+/** P18b: my heartbeat in a live session I'm still focusing in (before its end). */
+function heartbeat(sessionId: string, deviceId: string, now: number): SqlStatement {
+  return {
+    sql: `UPDATE session_participants SET last_heartbeat_at = ?
+          WHERE session_id = ? AND device_id = ? AND status = 'focusing'
+            AND EXISTS (SELECT 1 FROM group_sessions s WHERE s.id = session_participants.session_id
+                          AND s.ended_at IS NULL AND s.ends_at > ?)`,
+    args: [now, sessionId, deviceId, now],
+  };
+}
+
+/** P18b: live sessions matching `where` in groups the viewer is in, as the viewer sees them. */
+async function loadLive(
+  sql: SqlExecutor,
+  where: string,
+  args: SqlValue[],
+  viewerId: string,
+  now: number,
+): Promise<LiveSession[]> {
+  const sessions = await sql.execute({
+    sql: `SELECT s.id, s.group_id, g.name AS group_name, s.host_device_id, s.goal,
+                 s.planned_minutes, s.started_at, s.ends_at, s.ended_at
+          FROM group_sessions s
+            JOIN groups g ON g.id = s.group_id
+            JOIN memberships mine ON mine.group_id = s.group_id AND mine.device_id = ?
+          WHERE ${where}
+          ORDER BY mine.joined_at, s.started_at`,
+    args: [viewerId, ...args],
+  });
+  if (sessions.rows.length === 0) return [];
+  const ids = sessions.rows.map((r) => String(r.id));
+  const parts = await sql.execute({
+    sql: `SELECT p.session_id, p.device_id, d.display_name, p.status, p.joined_at,
+                 p.last_heartbeat_at, p.left_at, COALESCE(m.share_minutes, 0) AS share_minutes
+          FROM session_participants p
+            JOIN devices d ON d.id = p.device_id
+            JOIN group_sessions s ON s.id = p.session_id
+            LEFT JOIN memberships m ON m.group_id = s.group_id AND m.device_id = p.device_id
+          WHERE p.session_id IN (${ids.map(() => '?').join(', ')})`,
+    args: ids,
+  });
+  return sessions.rows.map((r) =>
+    buildLiveSession(
+      {
+        id: String(r.id),
+        groupId: String(r.group_id),
+        groupName: String(r.group_name),
+        hostDeviceId: str(r.host_device_id),
+        goal: str(r.goal),
+        plannedMinutes: num(r.planned_minutes),
+        startedAt: num(r.started_at),
+        endsAt: num(r.ends_at),
+        endedAt: r.ended_at === null ? null : num(r.ended_at),
+      },
+      parts.rows
+        .filter((p) => String(p.session_id) === String(r.id))
+        .map((p) => ({
+          deviceId: String(p.device_id),
+          displayName: String(p.display_name),
+          status: String(p.status) as ParticipantStatus,
+          joinedAt: num(p.joined_at),
+          lastHeartbeatAt: num(p.last_heartbeat_at),
+          leftAt: p.left_at === null ? null : num(p.left_at),
+          sharesMinutes: num(p.share_minutes) === 1,
+        })),
+      viewerId,
+      now,
+    ),
+  );
 }

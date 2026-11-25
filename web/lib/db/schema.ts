@@ -126,6 +126,23 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS daily_totals_by_date ON daily_totals (local_date)`,
     ],
   },
+  {
+    version: 3,
+    name: 'live-group-sessions',
+    statements: [
+      // P18b: the shared end time (server clock) is the source of truth. Normally
+      // started_at + planned_minutes; stored on its own so the E2E test server can run sessions
+      // of a few seconds. Rows from before (there were no endpoints yet) get the planned end.
+      `ALTER TABLE group_sessions ADD COLUMN ends_at INTEGER NOT NULL DEFAULT 0`,
+      `UPDATE group_sessions SET ends_at = started_at + planned_minutes * 60000 WHERE ends_at = 0`,
+      `CREATE INDEX IF NOT EXISTS group_sessions_by_end ON group_sessions (ends_at)`,
+      // When a participant left early (null otherwise). With joined_at it gives the minutes in the
+      // session, so the extension never has to send them. `focus_minutes` stays unused.
+      `ALTER TABLE session_participants ADD COLUMN left_at INTEGER`,
+      `CREATE INDEX IF NOT EXISTS session_participants_by_device
+         ON session_participants (device_id)`,
+    ],
+  },
 ];
 
 /** Every table the app creates (for tests and docs). */

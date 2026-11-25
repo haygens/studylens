@@ -25,7 +25,7 @@ export function groupNotFound(message = 'No group has this code. Check it and tr
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export type GroupSubpath = 'membership' | 'sharing' | 'overview';
+export type GroupSubpath = 'membership' | 'sharing' | 'overview' | 'sessions';
 
 /** The `[id]` of /api/groups/<id>/<sub>, or null if it isn't a group ID. */
 export function groupIdFromPath(pathname: string, sub: GroupSubpath = 'membership'): string | null {

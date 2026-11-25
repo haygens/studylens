@@ -1,11 +1,32 @@
-import { addDays, utcDate, type GroupRole, type GroupSummary } from '@studylens/shared';
+import {
+  addDays,
+  utcDate,
+  type GroupRole,
+  type GroupSummary,
+  type ParticipantStatus,
+} from '@studylens/shared';
+import { buildLiveSession, isRunning, type LiveSessionRow } from './live';
 import { buildOverviewMembers, historyStart } from './overview';
 import {
   DAILY_TOTALS_KEEP_DAYS,
   ERROR_LOG_MAX_AGE_MS,
+  GOAL_AFTER_END_MS,
+  LIVE_SESSION_KEEP_MS,
+  PARTICIPANT_STALE_MS,
   RATE_LIMIT_ROW_MAX_AGE_MS,
 } from './retention';
 import type { Db, Device, ErrorLog } from './types';
+
+type StoredLive = Omit<LiveSessionRow, 'groupName'>;
+
+interface StoredParticipant {
+  sessionId: string;
+  deviceId: string;
+  status: ParticipantStatus;
+  joinedAt: number;
+  lastHeartbeatAt: number;
+  leftAt: number | null;
+}
 
 interface StoredGroup {
   id: string;
@@ -26,8 +47,8 @@ interface Membership {
 
 /**
  * In-memory stub. Data is lost on restart — for local development without a database file and
- * for quick tests. It has devices, groups and memberships (P16) and daily totals and presence
- * (P18), but none of the P18b (live group session) tables yet.
+ * for quick tests. It has devices, groups and memberships (P16), daily totals and presence (P18)
+ * and live group sessions (P18b), with the same rules as the SQL version (db/contract.ts).
  */
 export function createMemoryDb(): Db {
   const devices = new Map<string, Device & { tokenHash: string }>();
@@ -40,6 +61,56 @@ export function createMemoryDb(): Db {
   const totals = new Map<string, Map<string, number>>();
   /** `deviceId` → presence. */
   const presence = new Map<string, { since: number; expiresAt: number }>();
+  /** P18b. */
+  let live: StoredLive[] = [];
+  let participants: StoredParticipant[] = [];
+
+  const partsOf = (sessionId: string) => participants.filter((p) => p.sessionId === sessionId);
+  const running = (s: StoredLive, now: number) => isRunning(s, partsOf(s.id), now);
+  const isMember = (groupId: string, deviceId: string) =>
+    memberships.some((m) => m.groupId === groupId && m.deviceId === deviceId);
+  /** Focusing in a live session (other than `exceptId`) that hasn't reached its end. */
+  const busy = (deviceId: string, now: number, exceptId: string | null) =>
+    participants.some((p) => {
+      if (p.deviceId !== deviceId || p.status !== 'focusing' || p.sessionId === exceptId) {
+        return false;
+      }
+      const s = live.find((x) => x.id === p.sessionId);
+      return !!s && s.endedAt === null && s.endsAt > now;
+    });
+  /** Sessions nobody is focusing in any more end now (same rule as the SQL version). */
+  function endAbandoned(now: number) {
+    for (const s of live) {
+      const anyone = partsOf(s.id).some((p) => p.status === 'focusing');
+      if (s.endedAt === null && s.endsAt > now && s.startedAt <= now && !anyone) s.endedAt = now;
+    }
+  }
+  function viewLive(s: StoredLive, viewerId: string, now: number) {
+    const group = groups.get(s.groupId)!;
+    return buildLiveSession(
+      { ...s, groupName: group.name },
+      partsOf(s.id).map((p) => ({
+        deviceId: p.deviceId,
+        displayName: devices.get(p.deviceId)?.displayName ?? '',
+        status: p.status,
+        joinedAt: p.joinedAt,
+        lastHeartbeatAt: p.lastHeartbeatAt,
+        leftAt: p.leftAt,
+        sharesMinutes: memberships.some(
+          (m) => m.groupId === s.groupId && m.deviceId === p.deviceId && m.shareMinutes,
+        ),
+      })),
+      viewerId,
+      now,
+    );
+  }
+  const heartbeat = (sessionId: string, deviceId: string, now: number) => {
+    const s = live.find((x) => x.id === sessionId);
+    const p = participants.find((x) => x.sessionId === sessionId && x.deviceId === deviceId);
+    if (!s || !p || p.status !== 'focusing' || s.endedAt !== null || s.endsAt <= now) return false;
+    p.lastHeartbeatAt = now;
+    return true;
+  };
 
   const byJoinOrder = (a: Membership, b: Membership) =>
     a.joinedAt - b.joinedAt || (a.deviceId < b.deviceId ? -1 : a.deviceId > b.deviceId ? 1 : 0);
@@ -64,6 +135,9 @@ export function createMemoryDb(): Db {
     const left = membersOf(groupId);
     if (left.length === 0) {
       groups.delete(groupId);
+      const gone = new Set(live.filter((s) => s.groupId === groupId).map((s) => s.id));
+      live = live.filter((s) => !gone.has(s.id));
+      participants = participants.filter((p) => !gone.has(p.sessionId));
       return;
     }
     if (!left.some((m) => m.role === 'owner')) left[0]!.role = 'owner';
@@ -111,10 +185,13 @@ export function createMemoryDb(): Db {
       if (d) d.displayName = displayName;
     },
 
-    async deleteDevice(id) {
+    async deleteDevice(id, now = Date.now()) {
       const groupIds = memberships.filter((m) => m.deviceId === id).map((m) => m.groupId);
       memberships = memberships.filter((m) => m.deviceId !== id);
       for (const g of groupIds) afterLeaving(g);
+      participants = participants.filter((p) => p.deviceId !== id);
+      endAbandoned(now);
+      for (const s of live) if (s.hostDeviceId === id) s.hostDeviceId = null;
       for (const g of groups.values()) if (g.createdBy === id) g.createdBy = null;
       totals.delete(id);
       presence.delete(id);
@@ -188,10 +265,15 @@ export function createMemoryDb(): Db {
         });
     },
 
-    async leaveGroup(groupId, deviceId) {
+    async leaveGroup(groupId, deviceId, now = Date.now()) {
       const before = memberships.length;
       memberships = memberships.filter((m) => !(m.groupId === groupId && m.deviceId === deviceId));
       if (memberships.length === before) return false;
+      const inGroup = new Set(live.filter((s) => s.groupId === groupId).map((s) => s.id));
+      participants = participants.filter(
+        (p) => !(p.deviceId === deviceId && inGroup.has(p.sessionId)),
+      );
+      endAbandoned(now);
       afterLeaving(groupId);
       pruneUnshared(deviceId);
       return true;
@@ -272,6 +354,85 @@ export function createMemoryDb(): Db {
       return focusing.size;
     },
 
+    async startLiveSession(n) {
+      if (!isMember(n.groupId, n.hostDeviceId)) return { status: 'not_member' };
+      if (live.some((s) => s.groupId === n.groupId && running(s, n.startedAt))) {
+        return { status: 'session_running' };
+      }
+      if (busy(n.hostDeviceId, n.startedAt, null)) return { status: 'busy' };
+      live.push({
+        id: n.id,
+        groupId: n.groupId,
+        hostDeviceId: n.hostDeviceId,
+        goal: n.goal,
+        plannedMinutes: n.plannedMinutes,
+        startedAt: n.startedAt,
+        endsAt: n.endsAt,
+        endedAt: null,
+      });
+      participants.push({
+        sessionId: n.id,
+        deviceId: n.hostDeviceId,
+        status: 'focusing',
+        joinedAt: n.startedAt,
+        lastHeartbeatAt: n.startedAt,
+        leftAt: null,
+      });
+      return { status: 'started' };
+    },
+
+    async listLiveSessions(deviceId, now) {
+      const order = new Map(
+        memberships.filter((m) => m.deviceId === deviceId).map((m) => [m.groupId, m.joinedAt]),
+      );
+      return live
+        .filter((s) => order.has(s.groupId) && running(s, now))
+        .sort((a, b) => order.get(a.groupId)! - order.get(b.groupId)! || a.startedAt - b.startedAt)
+        .map((s) => viewLive(s, deviceId, now));
+    },
+
+    async liveSession(sessionId, deviceId, now) {
+      const s = live.find((x) => x.id === sessionId);
+      return s && isMember(s.groupId, deviceId) ? viewLive(s, deviceId, now) : null;
+    },
+
+    async joinLiveSession(sessionId, deviceId, now) {
+      const s = live.find((x) => x.id === sessionId);
+      if (!s || !isMember(s.groupId, deviceId)) return false;
+      const existing = participants.find(
+        (p) => p.sessionId === sessionId && p.deviceId === deviceId,
+      );
+      if (existing || !running(s, now) || busy(deviceId, now, sessionId)) {
+        heartbeat(sessionId, deviceId, now);
+        return false;
+      }
+      participants.push({
+        sessionId,
+        deviceId,
+        status: 'focusing',
+        joinedAt: now,
+        lastHeartbeatAt: now,
+        leftAt: null,
+      });
+      return true;
+    },
+
+    async leaveLiveSession(sessionId, deviceId, now) {
+      const s = live.find((x) => x.id === sessionId);
+      const p = participants.find((x) => x.sessionId === sessionId && x.deviceId === deviceId);
+      if (!s || !p || p.status !== 'focusing' || s.endedAt !== null || s.endsAt <= now) {
+        return false;
+      }
+      p.status = 'left';
+      p.leftAt = now;
+      endAbandoned(now);
+      return true;
+    },
+
+    async heartbeatLiveSession(sessionId, deviceId, now) {
+      return heartbeat(sessionId, deviceId, now);
+    },
+
     async addErrorLog(e) {
       errorLogs.push({ ...e, id: nextErrorId++ });
     },
@@ -321,13 +482,40 @@ export function createMemoryDb(): Db {
           }
         }
       }
+      // P18b, in the same order as the SQL version.
+      let goalsCleared = 0;
+      for (const s of live) {
+        if (s.goal !== null && (s.endedAt ?? s.endsAt) < now - GOAL_AFTER_END_MS) {
+          s.goal = null;
+          goalsCleared++;
+        }
+      }
+      const partsBefore = participants.length;
+      participants = participants.filter((p) => p.lastHeartbeatAt >= now - PARTICIPANT_STALE_MS);
+      const participantRowsDeleted = partsBefore - participants.length;
+      let groupSessionsEnded = 0;
+      for (const s of live) {
+        if (s.endsAt > now) continue;
+        for (const p of partsOf(s.id)) if (p.status === 'focusing') p.status = 'finished';
+        if (s.endedAt === null) {
+          s.endedAt = s.endsAt;
+          groupSessionsEnded++;
+        }
+      }
+      const old = new Set(
+        live.filter((s) => (s.endedAt ?? s.endsAt) < now - LIVE_SESSION_KEEP_MS).map((s) => s.id),
+      );
+      live = live.filter((s) => !old.has(s.id));
+      participants = participants.filter((p) => !old.has(p.sessionId));
       return {
         errorLogsDeleted: before - errorLogs.length,
-        goalsCleared: 0,
+        goalsCleared,
         presenceRowsDeleted,
-        participantRowsDeleted: 0,
+        participantRowsDeleted,
         rateLimitRowsDeleted,
         dailyTotalsDeleted,
+        groupSessionsEnded,
+        groupSessionsDeleted: old.size,
       };
     },
 

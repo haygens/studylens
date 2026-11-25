@@ -8,7 +8,7 @@ import {
   SHARING_OFF,
   type GroupSharing,
 } from '@studylens/shared';
-import { ERROR_LOG_MAX_AGE_MS, RATE_LIMIT_ROW_MAX_AGE_MS } from './retention';
+import { ERROR_LOG_MAX_AGE_MS, GOAL_AFTER_END_MS, RATE_LIMIT_ROW_MAX_AGE_MS } from './retention';
 import type { Db } from './types';
 
 const HASH_A = 'a'.repeat(64);
@@ -439,6 +439,207 @@ export function describeDbContract(
             { localDate: '2026-11-08', focusMinutes: 6 },
           ]);
           expect(view?.members[1]?.focusingNow).toBe(true);
+        });
+      });
+
+      describe('live group sessions (P18b)', () => {
+        const MIN = 60_000;
+        const ONLY_MINUTES = { focusMinutes: true, focusingNow: false };
+        /** Sam (d1, owner, shares minutes) and Alex (d2, shares nothing) in g1. */
+        async function pair() {
+          await device('d1', 'Sam');
+          await device('d2', 'Alex');
+          await group('g1', 'AAAAAAAA', 'd1', NOW, ONLY_MINUTES);
+          await db.joinGroup('AAAAAAAA', 'd2', NOW + 1, LIMITS, SHARING_OFF);
+        }
+        const start = (id = 's1', host = 'd1', at = NOW, minutes = 25, groupId = 'g1') =>
+          db.startLiveSession({
+            id,
+            groupId,
+            hostDeviceId: host,
+            goal: 'Chapter 4',
+            plannedMinutes: minutes,
+            startedAt: at,
+            endsAt: at + minutes * MIN,
+          });
+
+        it('starts a session: the host is in it; members see it, others do not', async () => {
+          await pair();
+          await device('d3', 'Kim');
+          expect(await start()).toEqual({ status: 'started' });
+          const seen = await db.listLiveSessions('d2', NOW + MIN);
+          expect(seen).toEqual([
+            {
+              id: 's1',
+              groupId: 'g1',
+              groupName: 'Group g1',
+              goal: 'Chapter 4',
+              plannedMinutes: 25,
+              startedAt: NOW,
+              endsAt: NOW + 25 * MIN,
+              state: 'running',
+              me: null,
+              participants: [
+                {
+                  displayName: 'Sam',
+                  isMe: false,
+                  isHost: true,
+                  status: 'focusing',
+                  recentlySeen: true,
+                  focusMinutes: null,
+                },
+              ],
+            },
+          ]);
+          expect((await db.listLiveSessions('d1', NOW + MIN))[0]?.me).toBe('focusing');
+          expect(await db.listLiveSessions('d3', NOW + MIN)).toEqual([]);
+          expect(await db.liveSession('s1', 'd3', NOW)).toBeNull();
+          expect(await db.liveSession('nope', 'd1', NOW)).toBeNull();
+          // Not a member: can't start one.
+          expect(await start('s9', 'd3')).toEqual({ status: 'not_member' });
+        });
+
+        it('one running session per group; a new one once it is over', async () => {
+          await pair();
+          await start();
+          expect(await start('s2', 'd2', NOW + MIN)).toEqual({ status: 'session_running' });
+          // After the shared end time, a new one can start.
+          expect(await start('s2', 'd2', NOW + 25 * MIN)).toEqual({ status: 'started' });
+          expect((await db.listLiveSessions('d1', NOW + 26 * MIN)).map((s) => s.id)).toEqual([
+            's2',
+          ]);
+        });
+
+        it('one live session at a time per device, across groups', async () => {
+          await pair();
+          await group('g2', 'BBBBBBBB', 'd2', NOW);
+          await db.joinGroup('BBBBBBBB', 'd1', NOW, LIMITS, SHARING_OFF);
+          await start();
+          expect(await start('s2', 'd1', NOW + MIN, 25, 'g2')).toEqual({ status: 'busy' });
+          expect(await start('s2', 'd2', NOW + MIN, 25, 'g2')).toEqual({ status: 'started' });
+          expect(await db.joinLiveSession('s2', 'd1', NOW + 2 * MIN)).toBe(false);
+          await db.leaveLiveSession('s1', 'd1', NOW + 3 * MIN);
+          expect(await db.joinLiveSession('s2', 'd1', NOW + 4 * MIN)).toBe(true);
+        });
+
+        it('joining late shares the same end; joining twice is a heartbeat', async () => {
+          await pair();
+          await start();
+          expect(await db.joinLiveSession('s1', 'd2', NOW + 10 * MIN)).toBe(true);
+          expect(await db.joinLiveSession('s1', 'd2', NOW + 11 * MIN)).toBe(false);
+          const s = await db.liveSession('s1', 'd2', NOW + 12 * MIN);
+          expect(s?.endsAt).toBe(NOW + 25 * MIN);
+          expect(s?.me).toBe('focusing');
+          expect(s?.participants.map((p) => [p.displayName, p.isMe])).toEqual([
+            ['Sam', false],
+            ['Alex', true],
+          ]);
+          // Too late: the session is over.
+          await device('d3', 'Kim');
+          await db.joinGroup('AAAAAAAA', 'd3', NOW, LIMITS, SHARING_OFF);
+          expect(await db.joinLiveSession('s1', 'd3', NOW + 25 * MIN)).toBe(false);
+          expect((await db.liveSession('s1', 'd3', NOW + 25 * MIN))?.me).toBeNull();
+        });
+
+        it('heartbeats keep a participant "recently seen"', async () => {
+          await pair();
+          await start();
+          await db.joinLiveSession('s1', 'd2', NOW);
+          const alex = async (at: number) =>
+            (await db.liveSession('s1', 'd1', at))?.participants.find(
+              (p) => p.displayName === 'Alex',
+            );
+          expect((await alex(NOW + 3 * MIN - 1))?.recentlySeen).toBe(true);
+          expect((await alex(NOW + 3 * MIN))?.recentlySeen).toBe(false);
+          expect(await db.heartbeatLiveSession('s1', 'd2', NOW + 4 * MIN)).toBe(true);
+          expect((await alex(NOW + 5 * MIN))?.recentlySeen).toBe(true);
+          // Not in it / after the end: nothing recorded.
+          await device('d3');
+          expect(await db.heartbeatLiveSession('s1', 'd3', NOW + 5 * MIN)).toBe(false);
+          expect(await db.heartbeatLiveSession('s1', 'd2', NOW + 25 * MIN)).toBe(false);
+        });
+
+        it('leaving early; the host leaving keeps it running; minutes only if shared', async () => {
+          await pair();
+          await device('d3', 'Kim');
+          await db.joinGroup('AAAAAAAA', 'd3', NOW, LIMITS, ONLY_MINUTES);
+          await start();
+          await db.joinLiveSession('s1', 'd2', NOW + 5 * MIN);
+          await db.joinLiveSession('s1', 'd3', NOW + 5 * MIN);
+          // The host leaves after 10 minutes: still running for the others.
+          expect(await db.leaveLiveSession('s1', 'd1', NOW + 10 * MIN + 30_000)).toBe(true);
+          expect(await db.leaveLiveSession('s1', 'd1', NOW + 11 * MIN)).toBe(false);
+          // Leaving is final for that session.
+          expect(await db.joinLiveSession('s1', 'd1', NOW + 12 * MIN)).toBe(false);
+          let s = await db.liveSession('s1', 'd2', NOW + 12 * MIN);
+          expect(s?.state).toBe('running');
+          expect(s?.participants.map((p) => [p.displayName, p.status, p.focusMinutes])).toEqual([
+            ['Sam', 'left', 10],
+            ['Alex', 'focusing', null],
+            ['Kim', 'focusing', null],
+          ]);
+          // At the end: finished, minutes from join to the shared end — Alex shares none.
+          s = await db.liveSession('s1', 'd1', NOW + 25 * MIN);
+          expect(s?.state).toBe('ended');
+          expect(s?.me).toBe('left');
+          expect(s?.participants.map((p) => [p.displayName, p.status, p.focusMinutes])).toEqual([
+            ['Sam', 'left', 10],
+            ['Alex', 'finished', null],
+            ['Kim', 'finished', 20],
+          ]);
+          // Leaving after the end changes nothing.
+          expect(await db.leaveLiveSession('s1', 'd2', NOW + 26 * MIN)).toBe(false);
+        });
+
+        it('ends early when nobody is focusing any more, so a new one can start', async () => {
+          await pair();
+          await start();
+          await db.joinLiveSession('s1', 'd2', NOW);
+          await db.leaveLiveSession('s1', 'd1', NOW + MIN);
+          await db.leaveLiveSession('s1', 'd2', NOW + 2 * MIN);
+          expect((await db.liveSession('s1', 'd1', NOW + 3 * MIN))?.state).toBe('ended');
+          expect(await db.listLiveSessions('d1', NOW + 3 * MIN)).toEqual([]);
+          expect(await start('s2', 'd2', NOW + 3 * MIN)).toEqual({ status: 'started' });
+        });
+
+        it('leaving the group or deleting the device drops out of its live sessions', async () => {
+          await pair();
+          await device('d3', 'Kim');
+          await db.joinGroup('AAAAAAAA', 'd3', NOW, LIMITS, SHARING_OFF);
+          await start();
+          await db.joinLiveSession('s1', 'd2', NOW);
+          await db.joinLiveSession('s1', 'd3', NOW);
+          await db.leaveGroup('g1', 'd2', NOW + MIN);
+          await db.deleteDevice('d3', NOW + MIN);
+          const s = await db.liveSession('s1', 'd1', NOW + 2 * MIN);
+          expect(s?.participants.map((p) => p.displayName)).toEqual(['Sam']);
+          expect(s?.state).toBe('running');
+          // The host goes too: nobody is focusing, the session ends.
+          await db.leaveGroup('g1', 'd1', NOW + 3 * MIN);
+          await device('d4', 'Lee');
+          await db.joinGroup('AAAAAAAA', 'd4', NOW, LIMITS, SHARING_OFF);
+          // (The group was deleted with its last member; d4 can't find it.)
+          expect(await db.listLiveSessions('d4', NOW + 4 * MIN)).toEqual([]);
+        });
+
+        it('cleanup ends sessions at their end time and deletes them (and goals) after 24 h', async () => {
+          await pair();
+          await start();
+          await db.joinLiveSession('s1', 'd2', NOW);
+          const first = await db.cleanup(NOW + 26 * MIN);
+          expect(first.groupSessionsEnded).toBe(1);
+          expect(first.groupSessionsDeleted).toBe(0);
+          const after = await db.liveSession('s1', 'd1', NOW + 26 * MIN);
+          expect(after?.state).toBe('ended');
+          expect(after?.participants.map((p) => p.status)).toEqual(['finished', 'finished']);
+          expect(after?.goal).toBe('Chapter 4');
+          // The API hides the goal 24 h after the end, even before the cleanup runs.
+          const end = NOW + 25 * MIN;
+          expect((await db.liveSession('s1', 'd1', end + GOAL_AFTER_END_MS + 1))?.goal).toBeNull();
+          const later = await db.cleanup(end + GOAL_AFTER_END_MS + 1);
+          expect(later.goalsCleared).toBe(1);
+          expect(later.groupSessionsDeleted).toBe(1);
+          expect(await db.liveSession('s1', 'd1', end + GOAL_AFTER_END_MS + 2)).toBeNull();
         });
       });
     });

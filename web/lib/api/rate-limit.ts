@@ -40,6 +40,17 @@ export const RATE_LIMITS = {
   updateSharing: { name: 'sharing', limit: 60, windowMs: HOUR },
   groupOverview: { name: 'overview', limit: 600, windowMs: HOUR },
   focusingNow: { name: 'focusing', limit: 240, windowMs: HOUR },
+  /**
+   * P18b live group sessions. The extension sends a heartbeat on the session's 1-minute tick
+   * (≈ 60/hour) and polls every 15 s only while the popup or the Study groups tab is open
+   * (≈ 240/hour each, list and state together stay under the limits below).
+   */
+  startLive: { name: 'live-start', limit: 20, windowMs: HOUR },
+  joinLive: { name: 'live-join', limit: 60, windowMs: HOUR },
+  leaveLive: { name: 'live-leave', limit: 60, windowMs: HOUR },
+  liveHeartbeat: { name: 'live-heartbeat', limit: 150, windowMs: HOUR },
+  listLive: { name: 'live-list', limit: 600, windowMs: HOUR },
+  liveState: { name: 'live-state', limit: 900, windowMs: HOUR },
 } satisfies Record<string, RateLimitRule>;
 
 /**

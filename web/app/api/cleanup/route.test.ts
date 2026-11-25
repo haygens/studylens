@@ -52,16 +52,26 @@ describe('GET /api/cleanup', () => {
       },
       { sql: "INSERT INTO groups VALUES ('g1', 'G', 'ABC123', 'd1', ?)", args: [now] },
       {
-        sql: "INSERT INTO group_sessions VALUES ('s1', 'g1', 'd1', 'Read ch. 3', 25, ?, ?)",
-        args: [now - 3 * 86_400_000, now - 3 * 86_400_000 + 25 * 60_000],
+        sql: "INSERT INTO group_sessions VALUES ('s1', 'g1', 'd1', 'Read ch. 3', 25, ?, ?, ?)",
+        args: [
+          now - 3 * 86_400_000,
+          now - 3 * 86_400_000 + 25 * 60_000,
+          now - 3 * 86_400_000 + 25 * 60_000,
+        ],
       },
     ]);
 
     const res = await call(`Bearer ${SECRET}`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ ok: true, errorLogsDeleted: 1, goalsCleared: 1 });
+    expect(await res.json()).toMatchObject({
+      ok: true,
+      errorLogsDeleted: 1,
+      goalsCleared: 1,
+      groupSessionsDeleted: 1,
+    });
     expect((await t().db.listErrorLogs()).map((l) => l.message)).toEqual(['new']);
+    // P18b: the live session (goal included) is gone 24 h after its end.
     const { rows } = await t().sql.execute({ sql: 'SELECT goal FROM group_sessions' });
-    expect(rows[0]!.goal).toBeNull();
+    expect(rows).toEqual([]);
   });
 });

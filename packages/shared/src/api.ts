@@ -55,6 +55,9 @@ export const API_ERROR_CODES = [
   'not_found',
   'group_full',
   'too_many_groups',
+  /** P18b: the group already has a running live session / I can't (re)join this one. */
+  'session_running',
+  'session_over',
   'rate_limited',
   'not_configured',
   'internal_error',

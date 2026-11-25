@@ -21,8 +21,9 @@ describe('InterventionId', () => {
     expect(isInterventionId('opted-out')).toBe(false);
   });
 
-  it('isSessionCondition also accepts opted-out', () => {
+  it('isSessionCondition also accepts opted-out and group (P18b)', () => {
     expect(isSessionCondition('opted-out')).toBe(true);
+    expect(isSessionCondition('group')).toBe(true);
     expect(isSessionCondition('intention')).toBe(true);
     expect(isSessionCondition(null)).toBe(false);
     expect(isSessionCondition('blocking')).toBe(false);

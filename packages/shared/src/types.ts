@@ -17,11 +17,18 @@ export function isInterventionId(value: unknown): value is InterventionId {
  */
 export const OPTED_OUT = 'opted-out' as const;
 
+/**
+ * Recorded on live group focus sessions (P18b, `mode: "group"`). Never randomized and never takes
+ * a slot of the block randomization, so the solo conditions stay balanced. Excluded from the main
+ * analysis. No helper page appears in these sessions.
+ */
+export const GROUP_CONDITION = 'group' as const;
+
 /** What a session's `condition` field can hold (besides null = not assigned). */
-export type SessionCondition = InterventionId | typeof OPTED_OUT;
+export type SessionCondition = InterventionId | typeof OPTED_OUT | typeof GROUP_CONDITION;
 
 export function isSessionCondition(value: unknown): value is SessionCondition {
-  return value === OPTED_OUT || isInterventionId(value);
+  return value === OPTED_OUT || value === GROUP_CONDITION || isInterventionId(value);
 }
 
 /**
@@ -91,8 +98,8 @@ export function isSiteCategory(value: unknown): value is SiteCategory {
 }
 
 /**
- * How a session was run (P13c). Every session so far is `solo`; `group` is for live group focus
- * sessions (P18b). Group sessions are excluded from the main intervention analysis.
+ * How a session was run (P13c). `group` = a live group focus session (P18b, condition `group`);
+ * everything else is `solo`. Group sessions are excluded from the main intervention analysis.
  */
 export const SESSION_MODES = ['solo', 'group'] as const;
 export type SessionMode = (typeof SESSION_MODES)[number];
