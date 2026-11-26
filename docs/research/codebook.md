@@ -5,7 +5,7 @@ File: `studylens-research-YYYY-MM-DD.csv`, made by **My Data → Export for rese
 sends it anywhere.
 
 > **No research data from other people is collected until IRB approval** (with Dr. Su). Until then
-> this export is used only for hs's own N=1 pilot.
+> this export is used only for hs's own N=1 self-test.
 
 - One row per **finished** focus session, sorted by `session_number`. A session that is still
   running is not included.

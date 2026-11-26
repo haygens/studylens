@@ -138,9 +138,12 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       `docs/research/preregistration.md` (OSF template; H1–H3, delay discounting vs habit
       interruption), `analysis/` in R (simulate / analyze / power; glmmTMB, lme4, ordinal),
       `docs/research/summary-for-advisor.md`. R is not installed locally, so the scripts run in the
-      separate **Analysis (R)** workflow on simulated data; `power-results.md` waits for its first
-      run. Still to do: run `analyze.R` on hs's own pilot CSV (needs R locally or a manual
-      upload), and fill in the target N from the power table.
+      separate **Analysis (R)** workflow on simulated data. First run green (2026-11-25): power
+      table in `power-results.md`. With realistic effects, 8–12 participants give only ~20–40%
+      power, and 30 × 8 sessions per condition give ~66–88%. So the study is framed in **two
+      stages**: a pilot (~10–12, estimates only), then a confirmatory study (≥ 30 participants,
+      target 8 solo sessions per condition; inclusion minimum stays 5). hs's own N = 1 CSV is not
+      part of either stage; running `analyze.R` on it needs R locally (optional).
 - [ ] **P20. Results + show and tell** — present the study **design + preregistration draft + hs's
       own N=1 pilot** (2–3 charts from the pilot), the usability feedback from friends, demo script,
       portfolio card (title, link, reflection).

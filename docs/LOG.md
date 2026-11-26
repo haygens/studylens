@@ -1903,3 +1903,51 @@ Problems / open questions:
 Disk space: C: 3.35 GB free, M: 14.44 GB free.
 
 Next piece (from PLAN.md): P20 — Results + show and tell.
+
+## Handoff — 2026-11-25 (P19b complete: power results, two-stage plan)
+
+Done:
+
+- The first **Analysis (R)** run passed (R 4.6.2, glmmTMB 1.1.15.2, 100 simulations per cell). All
+  three R scripts ran and every preregistered model fitted on the simulated dataset.
+- `docs/research/power-results.md`: the real power table, plus a plain-words paragraph.
+  - With the assumed effects (rate ratios 0.78 / 0.74), 8–12 participants give only about 20–40%
+    power.
+  - 30 participants × 8 sessions per condition give 0.69 (friction), 0.88 (intention), 0.66 (both):
+    still under 80% for friction, said honestly.
+  - At 5 sessions per condition only about half the enrolled survive the exclusions
+    (`mean_included` 16.6 of 30), and power collapses.
+- `preregistration.md` and `summary-for-advisor.md` are reframed as **two stages**: (a) a pilot /
+  feasibility study, ~10–12 participants, estimates with CIs only and no confirmatory claims; (b)
+  a confirmatory study, ≥ 30 participants, target 8 solo sessions per condition, N justified by
+  the power simulation and possibly raised by the pilot's estimates before registration.
+  - New prereg section 2.4; 3.1, 3.3 (session target 8, inclusion minimum still 5, explained with
+    `mean_included`), 3.4 (stopping rule per stage), 5.3 (pilot = estimates only) and 7.1 updated.
+  - The author's N = 1 data is now called a "self-test", so it isn't confused with the stage (a)
+    pilot.
+- Everywhere it appears, the "Models" table from the run is labelled SIMULATED: it only shows the
+  pipeline works and is not a result.
+- New questions for Dr. Su: pilot vs confirmatory framing (and whether 30 is acceptable at ~69%
+  power for friction), a recruitment route for 30+ (participant pool), and whether the pilot
+  needs IRB review (same application?).
+- `docs/PLAN.md`: P19b complete.
+
+Changed files: `docs/research/power-results.md`, `docs/research/preregistration.md`,
+`docs/research/summary-for-advisor.md`, `docs/research/codebook.md` (wording), `docs/PLAN.md`,
+`docs/LOG.md`.
+
+Tests: Analysis (R) workflow green (hs). Codebook unit test 27/27. No code changed.
+
+Problems / open questions:
+
+- In the one simulated "Models" dataset (seed 2026), the H1a estimates (rate ratios 0.57 / 0.49)
+  are stronger than the assumed 0.78 / 0.74, and their CIs exclude them. The power grid agrees
+  with the assumed effects, so this is most likely chance for that seed. Still worth confirming
+  over several seeds (noted in power-results.md). This doesn't change any power number.
+- N > 30 hasn't been simulated. Extend the grid (e.g. 40, 50) and use the pilot's estimates before
+  registering stage (b).
+- The advisor summary grew a bit past one page with the stages and power bullets.
+
+Disk space: C: 3.34 GB free, M: 14.44 GB free.
+
+Next piece (from PLAN.md): P20 — Results + show and tell.

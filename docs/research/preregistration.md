@@ -4,7 +4,14 @@
 > Written 2026-11-25 for review by Dr. Amy Su (UW Tacoma). It will be posted on OSF only after the
 > advisor has reviewed it and the IRB has approved the study. **No data from other people has been
 > collected, and none will be until IRB approval.** So far the only data is the author's own N = 1
-> pilot, which is not part of the confirmatory study.
+> self-test, which is not part of either stage.
+>
+> **Two stages (updated 2026-11-25 after the power simulation):** (a) a **pilot / feasibility
+> study** with about 10–12 participants (no confirmatory claims), then (b) a **confirmatory
+> study** with 30 or more participants and a target of 8 solo sessions per condition. This
+> document preregisters stage (b). Stage (a) uses the same procedure and analysis code but only
+> estimates effects (Section 2.4). The pilot's estimates may update the confirmatory N **before**
+> stage (b) is registered.
 
 Structure: the OSF Preregistration template (study information, design, sampling plan, variables,
 analysis plan, other). Analysis code: [`analysis/`](../../analysis/). CSV columns:
@@ -97,7 +104,8 @@ hypotheses**. They are not shown the condition when starting a session, though t
 afterwards in the extension's My Data page. Analysis is not blinded. To limit researcher degrees
 of freedom, the analysis code ([`analysis/analyze.R`](../../analysis/analyze.R)) is written and
 tested on simulated data before any participant data exists, and is registered together with this
-document.
+document. **The model output from that test run is from SIMULATED data and only shows that the
+pipeline works. It is not a result.**
 
 ### 2.3 Study design
 
@@ -120,14 +128,36 @@ document.
 - **Session length:** chosen by the participant (25, 50, or 5–180 minutes). Exposure differences
   are handled with an offset (Section 5).
 
+### 2.4 Two stages: pilot, then confirmatory
+
+The power simulation ([power-results.md](power-results.md)) shows that the effects we consider
+realistic need far more participants than a friend sample can give. With rate ratios 0.78
+(friction) and 0.74 (intention), 8–12 participants give only about 20–40% power for the H1
+attempt contrasts. 30 participants with 8 sessions per condition give about 66–88%. The study is
+therefore split into two stages:
+
+- **(a) Pilot / feasibility study, about 10–12 participants.** It tests usability, adherence (do
+  people reach 8 solo sessions per condition in 4 weeks?), data quality (exclusion rates,
+  answered check-ins, sessions under 5 minutes) and gives **effect-size estimates with 95%
+  confidence intervals**. Same procedure, exclusions and models as below, but **no hypothesis is
+  confirmed or rejected**: no Holm correction, no "supported" labels. Results are described as
+  estimates for planning. Pilot participants are not reused in stage (b).
+- **(b) Confirmatory study, 30 or more participants, target 8 solo sessions per condition.** This
+  is the study preregistered here (Sections 3–5). Its N is justified by the power simulation. If
+  the pilot's estimates (or their confidence intervals) suggest a smaller effect than assumed, the
+  target N is raised, and the grid is re-run with the new assumptions, **before** stage (b) is
+  registered and before any stage (b) data exists.
+
 ---
 
 ## 3. Sampling plan
 
 ### 3.1 Existing data
 
-None from participants. The author's own N = 1 pilot (sessions from v0.4.0 onward) was used only to
-test the pipeline and will not be included in the confirmatory analysis.
+None from participants. The author's own N = 1 self-test (sessions from v0.4.0 onward) was used only to
+test the pipeline and will not be included in either stage. Stage (a) data (Section 2.4) will
+exist before stage (b) is registered, but it is used only to plan stage (b) (N, feasibility). Its
+participants and sessions are never part of the confirmatory analysis.
 
 ### 3.2 Data collection procedures
 
@@ -149,19 +179,37 @@ test the pipeline and will not be included in the confirmatory analysis.
 
 ### 3.3 Sample size
 
-- **Inclusion threshold:** at least **5 solo sessions per condition** (15 included sessions) per
-  participant. Participants may contribute more; we encourage about 8 per condition.
-- **Target N:** the smallest N in the power grid that reaches **≥ 80% power** for both H1
-  attempt contrasts at 8 sessions per condition (from [power-results.md](power-results.md),
-  `analysis/power.R`). **Placeholder until that is reviewed: N = 20 included participants.** If no
-  grid value reaches 80%, the target is N = 30, and we will report the expected power honestly.
+- **Session target: 8 solo sessions per condition** (24 solo sessions) per participant.
+  Participants are asked to reach this within their 4 weeks.
+- **Inclusion threshold (unchanged): at least 5 solo sessions per condition** after the session
+  exclusions (Section 5.4). Participants with 5–7 per condition are still included.
+- **Why the target is 8, not 5:** with exactly 5 per condition, a single excluded session (for
+  example, one ended under 5 minutes) drops the whole participant. In the simulation
+  (`mean_included` in [power-results.md](power-results.md)), only about half of the enrolled
+  participants survived at 5 per condition: 4.7 of 8, 6.4 of 12, 11.2 of 20, 16.6 of 30. At 8 per
+  condition, all of them did (8.0, 12, 20, 30). Aiming for 8 leaves room for exclusions and gives
+  each participant more sessions, which raises power: at N = 30, power for both contrasts goes
+  from 0.16 (5 per condition) to 0.66 (8 per condition).
+- **Stage (a), pilot:** about **10–12 participants**, chosen for feasibility, not power.
+- **Stage (b), confirmatory — target N = 30 included participants (minimum), more if
+  recruitment allows.** Simulated power at N = 30 with 8 sessions per condition: **0.69
+  (friction vs control), 0.88 (intention vs control), 0.66 (both)**, for attempts per hour at
+  α = .05/4. This is **below the usual 80% for the friction contrast**, and we say so honestly.
+  Reaching 80% for friction would need more than 30 participants. N above 30 was not simulated;
+  the grid will be extended (e.g. 40, 50) and updated with the pilot's estimates before stage (b)
+  is registered. A friend sample cannot reach 30. Stage (b) needs a broader recruitment route
+  (e.g. a participant pool), to be decided with the advisor.
 
 ### 3.4 Stopping rule
 
-Recruitment stops at the **earlier** of:
+**Stage (b), confirmatory.** Recruitment stops at the **earlier** of:
 
 1. the target N of participants meeting the inclusion threshold, or
 2. **10 weeks** after the first participant enrolls (one academic quarter).
+
+If the end date comes first, the analysis runs on the participants included by then, and the
+achieved power is reported. **Stage (a), pilot:** recruitment stops at 12 enrolled participants or
+after 4 weeks of recruitment, whichever comes first.
 
 Participants still enrolled at the stop date finish their current 4-week window. Data are
 analysed once, after the stop. There are no interim analyses.
@@ -242,6 +290,9 @@ we fall back to random intercepts only and report which structure was used.
   1 (intention higher).
 - A non-significant result is reported as "no evidence of a difference", with its CI, never as
   evidence of no effect.
+- **Stage (a), pilot:** the same models are fitted, but only estimates and 95% CIs are reported.
+  There are no Holm-adjusted decisions and no "supported" labels. The pilot is not a test of
+  H1–H3.
 
 ### 5.4 Data exclusion
 
@@ -300,6 +351,9 @@ could be run.
   freezes labels during the study, but the definition stays personal.
 - **Self-report:** focus rating and goal completion are single-item self-reports.
 - **Small convenience sample** of students. Generalization is limited.
+- **Power:** even the confirmatory target (N = 30, 8 sessions per condition) has only about 69%
+  simulated power for the friction contrast under the assumed effect. The assumed effects are
+  themselves guesses until the pilot gives estimates.
 - **Domain-level tracking only:** time on a site labeled Distraction may sometimes be legitimate.
 - **Field setting:** idle detection (60 s without input) and multi-device studying make the minute
   measures noisy.
