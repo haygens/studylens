@@ -16,7 +16,9 @@
 import {
   LIVE_GOAL_KEEP_MS,
   LIVE_HEARTBEAT_STALE_MS,
+  ROOM_VALID_AFTER_END_MS,
   type LiveParticipant,
+  type LiveRoom,
   type LiveSession,
   type ParticipantStatus,
 } from '@studylens/shared';
@@ -31,6 +33,8 @@ export interface LiveSessionRow {
   startedAt: number;
   endsAt: number;
   endedAt: number | null;
+  /** P18c (null for sessions from before migration 4). */
+  roomCode: string | null;
 }
 
 export interface LiveParticipantRow {
@@ -104,5 +108,38 @@ export function buildLiveSession(
     state: running ? 'running' : 'ended',
     me: me ? effectiveStatus(me, s, now) : null,
     participants: view,
+    roomCode: s.roomCode,
+  };
+}
+
+/**
+ * P18c: when a room link stops working: 1 hour after the session ended (everyone left early: then;
+ * otherwise its shared end time).
+ */
+export function roomExpiresAt(s: Pick<LiveSessionRow, 'endsAt' | 'endedAt'>): number {
+  return Math.min(s.endedAt ?? s.endsAt, s.endsAt) + ROOM_VALID_AFTER_END_MS;
+}
+
+/** P18c: the public room view (no device IDs, no minutes, no "me"); null once expired. */
+export function buildLiveRoom(
+  s: LiveSessionRow,
+  participants: readonly LiveParticipantRow[],
+  now: number,
+): LiveRoom | null {
+  if (now >= roomExpiresAt(s)) return null;
+  const view = buildLiveSession(s, participants, '', now);
+  return {
+    groupName: view.groupName,
+    goal: view.goal,
+    plannedMinutes: view.plannedMinutes,
+    startedAt: view.startedAt,
+    endsAt: view.endsAt,
+    state: view.state,
+    participants: view.participants.map((p) => ({
+      displayName: p.displayName,
+      isHost: p.isHost,
+      status: p.status,
+      recentlySeen: p.recentlySeen,
+    })),
   };
 }

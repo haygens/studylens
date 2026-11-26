@@ -9,6 +9,7 @@ import {
   liveSessionRunning,
   startLiveSchema,
 } from '@/lib/api/live';
+import { generateRoomCode } from '@/lib/api/join-code';
 import { RATE_LIMITS, enforceRateLimit } from '@/lib/api/rate-limit';
 import { readJson } from '@/lib/api/validation';
 
@@ -33,13 +34,20 @@ export const POST = apiRoute('/api/groups/[id]/sessions', METHODS, async (req) =
   await enforceRateLimit(db, RATE_LIMITS.startLive, device.id, now);
   const body = await readJson(req, startLiveSchema());
   const id = crypto.randomUUID();
-  const result = await db.startLiveSession({
-    id,
-    groupId,
-    hostDeviceId: device.id,
-    goal: body.goal || null,
-    startedAt: now,
-    ...liveLength(body, now),
+  const start = () =>
+    db.startLiveSession({
+      id,
+      groupId,
+      hostDeviceId: device.id,
+      goal: body.goal || null,
+      startedAt: now,
+      ...liveLength(body, now),
+      roomCode: generateRoomCode(),
+    });
+  // P18c: a room code that is already taken (practically impossible) gets one retry.
+  const result = await start().catch((err: unknown) => {
+    if (String(err).includes('UNIQUE')) return start();
+    throw err;
   });
   if (result.status === 'not_member') throw notMember();
   if (result.status === 'session_running') throw liveSessionRunning();

@@ -61,6 +61,12 @@ export const CLIENT_RATE_LIMITS = {
   registerDevice: { name: 'register', limit: 30, windowMs: HOUR },
   joinGroup: { name: 'join', limit: 60, windowMs: HOUR },
   createGroup: { name: 'create-group', limit: 30, windowMs: HOUR },
+  /**
+   * P18c: public room page lookups (no device token). The page polls every 15 s while visible
+   * (240/hour per open page); a few phones on the same school Wi-Fi fit easily. Guessing a
+   * 16-character code is hopeless anyway; this only stops scripts hammering the database.
+   */
+  roomLookup: { name: 'room', limit: 1200, windowMs: HOUR },
 } satisfies Record<string, RateLimitRule>;
 
 /** Counts one request for `subject` (a device ID, or `global`); throws 429 when over the limit. */

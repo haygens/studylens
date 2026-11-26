@@ -95,7 +95,7 @@ for (const driver of await testDrivers()) {
                 VALUES ('s1', 'g1', 25, ?)`,
           args: [NOW],
         });
-        expect(await runMigrations(old.sql)).toEqual([3]);
+        expect(await runMigrations(old.sql, MIGRATIONS.slice(0, 3))).toEqual([3]);
         const { rows } = await old.sql.execute({ sql: 'SELECT ends_at FROM group_sessions' });
         expect(rows[0]!.ends_at).toBe(NOW + 25 * 60_000);
       } finally {
@@ -158,8 +158,8 @@ for (const driver of await testDrivers()) {
         args: ['g1', 'G', 'ABC123', 'd1', NOW],
       });
       await sql.execute({
-        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        args: ['s1', 'g1', 'd1', null, 25, NOW, null, NOW + 25 * 60_000],
+        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        args: ['s1', 'g1', 'd1', null, 25, NOW, null, NOW + 25 * 60_000, null],
       });
       await expect(
         sql.execute({
@@ -169,8 +169,8 @@ for (const driver of await testDrivers()) {
       ).rejects.toThrow();
       await expect(
         sql.execute({
-          sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          args: ['s2', 'g1', 'd1', null, 0, NOW, null, NOW],
+          sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          args: ['s2', 'g1', 'd1', null, 0, NOW, null, NOW, null],
         }),
       ).rejects.toThrow();
     });
@@ -251,12 +251,12 @@ for (const driver of await testDrivers()) {
       );
       // P18/P18b rows (no API writes them yet).
       await sql.execute({
-        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        args: ['s1', 'g1', 'd1', 'goal', 25, NOW, null, NOW + 25 * 60_000],
+        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        args: ['s1', 'g1', 'd1', 'goal', 25, NOW, null, NOW + 25 * 60_000, null],
       });
       await sql.execute({
-        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        args: ['s2', 'g2', 'd1', null, 25, NOW, null, NOW + 25 * 60_000],
+        sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        args: ['s2', 'g2', 'd1', null, 25, NOW, null, NOW + 25 * 60_000, null],
       });
       await sql.execute({
         sql: 'INSERT INTO session_participants VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -311,8 +311,8 @@ for (const driver of await testDrivers()) {
       });
       const session = (id: string, startedAt: number, endedAt: number | null) =>
         sql.execute({
-          sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          args: [id, 'g1', 'd1', `goal ${id}`, 60, startedAt, endedAt, startedAt + HOUR],
+          sql: 'INSERT INTO group_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [id, 'g1', 'd1', `goal ${id}`, 60, startedAt, endedAt, startedAt + HOUR, null],
         });
       const dayAgo = NOW - GOAL_AFTER_END_MS;
       await session('ended-old', dayAgo - 2 * HOUR, dayAgo - 1); // ended > 24 h ago → cleared

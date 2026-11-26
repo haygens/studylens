@@ -22,6 +22,23 @@ export const LIVE_GOAL_KEEP_MS = 24 * 60 * 60_000;
 /** A participant who hasn't sent a heartbeat for this long shows as "not seen recently". */
 export const LIVE_HEARTBEAT_STALE_MS = 3 * 60_000;
 
+/**
+ * P18c: every live session gets a room code for its read-only web page `/s/<code>`. 16 characters
+ * from the join-code alphabet (29^16 ≈ 2.5 × 10^23 codes), made with a cryptographic random
+ * generator, so the link can't be guessed. Valid until 1 hour after the session ended.
+ */
+export const ROOM_CODE_LENGTH = 16;
+export const ROOM_VALID_AFTER_END_MS = 60 * 60_000;
+/** The web room page polls this often while it is visible. */
+export const ROOM_POLL_MS = 15_000;
+
+const ROOM_CODE_PATTERN = new RegExp(`^[23456789ABCDEFGHJKMNPQRSTWXYZ]{${ROOM_CODE_LENGTH}}$`);
+
+/** True for a well-formed room code (exact case: links are copied, never typed). */
+export function isRoomCode(code: string): boolean {
+  return ROOM_CODE_PATTERN.test(code);
+}
+
 /** A participant's status. `finished` = was still in the session when it reached its end. */
 export const PARTICIPANT_STATUSES = ['focusing', 'finished', 'left'] as const;
 export type ParticipantStatus = (typeof PARTICIPANT_STATUSES)[number];
@@ -63,6 +80,33 @@ export interface LiveSession {
   me: ParticipantStatus | null;
   /** Oldest participant first. */
   participants: LiveParticipant[];
+  /** P18c: the code of the read-only room page `/s/<code>` (members only see it). */
+  roomCode: string | null;
+}
+
+/** P18c: a participant on the public room page: name and status only (no minutes, no "me"). */
+export interface RoomParticipant {
+  displayName: string;
+  isHost: boolean;
+  status: ParticipantStatus;
+  recentlySeen: boolean;
+}
+
+/** P18c: what anyone with the room link sees. */
+export interface LiveRoom {
+  groupName: string;
+  goal: string | null;
+  plannedMinutes: number;
+  startedAt: number;
+  endsAt: number;
+  state: 'running' | 'ended';
+  participants: RoomParticipant[];
+}
+
+/** GET /api/rooms/:code */
+export interface LiveRoomResponse {
+  serverNow: number;
+  room: LiveRoom;
 }
 
 /** Every live-session answer carries the server's clock, so the extension can correct for skew. */

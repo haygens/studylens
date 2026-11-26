@@ -5,7 +5,7 @@ import {
   type GroupSummary,
   type ParticipantStatus,
 } from '@studylens/shared';
-import { buildLiveSession, isRunning, type LiveSessionRow } from './live';
+import { buildLiveRoom, buildLiveSession, isRunning, type LiveSessionRow } from './live';
 import { buildOverviewMembers, historyStart } from './overview';
 import {
   DAILY_TOTALS_KEEP_DAYS,
@@ -85,24 +85,22 @@ export function createMemoryDb(): Db {
       if (s.endedAt === null && s.endsAt > now && s.startedAt <= now && !anyone) s.endedAt = now;
     }
   }
+  function rowsOf(s: StoredLive) {
+    return partsOf(s.id).map((p) => ({
+      deviceId: p.deviceId,
+      displayName: devices.get(p.deviceId)?.displayName ?? '',
+      status: p.status,
+      joinedAt: p.joinedAt,
+      lastHeartbeatAt: p.lastHeartbeatAt,
+      leftAt: p.leftAt,
+      sharesMinutes: memberships.some(
+        (m) => m.groupId === s.groupId && m.deviceId === p.deviceId && m.shareMinutes,
+      ),
+    }));
+  }
   function viewLive(s: StoredLive, viewerId: string, now: number) {
     const group = groups.get(s.groupId)!;
-    return buildLiveSession(
-      { ...s, groupName: group.name },
-      partsOf(s.id).map((p) => ({
-        deviceId: p.deviceId,
-        displayName: devices.get(p.deviceId)?.displayName ?? '',
-        status: p.status,
-        joinedAt: p.joinedAt,
-        lastHeartbeatAt: p.lastHeartbeatAt,
-        leftAt: p.leftAt,
-        sharesMinutes: memberships.some(
-          (m) => m.groupId === s.groupId && m.deviceId === p.deviceId && m.shareMinutes,
-        ),
-      })),
-      viewerId,
-      now,
-    );
+    return buildLiveSession({ ...s, groupName: group.name }, rowsOf(s), viewerId, now);
   }
   const heartbeat = (sessionId: string, deviceId: string, now: number) => {
     const s = live.find((x) => x.id === sessionId);
@@ -360,6 +358,9 @@ export function createMemoryDb(): Db {
         return { status: 'session_running' };
       }
       if (busy(n.hostDeviceId, n.startedAt, null)) return { status: 'busy' };
+      if (live.some((s) => s.roomCode === n.roomCode)) {
+        throw new Error('UNIQUE constraint failed: group_sessions.room_code');
+      }
       live.push({
         id: n.id,
         groupId: n.groupId,
@@ -369,6 +370,7 @@ export function createMemoryDb(): Db {
         startedAt: n.startedAt,
         endsAt: n.endsAt,
         endedAt: null,
+        roomCode: n.roomCode,
       });
       participants.push({
         sessionId: n.id,
@@ -431,6 +433,13 @@ export function createMemoryDb(): Db {
 
     async heartbeatLiveSession(sessionId, deviceId, now) {
       return heartbeat(sessionId, deviceId, now);
+    },
+
+    async liveRoom(roomCode, now) {
+      const s = live.find((x) => x.roomCode === roomCode);
+      const group = s && groups.get(s.groupId);
+      if (!s || !group) return null;
+      return buildLiveRoom({ ...s, groupName: group.name }, rowsOf(s), now);
     },
 
     async addErrorLog(e) {

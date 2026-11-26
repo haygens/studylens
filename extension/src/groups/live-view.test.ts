@@ -31,6 +31,7 @@ const session = (over: Partial<LiveSession> = {}): LiveSession => ({
   state: 'running',
   me: null,
   participants: [p(), p({ status: 'left' })],
+  roomCode: 'ROOMCODE23456789',
   ...over,
 });
 

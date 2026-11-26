@@ -461,6 +461,7 @@ export function describeDbContract(
             plannedMinutes: minutes,
             startedAt: at,
             endsAt: at + minutes * MIN,
+            roomCode: `ROOM${id.toUpperCase()}`.padEnd(16, 'Z'),
           });
 
         it('starts a session: the host is in it; members see it, others do not', async () => {
@@ -489,6 +490,7 @@ export function describeDbContract(
                   focusMinutes: null,
                 },
               ],
+              roomCode: 'ROOMS1'.padEnd(16, 'Z'),
             },
           ]);
           expect((await db.listLiveSessions('d1', NOW + MIN))[0]?.me).toBe('focusing');
@@ -620,6 +622,38 @@ export function describeDbContract(
           await db.joinGroup('AAAAAAAA', 'd4', NOW, LIMITS, SHARING_OFF);
           // (The group was deleted with its last member; d4 can't find it.)
           expect(await db.listLiveSessions('d4', NOW + 4 * MIN)).toEqual([]);
+        });
+
+        it('P18c room: names and statuses by room code, nothing else; expires 1 h after the end', async () => {
+          await pair();
+          await start();
+          await db.joinLiveSession('s1', 'd2', NOW + MIN);
+          const code = 'ROOMS1'.padEnd(16, 'Z');
+          expect((await db.listLiveSessions('d1', NOW))[0]?.roomCode).toBe(code);
+          const room = await db.liveRoom(code, NOW + 2 * MIN);
+          expect(room).toEqual({
+            groupName: 'Group g1',
+            goal: 'Chapter 4',
+            plannedMinutes: 25,
+            startedAt: NOW,
+            endsAt: NOW + 25 * MIN,
+            state: 'running',
+            participants: [
+              { displayName: 'Sam', isHost: true, status: 'focusing', recentlySeen: true },
+              { displayName: 'Alex', isHost: false, status: 'focusing', recentlySeen: true },
+            ],
+          });
+          expect(await db.liveRoom('ZZZZZZZZZZZZZZZZ', NOW)).toBeNull();
+          // Still there just before 1 h after the end; gone at 1 h.
+          const end = NOW + 25 * MIN;
+          expect((await db.liveRoom(code, end + 60 * MIN - 1))?.state).toBe('ended');
+          expect(await db.liveRoom(code, end + 60 * MIN)).toBeNull();
+          // Everyone left early: the hour counts from then.
+          await start('s2', 'd2', end + 61 * MIN);
+          await db.leaveLiveSession('s2', 'd2', end + 62 * MIN);
+          const code2 = 'ROOMS2'.padEnd(16, 'Z');
+          expect(await db.liveRoom(code2, end + 62 * MIN + 59 * MIN)).not.toBeNull();
+          expect(await db.liveRoom(code2, end + 62 * MIN + 60 * MIN)).toBeNull();
         });
 
         it('cleanup ends sessions at their end time and deletes them (and goals) after 24 h', async () => {

@@ -52,7 +52,7 @@ describe('GET /api/cleanup', () => {
       },
       { sql: "INSERT INTO groups VALUES ('g1', 'G', 'ABC123', 'd1', ?)", args: [now] },
       {
-        sql: "INSERT INTO group_sessions VALUES ('s1', 'g1', 'd1', 'Read ch. 3', 25, ?, ?, ?)",
+        sql: "INSERT INTO group_sessions VALUES ('s1', 'g1', 'd1', 'Read ch. 3', 25, ?, ?, ?, NULL)",
         args: [
           now - 3 * 86_400_000,
           now - 3 * 86_400_000 + 25 * 60_000,

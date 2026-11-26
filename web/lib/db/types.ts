@@ -11,6 +11,7 @@ import type {
   GroupRole,
   GroupSharing,
   GroupSummary,
+  LiveRoom,
   LiveSession,
   OverviewMember,
   PresenceState,
@@ -73,6 +74,8 @@ export interface NewLiveSession {
   startedAt: number;
   /** The shared end time (server clock). */
   endsAt: number;
+  /** P18c: room page code (16 characters, unique). */
+  roomCode: string;
 }
 
 export type StartLiveSessionResult =
@@ -216,6 +219,11 @@ export interface Db {
   leaveLiveSession(sessionId: string, deviceId: string, now: number): Promise<boolean>;
   /** P18b: I'm still focusing in it. Returns true if my heartbeat was recorded. */
   heartbeatLiveSession(sessionId: string, deviceId: string, now: number): Promise<boolean>;
+  /**
+   * P18c: the public room view for a room code, or null if unknown or more than 1 hour past the
+   * session's end. Names and statuses only.
+   */
+  liveRoom(roomCode: string, now: number): Promise<LiveRoom | null>;
 
   addErrorLog(entry: NewErrorLog): Promise<void>;
   /** Newest first. */

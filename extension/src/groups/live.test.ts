@@ -38,6 +38,7 @@ const live = (over: Partial<LiveSession> = {}): LiveSession => ({
   state: 'running',
   me: 'focusing',
   participants: [],
+  roomCode: 'ROOMCODE23456789',
   ...over,
 });
 

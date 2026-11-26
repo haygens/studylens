@@ -7,7 +7,7 @@ import {
   type ParticipantStatus,
 } from '@studylens/shared';
 import type { SqlExecutor, SqlStatement, SqlValue } from './executor';
-import { buildLiveSession } from './live';
+import { buildLiveRoom, buildLiveSession, type LiveSessionRow } from './live';
 import { buildOverviewMembers, historyStart } from './overview';
 import {
   DAILY_TOTALS_KEEP_DAYS,
@@ -437,8 +437,9 @@ export function createSqlDb(sql: SqlExecutor): Db {
       const [insert] = await sql.batch([
         {
           sql: `INSERT INTO group_sessions
-                  (id, group_id, host_device_id, goal, planned_minutes, started_at, ends_at)
-                SELECT ?, ?, ?, ?, ?, ?, ?
+                  (id, group_id, host_device_id, goal, planned_minutes, started_at, ends_at,
+                   room_code)
+                SELECT ?, ?, ?, ?, ?, ?, ?, ?
                 WHERE EXISTS (SELECT 1 FROM memberships WHERE group_id = ? AND device_id = ?)
                   AND NOT EXISTS (SELECT 1 FROM group_sessions s
                                   WHERE s.group_id = ? AND ${runningSql('s')})
@@ -451,6 +452,7 @@ export function createSqlDb(sql: SqlExecutor): Db {
             n.plannedMinutes,
             n.startedAt,
             n.endsAt,
+            n.roomCode,
             n.groupId,
             n.hostDeviceId,
             n.groupId,
@@ -523,6 +525,18 @@ export function createSqlDb(sql: SqlExecutor): Db {
 
     async heartbeatLiveSession(sessionId, deviceId, now) {
       return (await sql.execute(heartbeat(sessionId, deviceId, now))).rowsAffected > 0;
+    },
+
+    async liveRoom(roomCode, now) {
+      const { rows } = await sql.execute({
+        sql: `SELECT ${SESSION_COLUMNS} FROM group_sessions s JOIN groups g ON g.id = s.group_id
+              WHERE s.room_code = ?`,
+        args: [roomCode],
+      });
+      const r = rows[0];
+      if (!r) return null;
+      const session = sessionRow(r);
+      return buildLiveRoom(session, await participantRows(sql, [session.id]), now);
     },
 
     async addErrorLog(e) {
@@ -640,25 +654,26 @@ function heartbeat(sessionId: string, deviceId: string, now: number): SqlStateme
 }
 
 /** P18b: live sessions matching `where` in groups the viewer is in, as the viewer sees them. */
-async function loadLive(
-  sql: SqlExecutor,
-  where: string,
-  args: SqlValue[],
-  viewerId: string,
-  now: number,
-): Promise<LiveSession[]> {
-  const sessions = await sql.execute({
-    sql: `SELECT s.id, s.group_id, g.name AS group_name, s.host_device_id, s.goal,
-                 s.planned_minutes, s.started_at, s.ends_at, s.ended_at
-          FROM group_sessions s
-            JOIN groups g ON g.id = s.group_id
-            JOIN memberships mine ON mine.group_id = s.group_id AND mine.device_id = ?
-          WHERE ${where}
-          ORDER BY mine.joined_at, s.started_at`,
-    args: [viewerId, ...args],
-  });
-  if (sessions.rows.length === 0) return [];
-  const ids = sessions.rows.map((r) => String(r.id));
+const SESSION_COLUMNS = `s.id, s.group_id, g.name AS group_name, s.host_device_id, s.goal,
+  s.planned_minutes, s.started_at, s.ends_at, s.ended_at, s.room_code`;
+
+function sessionRow(r: Record<string, SqlValue>): LiveSessionRow {
+  return {
+    id: String(r.id),
+    groupId: String(r.group_id),
+    groupName: String(r.group_name),
+    hostDeviceId: str(r.host_device_id),
+    goal: str(r.goal),
+    plannedMinutes: num(r.planned_minutes),
+    startedAt: num(r.started_at),
+    endsAt: num(r.ends_at),
+    endedAt: r.ended_at === null ? null : num(r.ended_at),
+    roomCode: str(r.room_code),
+  };
+}
+
+/** Participant rows of the given sessions, keyed by session ID. */
+async function participantRowsBySession(sql: SqlExecutor, ids: string[]) {
   const parts = await sql.execute({
     sql: `SELECT p.session_id, p.device_id, d.display_name, p.status, p.joined_at,
                  p.last_heartbeat_at, p.left_at, COALESCE(m.share_minutes, 0) AS share_minutes
@@ -669,32 +684,48 @@ async function loadLive(
           WHERE p.session_id IN (${ids.map(() => '?').join(', ')})`,
     args: ids,
   });
-  return sessions.rows.map((r) =>
-    buildLiveSession(
-      {
-        id: String(r.id),
-        groupId: String(r.group_id),
-        groupName: String(r.group_name),
-        hostDeviceId: str(r.host_device_id),
-        goal: str(r.goal),
-        plannedMinutes: num(r.planned_minutes),
-        startedAt: num(r.started_at),
-        endsAt: num(r.ends_at),
-        endedAt: r.ended_at === null ? null : num(r.ended_at),
-      },
-      parts.rows
-        .filter((p) => String(p.session_id) === String(r.id))
-        .map((p) => ({
-          deviceId: String(p.device_id),
-          displayName: String(p.display_name),
-          status: String(p.status) as ParticipantStatus,
-          joinedAt: num(p.joined_at),
-          lastHeartbeatAt: num(p.last_heartbeat_at),
-          leftAt: p.left_at === null ? null : num(p.left_at),
-          sharesMinutes: num(p.share_minutes) === 1,
-        })),
-      viewerId,
-      now,
-    ),
+  return (id: string) =>
+    parts.rows
+      .filter((p) => String(p.session_id) === id)
+      .map((p) => ({
+        deviceId: String(p.device_id),
+        displayName: String(p.display_name),
+        status: String(p.status) as ParticipantStatus,
+        joinedAt: num(p.joined_at),
+        lastHeartbeatAt: num(p.last_heartbeat_at),
+        leftAt: p.left_at === null ? null : num(p.left_at),
+        sharesMinutes: num(p.share_minutes) === 1,
+      }));
+}
+
+async function participantRows(sql: SqlExecutor, ids: string[]) {
+  return (await participantRowsBySession(sql, ids))(ids[0]!);
+}
+
+/** P18b: live sessions matching `where` in groups the viewer is in, as the viewer sees them. */
+async function loadLive(
+  sql: SqlExecutor,
+  where: string,
+  args: SqlValue[],
+  viewerId: string,
+  now: number,
+): Promise<LiveSession[]> {
+  const sessions = await sql.execute({
+    sql: `SELECT ${SESSION_COLUMNS}
+          FROM group_sessions s
+            JOIN groups g ON g.id = s.group_id
+            JOIN memberships mine ON mine.group_id = s.group_id AND mine.device_id = ?
+          WHERE ${where}
+          ORDER BY mine.joined_at, s.started_at`,
+    args: [viewerId, ...args],
+  });
+  if (sessions.rows.length === 0) return [];
+  const rowsOf = await participantRowsBySession(
+    sql,
+    sessions.rows.map((r) => String(r.id)),
   );
+  return sessions.rows.map((r) => {
+    const s = sessionRow(r);
+    return buildLiveSession(s, rowsOf(s.id), viewerId, now);
+  });
 }

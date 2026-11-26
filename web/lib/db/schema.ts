@@ -143,6 +143,18 @@ export const MIGRATIONS: Migration[] = [
          ON session_participants (device_id)`,
     ],
   },
+  {
+    version: 4,
+    name: 'live-room-codes',
+    statements: [
+      // P18c: the unguessable code of a live session's read-only web room (/s/<code>). Rows from
+      // before have none (no room page).
+      `ALTER TABLE group_sessions ADD COLUMN room_code TEXT
+         CHECK (room_code IS NULL OR length(room_code) = 16)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS group_sessions_by_room_code
+         ON group_sessions (room_code) WHERE room_code IS NOT NULL`,
+    ],
+  },
 ];
 
 /** Every table the app creates (for tests and docs). */
