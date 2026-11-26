@@ -1951,3 +1951,70 @@ Problems / open questions:
 Disk space: C: 3.34 GB free, M: 14.44 GB free.
 
 Next piece (from PLAN.md): P20 — Results + show and tell.
+
+## Handoff — 2026-11-25 (P18c web companion)
+
+Done:
+
+- Theme tokens, contrast helpers and public links moved to `packages/shared` (`themes`,
+  `contrast`, `links`). The extension re-exports them, so its imports are unchanged.
+- Web companion on https://studylens-flame.vercel.app:
+  - `/` landing page: what StudyLens is, 4 store screenshots (served from `docs/store/screenshots`
+    at build time via `/media/<name>`), "Install for Firefox/Edge", the privacy promise, links
+    (Privacy, Feedback, GitHub). The research is mentioned briefly and neutrally only. Sunrise
+    tokens; static; no cookies, analytics or third-party requests.
+  - `/privacy` renders `PRIVACY.md` at build time (`marked`; relative links → GitHub).
+  - `/s/<code>` read-only live room: shared timer (server clock), group, goal, participants'
+    names and statuses; polls every 15 s while visible; the same message for unknown or expired
+    codes; `noindex`, `Referrer-Policy: no-referrer`; `robots.txt` disallows `/s/` and `/api/`.
+- Server: migration 4 adds a unique 16-character room code (≈ 2.5 × 10^23 codes) to every live
+  session. `GET /api/rooms/:code` needs no token and returns names and statuses only (no IDs, no
+  minutes); 404 for unknown, malformed or expired codes (1 h after the end); per-address
+  in-memory rate limit (1200/h); `X-Robots-Tag: noindex`. Plus basic security headers.
+- Extension: "Copy room link" and "Open room page" on live sessions (Study groups tab and popup),
+  with a note on who can see what. Manifest `homepage_url` → the landing page. AMO/Edge listing
+  docs note the website fields to change by hand.
+- Docs: PRIVACY.md (room links; the website: no cookies or analytics), backend.md (migration 4,
+  rooms endpoint, rate limit, web pages), README, PLAN (P18c checked).
+- **Not built: the stretch "Join from the web".** It needs its own design (web device tokens in
+  localStorage, consent, delete, CORS for the site's own origin, new participant kind,
+  PRIVACY.md). Left as a follow-up.
+- Production check after deploy (live after ~45 s):
+  - `/`, `/privacy`, `/media/*`, `/robots.txt` → 200, no cookies; `/api/health` ok, db up.
+  - A demo room (devices `smoke-room-A`/`B`, 30-min session) answered 200 with both "focusing",
+    no IDs leaked, noindex + no-referrer; an unknown room → 404.
+  - A background job deletes both demo devices ~35 min later (that removes the group, session
+    and room).
+
+Changed files: `packages/shared/src/{themes,contrast,links,live,index}.ts`, `packages/shared/package.json`;
+`extension/src/ui/{themes,contrast,feedback,live}.ts(x)`, `extension/src/groups/config.ts`,
+`extension/entrypoints/options/LiveSessions.tsx`, `extension/entrypoints/popup/FocusSession.tsx`,
+`extension/wxt.config.ts`, `extension/e2e/{web-companion,live-groups}.e2e.ts`, `extension/package.json`;
+`web/app/{layout,page,site-chrome,globals.css,robots}.tsx/ts/css`, `web/app/privacy/page.tsx`,
+`web/app/media/[name]/route.ts`, `web/app/s/[code]/{page,RoomView}.tsx`,
+`web/app/api/rooms/[code]/route(.test).ts`, `web/app/api/groups/[id]/sessions/route.ts`,
+`web/lib/site/{repo-files,privacy,room-view,site.test}.ts(x)`, `web/lib/db/{schema,types,live,sql-db,memory,contract,sql-db.test}.ts`,
+`web/lib/api/{join-code,rate-limit}.ts`, `web/next.config.ts`, `web/package.json`, `package-lock.json`;
+`PRIVACY.md`, `README.md`, `docs/backend.md`, `docs/PLAN.md`, `docs/store/{amo,edge}-listing.md`,
+`docs/LOG.md`.
+
+Tests:
+
+- Unit 1024/1024, including the web markup, AA contrast of every color pair used, privacy
+  rendering, room view, room route, and DB contract tests.
+- E2E 52/52, including landing, /privacy, a live room on a phone-sized screen, an unknown code,
+  axe WCAG 2.1 A/AA on all three pages, and the room link from the extension.
+- lint, format, typecheck, web build (no warnings), both extension builds + `check:builds`:
+  clean.
+
+Problems / open questions:
+
+- "Join from the web" (stretch) not built (see above).
+- The extension is still 0.5.0. The room link and `homepage_url` reach users with 0.6.0. Update
+  the store "website" fields by hand.
+- The installed 0.5.0 can't copy room links. To try a room before 0.6.0, use the demo link below
+  (until the cleanup) or a dev build.
+
+Disk space: C: 3.35 GB free, M: 14.20 GB free.
+
+Next piece (from PLAN.md): P20 — Results + show and tell.
