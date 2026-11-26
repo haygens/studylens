@@ -127,13 +127,21 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       retried. Summary minutes only for members who share focus minutes in that group. Research:
       `mode`/`condition` `group`, no block slot used (codebook). Server: migration 3, 6 endpoints,
       cleanup ends sessions and deletes them (goal included) 24 h after the end. Two-profile E2E.
-- [ ] **P18c. Web companion** _(stretch)_ — a landing page on the Vercel site (what StudyLens is,
+- [x] **P18c. Web companion** _(stretch)_ — a landing page on the Vercel site (what StudyLens is,
       screenshots, install buttons, privacy promise, links), `/privacy` rendered from PRIVACY.md at
       build time, and a read-only **live room page** `/s/<code>` for P18b group sessions (shared
       timer, group, goal, participants and status; long unguessable code, valid until 1 h after the
       session ends) with "Copy room link" in the extension. Stretch: "Join from the web" without
       the extension. Sunrise tokens shared via packages/shared; no analytics, cookies or
       third-party scripts; rooms rate-limited and `noindex`.
+      Done 2026-11-25 (items 1–3; for v0.6.0, extension not built or uploaded): landing page, `/privacy`
+      from PRIVACY.md at build time, `/s/<code>` room page (migration 4: 16-character room code;
+      `GET /api/rooms/:code`, per-address in-memory rate limit, noindex, no-referrer), "Copy room
+      link" + "Open room page" in the extension, manifest `homepage_url` → landing page. Tests: web
+      unit tests (markup, AA contrast of every pair used, privacy, room view), route tests, E2E
+      (landing, /privacy, room on a phone, unknown code, axe WCAG 2.1 AA). **Not built:** the
+      stretch "Join from the web" (needs its own design: web device tokens, consent, delete, CORS
+      for the site's own origin, PRIVACY.md); left as a follow-up.
 - [ ] **P19. Reliability** _(partly stretch)_ — `withErrorLogging` wrapper → `error_logs` table,
       Vercel Cron cleanup (14 days, `CRON_SECRET`), optional Discord webhook alerts _(stretch)_, tests
       in CI. _(Wrapper, `error_logs`, cleanup cron and their CI tests were built in P15; left:
