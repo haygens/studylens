@@ -8,11 +8,8 @@ export const API_BASE: string = __STUDYLENS_API_BASE__;
 /** The host permission pattern for the server, e.g. `https://studylens-flame.vercel.app/*`. */
 export const SERVER_ORIGIN_PATTERN = `${API_BASE}/*`;
 
-/** Store links for the invite message. */
-export const INSTALL_LINKS = {
-  firefox: 'https://addons.mozilla.org/en-US/firefox/addon/studylens/',
-  edge: 'https://microsoftedge.microsoft.com/addons/detail/studylens/phepgpemnllainhhjemgknaeedjjekad',
-} as const;
+/** Store links for the invite message (packages/shared, also used by the web companion). */
+export { INSTALL_LINKS } from '@studylens/shared/links';
 
 /** How long one request may take (including reading the answer) before it counts as failed. */
 export const REQUEST_TIMEOUT_MS = 10_000;

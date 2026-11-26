@@ -4,9 +4,10 @@
  * nothing is filled in for the user. Set FEEDBACK_URL to '' to hide the link everywhere.
  */
 
-/** The Microsoft Form's https:// link that "Send feedback" opens. Empty = hidden. */
-export const FEEDBACK_URL =
-  'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAATtyGOdURDg4VUNBRFRSRjgwMktVWEFEODMxTDk0Qi4u';
+import { FEEDBACK_URL } from '@studylens/shared/links';
+
+/** The Microsoft Form's https:// link that "Send feedback" opens (packages/shared). Empty = hidden. */
+export { FEEDBACK_URL };
 
 /** The link to show, or null to hide it (empty, or not a plain https:// address). */
 export function feedbackLink(url: string = FEEDBACK_URL): string | null {
