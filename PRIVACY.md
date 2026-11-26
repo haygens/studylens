@@ -290,10 +290,28 @@ who joins gets the same timer and sees who is in it. Nothing changes unless you 
   both "personally identifying information" (your display name in the participants list) and
   "technical and interaction data" (your live status and minutes); without them StudyLens sends
   nothing for live sessions.
+- **Room link (version 0.6.0 and later):** every live session gets a long random link
+  (`https://studylens-flame.vercel.app/s/…`, 16 random characters, impossible to guess). Members
+  can copy it to show the session on a phone or another screen without the extension. **Anyone
+  with the link** sees the group name, the goal, the shared timer, and each participant's display
+  name and status ("Focusing", "Finished", "Left early"). It does **not** show minutes, sites,
+  device IDs or anything else. Share it only with people you'd show the session to. The link stops
+  working **1 hour after the session ends**. Room pages are marked so search engines don't index
+  them, and they don't pass the link on to other sites. Looking up a room is rate-limited per
+  internet address, counted in the server's memory only (never stored, like the join-code limit).
 - **How long the server keeps it:** the goal and the whole session (who joined, statuses, times)
   are deleted 24 hours after the session ended — by the daily cleanup, so at the latest about a day
   after that; the app stops showing the goal at 24 hours. Leaving the group or deleting your group
   data removes you from it at once.
+
+## The StudyLens website
+
+<https://studylens-flame.vercel.app> has a short landing page, this policy, and the live room
+pages. It uses **no cookies, no analytics, no trackers, no third-party scripts or fonts**, and it
+stores nothing in your browser. A room page asks the server for that room's status every 15
+seconds while it is open (the code from the link is all it sends). Like the API, the site is
+hosted on Vercel, which keeps short-lived technical request logs (including IP addresses) for
+operating its service; StudyLens does not read or keep them.
 
 ## Research uploads
 

@@ -87,7 +87,8 @@ https://github.com/haygens/studylens/issues
 
 ## Homepage
 
-https://github.com/haygens/studylens
+https://studylens-flame.vercel.app/ (from 0.6.0, P18c; the manifest's `homepage_url` matches.
+Update by hand in the AMO developer hub. Before: https://github.com/haygens/studylens)
 
 ## Privacy policy
 

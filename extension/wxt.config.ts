@@ -28,7 +28,8 @@ export default defineConfig({
   manifest: ({ browser, mode }) => ({
     name: mode === 'e2e' ? 'StudyLens (E2E test build)' : 'StudyLens',
     description: 'Privacy-respecting focus tracker for students. Your data stays on your device.',
-    homepage_url: 'https://github.com/haygens/studylens',
+    // P18c: the web companion's landing page (store "website" fields point there too).
+    homepage_url: 'https://studylens-flame.vercel.app/',
     // Icons come from public/icon/<size>.png (made by `npm run icons`). Set the toolbar icon
     // explicitly too, so every browser uses it.
     action: {

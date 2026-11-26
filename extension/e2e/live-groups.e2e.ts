@@ -68,6 +68,21 @@ test('start, join late, host leaves, shared end and summary', async ({
     await expect(liveCard).toBeVisible();
     await expect(liveCard.getByText('Goal: Chapter 4 problems')).toBeVisible();
     await expect(people(a)).toHaveText(['Sam (you, started it) · Focusing']);
+    // P18c: the room link opens the read-only web room (works without the extension).
+    await expect(
+      liveCard.getByRole('button', { name: `Copy the room link for ${GROUP}` }),
+    ).toBeVisible();
+    const roomHref = await liveCard
+      .getByRole('link', { name: 'Open room page' })
+      .getAttribute('href');
+    expect(roomHref).toMatch(new RegExp(`^${E2E_API_BASE}/s/[A-Z2-9]{16}$`));
+    const roomPage = await context.newPage();
+    await roomPage.goto(roomHref!);
+    await expect(roomPage.getByRole('heading', { level: 1, name: GROUP })).toBeVisible();
+    await expect(
+      roomPage.getByRole('list', { name: `Participants in ${GROUP}` }).getByRole('listitem'),
+    ).toHaveText([/^Sam \(started it\)\s*Focusing$/]);
+    await roomPage.close();
     // Only the goal and the length were sent.
     expect(startBodies.map((s) => Object.keys(JSON.parse(s) as object).sort())).toEqual([
       ['goal', 'minutes', 'testSeconds'],

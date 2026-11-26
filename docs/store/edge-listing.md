@@ -40,7 +40,8 @@ All images are made by `npm run screenshots -w extension`.
 - Privacy policy required? **Yes** (the extension handles browsing activity, even though it never
   leaves the device). Privacy policy URL:
   https://github.com/haygens/studylens/blob/main/PRIVACY.md
-- Website URL: https://github.com/haygens/studylens
+- Website URL: https://studylens-flame.vercel.app/ (from 0.6.0, P18c; matches the manifest's
+  `homepage_url`. Update by hand in Partner Center. Before: https://github.com/haygens/studylens)
 - Support contact: https://github.com/haygens/studylens/issues
 - Mature content: **No**
 

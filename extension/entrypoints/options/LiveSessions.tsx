@@ -39,6 +39,7 @@ import type { FocusSession } from '@/src/sessions/session';
 import {
   LiveSummary,
   ParticipantList,
+  RoomLink,
   beginDeps,
   beginErrorText,
   leaveLocalSession,
@@ -126,6 +127,7 @@ function LiveCard({
         {session.plannedMinutes} min session · {focusingCount(session)}
       </p>
       <ParticipantList session={session} />
+      {session.roomCode && <RoomLink roomCode={session.roomCode} groupName={session.groupName} />}
       <div className="sl-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
         {action === 'join' && (
           <button type="button" className="sl-btn-primary" disabled={busy} onClick={join}>

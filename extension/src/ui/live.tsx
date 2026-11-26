@@ -11,6 +11,7 @@ import { LIVE_POLL_MS, toLocalTime, type LiveSession } from '@studylens/shared';
 import { localStore } from '../background/browser-adapter';
 import { failureText, type ApiFailure } from '../groups/api-client';
 import { groupDeps } from '../groups/browser-groups';
+import { API_BASE } from '../groups/config';
 import {
   activeLiveSessions,
   liveSessionState,
@@ -126,6 +127,60 @@ export function useSecondTick(): number {
     return () => clearInterval(id);
   }, []);
   return now;
+}
+
+/** P18c: the read-only web room of a live session (works on any phone, no extension needed). */
+export function roomUrl(roomCode: string): string {
+  return `${API_BASE}/s/${roomCode}`;
+}
+
+/**
+ * P18c: "Copy room link" + "Open room page". Anyone with the link sees the timer, group name, goal
+ * and participants' names and statuses (no minutes, never sites), until 1 hour after the end.
+ */
+export function RoomLink({ roomCode, groupName }: { roomCode: string; groupName: string }) {
+  const [copy, setCopy] = useState<'idle' | 'copied' | 'manual'>('idle');
+  const url = roomUrl(roomCode);
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div className="sl-row" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <button
+          type="button"
+          aria-label={`Copy the room link for ${groupName}`}
+          onClick={() =>
+            void navigator.clipboard.writeText(url).then(
+              () => setCopy('copied'),
+              () => setCopy('manual'),
+            )
+          }
+        >
+          Copy room link
+        </button>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="sl-link">
+          Open room page
+        </a>
+        {copy === 'copied' && (
+          <span role="status" className="sl-muted">
+            Room link copied.
+          </span>
+        )}
+      </div>
+      {copy === 'manual' && (
+        <input
+          readOnly
+          value={url}
+          aria-label="Room link"
+          style={{ width: '100%', marginTop: 6 }}
+          onFocus={(e) => e.target.select()}
+          autoFocus
+        />
+      )}
+      <p className="sl-muted sl-small" style={{ margin: '4px 0 0' }}>
+        Anyone with the link sees the timer, group name, goal, and everyone’s names and status —
+        never sites or minutes. It stops working 1 hour after the session ends.
+      </p>
+    </div>
+  );
 }
 
 /** Who is in a live session, each with their status in words. */

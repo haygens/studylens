@@ -6,8 +6,8 @@ user clicks "Join or create a group" on the Study groups tab and grants the opti
 contact the server (`extension/src/groups/`); solo users never contact it.
 
 Status: deployed (P15d, 2026-11-23). Study group endpoints added in P16; passive groups (focus
-minutes, "focusing now") in P18; live group focus sessions in P18b (2026-11-25, for v0.6.0 — not
-deployed until that is pushed).
+minutes, "focusing now") in P18; live group focus sessions in P18b (2026-11-25, for v0.6.0); the web
+companion (landing page, `/privacy`, live room pages `/s/<code>`) in P18c.
 
 - Production URL: **https://studylens-flame.vercel.app** — health check:
   https://studylens-flame.vercel.app/api/health (returns `"ok":true` and `"db":"up"`).
@@ -57,6 +57,10 @@ milliseconds.
 
 Deleting a device cascades to its memberships, participation, presence and daily totals; groups
 and sessions it created keep existing with `created_by` / `host_device_id` set to NULL.
+
+Migration 4 (`live-room-codes`, P18c) adds `group_sessions.room_code`: 16 characters from the
+join-code alphabet (≈ 2.5 × 10^23 codes, `crypto.randomInt`), unique (partial unique index), for
+the read-only room page. A collision (practically impossible) gets one retry when starting.
 
 Migration 3 (`live-group-sessions`, P18b) adds `group_sessions.ends_at` — the **shared end time**
 (server clock), normally `started_at + planned_minutes`, stored on its own so the local E2E test
@@ -167,7 +171,7 @@ Live group focus sessions (P18b), all with the device token:
 | `POST /api/group-sessions/:id/heartbeat` | —                    | `200 { serverNow, session }` — I'm still focusing; 404 if not in it                     |
 
 `session` is `{ id, groupId, groupName, goal, plannedMinutes, startedAt, endsAt, state, me,
-participants }`; `state` is `running` / `ended`, `me` my status or null; each participant is
+participants, roomCode }`; `state` is `running` / `ended`, `me` my status or null; each participant is
 `{ displayName, isMe, isHost, status, recentlySeen, focusMinutes }`. Types:
 `packages/shared/src/live.ts`.
 
@@ -200,6 +204,19 @@ participants }`; `state` is `running` / `ended`, `me` my status or null; each pa
 - **Test seconds:** `testSeconds` (1–600) in the start body is accepted **only** when
   `STUDYLENS_LIVE_TEST_SECONDS=1`, outside Vercel and outside production builds — set only by the
   E2E test server (`extension/e2e/web-server.ts`). Everywhere else it is an unknown field (400).
+
+**Live room (P18c), no token:**
+
+| Method + path          | Success                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/rooms/:code` | `200 { serverNow, room }`; 404 (same message) for unknown, malformed, expired |
+
+`room` is `{ groupName, goal, plannedMinutes, startedAt, endsAt, state, participants }`, each
+participant `{ displayName, isHost, status, recentlySeen }`: no device IDs, no session or group
+IDs, no minutes, no "me". Valid until **1 hour after the session ended** (`ended_at` if everyone
+left early, else `ends_at`). Rate-limited **per client address, in memory only** (1200/hour: the
+page polls every 15 s, and a class may share one address). Responses carry
+`X-Robots-Tag: noindex, nofollow`.
 
 **Why polling, not WebSockets.** Vercel Hobby functions are short-lived request handlers: they
 can't hold a socket open, and Vercel's WebSocket support is in beta. Plain requests keep working
@@ -280,6 +297,7 @@ Two kinds, both fixed one-hour windows:
 | `POST …/heartbeat`            | 150 / hour            | —                           |
 | `GET /api/group-sessions`     | 600 / hour            | —                           |
 | `GET /api/group-sessions/:id` | 900 / hour            | —                           |
+| `GET /api/rooms/:code`        | — (no device)         | 1200 / hour                 |
 
 Every join attempt counts — wrong codes too — before the code is looked at, so guessing one of
 ~6.6 × 10^11 codes is hopeless. `POST /api/devices` also has a **global backstop** of 1000
@@ -321,6 +339,25 @@ pass without CORS headers. CORS is not authentication — the bearer token is.
 - deletes rate-limit counters older than a day
 - deletes `daily_totals` whose local date is more than **14 days** before the cleanup's UTC date
   (P18; returned as `dailyTotalsDeleted`)
+
+## Web companion pages (P18c)
+
+The same Next.js app serves the public pages. Colors are the extension's Sunrise tokens
+(`packages/shared/src/themes.ts`, WCAG AA checked in `web/lib/site/site.test.tsx`). No cookies,
+analytics, third-party scripts or fonts.
+
+| Path            | What                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `/`             | landing page (static): what StudyLens is, 4 store screenshots, install buttons, privacy promise, links                 |
+| `/privacy`      | `PRIVACY.md` from the repo, rendered at build time with `marked` (relative links → GitHub)                             |
+| `/media/<name>` | allowlisted repo images (store screenshots, icon), prerendered at build time                                           |
+| `/s/<code>`     | live room (client page polling `/api/rooms/:code` every 15 s while visible); `noindex`, `Referrer-Policy: no-referrer` |
+| `/robots.txt`   | allows `/`, disallows `/s/` and `/api/`                                                                                |
+
+The build reads files outside `web/` (`PRIVACY.md`, `docs/store/screenshots/`, `extension/public/icon/`),
+which works because Vercel builds from the whole repository (the same reason `packages/shared`
+resolves). Every response also gets `X-Content-Type-Options`, `X-Frame-Options: DENY`,
+`Referrer-Policy` and a minimal `Permissions-Policy` (`web/next.config.ts`).
 
 ## Environment variables
 

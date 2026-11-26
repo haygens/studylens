@@ -12,7 +12,13 @@ import { loadGroupDevice, loadSharingCache } from '@/src/groups/group-store';
 import { startLiveSession } from '@/src/groups/live';
 import { canShareName } from '@/src/groups/permission';
 import { listGroups } from '@/src/groups/service';
-import { ParticipantList, beginDeps, beginErrorText, useLiveSession } from '@/src/ui/live';
+import {
+  ParticipantList,
+  RoomLink,
+  beginDeps,
+  beginErrorText,
+  useLiveSession,
+} from '@/src/ui/live';
 import type { SessionMessage, SessionReply } from '@/src/sessions/messages';
 import {
   MAX_CUSTOM_MINUTES,
@@ -361,6 +367,9 @@ function GroupParticipants({ sessionId }: { sessionId: string }) {
   return (
     <div style={{ textAlign: 'left', width: '100%' }}>
       <ParticipantList session={state.session} />
+      {state.session.roomCode && (
+        <RoomLink roomCode={state.session.roomCode} groupName={state.session.groupName} />
+      )}
     </div>
   );
 }
