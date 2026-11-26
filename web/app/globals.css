@@ -1,0 +1,290 @@
+/*
+ * StudyLens web companion (P18c). Colors come only from the Sunrise theme tokens (--sl-*),
+ * defined on :root by the layout from packages/shared/src/themes.ts. System fonts only.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sl-font);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--sl-ink);
+  background: linear-gradient(180deg, var(--sl-bg) 0%, var(--sl-bg-mid) 55%, var(--sl-bg-2) 100%);
+  min-height: 100vh;
+}
+
+a {
+  color: var(--sl-primary);
+  text-underline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--sl-focus);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+.skip:focus {
+  left: 16px;
+  top: 16px;
+  background: var(--sl-surface);
+  padding: 8px 12px;
+  border-radius: var(--sl-radius-sm);
+  z-index: 10;
+}
+
+.wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.site-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
+  flex-wrap: wrap;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--sl-ink);
+  text-decoration: none;
+}
+.site-head nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero {
+  padding: 32px 0 24px;
+  display: grid;
+  gap: 16px;
+}
+.hero h1 {
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  line-height: 1.15;
+  margin: 0;
+}
+.lead {
+  font-size: 1.15rem;
+  color: var(--sl-muted);
+  margin: 0;
+  max-width: 44rem;
+}
+
+.buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--sl-primary);
+  color: var(--sl-on-primary);
+  box-shadow: var(--sl-btn-shadow);
+}
+.btn-secondary {
+  background: var(--sl-surface);
+  color: var(--sl-primary);
+  border: 2px solid var(--sl-primary);
+  box-shadow: none;
+}
+
+.card {
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius);
+  box-shadow: var(--sl-card-shadow);
+  padding: 20px;
+}
+
+section {
+  margin: 32px 0;
+}
+h2 {
+  font-size: 1.5rem;
+  margin: 0 0 12px;
+}
+
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.shots figure {
+  margin: 0;
+}
+.shots img {
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid var(--sl-border);
+  display: block;
+}
+.shots figcaption {
+  margin-top: 8px;
+  color: var(--sl-muted);
+  font-size: 0.95rem;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.features h3 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+.features p {
+  margin: 0;
+  color: var(--sl-muted);
+}
+
+.promise ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 6px;
+}
+
+.muted {
+  color: var(--sl-muted);
+}
+
+.site-foot {
+  border-top: 1px solid var(--sl-hair);
+  padding: 24px 0 40px;
+  margin-top: 40px;
+  color: var(--sl-muted);
+  font-size: 0.95rem;
+}
+.site-foot nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+/* /privacy: the rendered PRIVACY.md */
+.prose {
+  max-width: 46rem;
+}
+.prose h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+.prose h2 {
+  margin-top: 32px;
+}
+.prose code {
+  background: var(--sl-primary-soft);
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+.prose li {
+  margin: 4px 0;
+}
+
+/* /s/<code>: the live room */
+.room {
+  max-width: 34rem;
+  margin: 24px auto;
+  display: grid;
+  gap: 16px;
+}
+.room h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+.live-chip {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--sl-study-soft);
+  color: var(--sl-study);
+}
+.ended-chip {
+  background: var(--sl-neutral-soft);
+  color: var(--sl-neutral);
+}
+.timer {
+  font-size: clamp(3rem, 16vw, 4.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  margin: 8px 0 0;
+  color: var(--sl-ink);
+}
+.people {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.people li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg);
+}
+.status-focusing {
+  color: var(--sl-study);
+  font-weight: 700;
+}
+.status-finished {
+  color: var(--sl-primary);
+  font-weight: 700;
+}
+.status-left {
+  color: var(--sl-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
