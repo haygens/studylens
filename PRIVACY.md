@@ -1,7 +1,7 @@
 # StudyLens Privacy Policy
 
-_Updated: November 26, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.6.0
-(live group sessions and room links), 0.5.0 (study groups) and earlier. Versions up to 0.4.0
+_Updated: November 26, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.7.0
+(room looks), 0.6.0 (live group sessions and room links), 0.5.0 (study groups) and earlier. Versions up to 0.4.0
 have no study groups._
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
@@ -308,8 +308,12 @@ who joins gets the same timer and sees who is in it. Nothing changes unless you 
 ## The StudyLens website
 
 <https://studylens-flame.vercel.app> has a short landing page, this policy, and the live room
-pages. It uses **no cookies, no analytics, no trackers, no third-party scripts or fonts**, and it
-stores nothing in your browser. A room page asks the server for that room's status every 15
+pages. It uses **no cookies, no analytics, no trackers, no third-party scripts or fonts** (its
+fonts are served from the site itself). The only thing it ever stores in your browser is your
+"Room look" choice on a room page (Hearth, Corner Café or Rainy Window), in that browser's local
+storage, and only if you pick one; it is never sent anywhere. The extension's "Open room page"
+passes your look in the part of the link after `#`, which browsers never send to the server.
+A room page asks the server for that room's status every 15
 seconds while it is open (the code from the link is all it sends). Like the API, the site is
 hosted on Vercel, which keeps short-lived technical request logs (including IP addresses) for
 operating its service; StudyLens does not read or keep them.

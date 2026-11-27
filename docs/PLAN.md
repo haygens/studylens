@@ -163,6 +163,23 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       own N=1 pilot** (2–3 charts from the pilot), the usability feedback from friends, demo script,
       portfolio card (title, link, reflection).
 
+- [x] **P21. Cozy live room looks + light motion (v0.7.0)** — three room looks picked from the
+      user's theme (Sunrise → Hearth, Ocean → Rainy Window, Pastel → Corner Café; visitors without
+      the extension → Café) on the web room page `/s/<code>` and the extension's live session
+      cards, plus gentle CSS-only motion (transform/opacity only, all off under
+      `prefers-reduced-motion`). Done 2026-11-26 (code + tests; v0.7.0 built, not uploaded).
+      Look tokens, theme mapping, status wording and contrast pairs in
+      `packages/shared/src/room-looks.ts` (WCAG AA unit-tested per look); motion layer
+      `packages/shared/src/motion.ts` (a CSS string, like `themeCss()`). Web: one room layout + an
+      aria-hidden inline-SVG scene per look, fonts self-hosted with `next/font` (Fraunces, Inter,
+      DM Serif Display, DM Sans, Lora; not preloaded), "Room look" switcher saved in localStorage
+      only. The extension opens the room with `#look=<look>` (a fragment, never sent to the
+      server); the page also accepts `?look=` and removes it from the address bar. Extension cards:
+      same tokens, 64 px scene strip, system fonts only (+13.8 KB). E2E: `room-looks.e2e.ts`
+      (mapping, fallback, switcher persists, storage blocked, no overflow at 390 px, axe AA);
+      Playwright runs with reduced motion everywhere. Screenshots: `docs/store/screenshots/looks/`
+      (`npm run screenshots:looks -w extension`).
+
 Removed: ~~P17. Research consent + upload~~ — no research upload before IRB approval. A future
 upload would need IRB approval, a consent screen, and a preview first.
 
