@@ -19,8 +19,11 @@ export const LIVE_MAX_MINUTES = 180;
 export const LIVE_POLL_MS = 15_000;
 /** A session's goal is deleted this long after the session ended. */
 export const LIVE_GOAL_KEEP_MS = 24 * 60 * 60_000;
-/** A participant who hasn't sent a heartbeat for this long shows as "not seen recently". */
-export const LIVE_HEARTBEAT_STALE_MS = 3 * 60_000;
+/**
+ * A focusing participant who hasn't sent a heartbeat for this long shows as "Away (last seen N min
+ * ago)". The extension sends one on its 1-minute session tick, so this is about two missed ticks.
+ */
+export const LIVE_HEARTBEAT_STALE_MS = 2 * 60_000;
 
 /**
  * P18c: every live session gets a room code for its read-only web page `/s/<code>`. 16 characters
@@ -50,8 +53,13 @@ export interface LiveParticipant {
   /** Started the session. The session keeps running if the host leaves. */
   isHost: boolean;
   status: ParticipantStatus;
-  /** False while focusing but no heartbeat for 3 minutes (offline or the browser closed). */
+  /** False while focusing but no heartbeat for 2 minutes (offline or the browser closed). */
   recentlySeen: boolean;
+  /**
+   * Whole minutes since the last heartbeat, only while focusing and not recently seen (for
+   * "Away (last seen N min ago)"); otherwise null.
+   */
+  lastSeenMinutesAgo: number | null;
   /**
    * Whole minutes from joining to leaving or to the end, once the participant is done
    * (`finished` or `left`). Null while still focusing, or when the participant doesn't share focus
@@ -90,6 +98,7 @@ export interface RoomParticipant {
   isHost: boolean;
   status: ParticipantStatus;
   recentlySeen: boolean;
+  lastSeenMinutesAgo: number | null;
 }
 
 /** P18c: what anyone with the room link sees. */
@@ -138,6 +147,19 @@ export function clockOffset(sentAt: number, receivedAt: number, serverNow: numbe
 /** A server time in the local clock. */
 export function toLocalTime(serverTime: number, offsetMs: number): number {
   return serverTime - offsetMs;
+}
+
+/**
+ * The words for a participant who is still in the session: "Focusing" while their heartbeat is
+ * fresh, "Away (last seen N min ago)" after about 2 minutes without one. Used by both the web
+ * room page and the extension.
+ */
+export function focusingStatusText(
+  p: Pick<LiveParticipant, 'recentlySeen' | 'lastSeenMinutesAgo'>,
+): string {
+  if (p.recentlySeen) return 'Focusing';
+  const minutes = Math.max(LIVE_HEARTBEAT_STALE_MS / 60_000, p.lastSeenMinutesAgo ?? 0);
+  return `Away (last seen ${minutes} min ago)`;
 }
 
 /** True for a whole number of minutes a live session may last. */

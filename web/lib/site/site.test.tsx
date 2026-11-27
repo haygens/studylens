@@ -111,9 +111,34 @@ describe('live room', () => {
     endsAt: 25 * 60_000,
     state: 'running',
     participants: [
-      { displayName: 'Sam', isHost: true, status: 'focusing', recentlySeen: true },
-      { displayName: 'Alex', isHost: false, status: 'left', recentlySeen: true },
-      { displayName: 'Kim', isHost: false, status: 'focusing', recentlySeen: false },
+      {
+        displayName: 'Sam',
+        isHost: true,
+        status: 'focusing',
+        recentlySeen: true,
+        lastSeenMinutesAgo: null,
+      },
+      {
+        displayName: 'Alex',
+        isHost: false,
+        status: 'left',
+        recentlySeen: true,
+        lastSeenMinutesAgo: null,
+      },
+      {
+        displayName: 'Kim',
+        isHost: false,
+        status: 'focusing',
+        recentlySeen: false,
+        lastSeenMinutesAgo: 3,
+      },
+      {
+        displayName: 'Jo',
+        isHost: false,
+        status: 'finished',
+        recentlySeen: true,
+        lastSeenMinutesAgo: null,
+      },
     ],
   };
 
@@ -128,7 +153,8 @@ describe('live room', () => {
     expect(room.participants.map(statusText)).toEqual([
       'Focusing',
       'Left early',
-      'Focusing · not seen for a few minutes',
+      'Away (last seen 3 min ago)',
+      'Finished',
     ]);
   });
 

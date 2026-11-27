@@ -487,6 +487,7 @@ export function describeDbContract(
                   isHost: true,
                   status: 'focusing',
                   recentlySeen: true,
+                  lastSeenMinutesAgo: null,
                   focusMinutes: null,
                 },
               ],
@@ -551,10 +552,30 @@ export function describeDbContract(
             (await db.liveSession('s1', 'd1', at))?.participants.find(
               (p) => p.displayName === 'Alex',
             );
-          expect((await alex(NOW + 3 * MIN - 1))?.recentlySeen).toBe(true);
-          expect((await alex(NOW + 3 * MIN))?.recentlySeen).toBe(false);
-          expect(await db.heartbeatLiveSession('s1', 'd2', NOW + 4 * MIN)).toBe(true);
-          expect((await alex(NOW + 5 * MIN))?.recentlySeen).toBe(true);
+          expect(await alex(NOW + 2 * MIN - 1)).toMatchObject({
+            recentlySeen: true,
+            lastSeenMinutesAgo: null,
+          });
+          expect(await alex(NOW + 2 * MIN)).toMatchObject({
+            recentlySeen: false,
+            lastSeenMinutesAgo: 2,
+          });
+          expect((await alex(NOW + 4 * MIN + 59_000))?.lastSeenMinutesAgo).toBe(4);
+          expect(await db.heartbeatLiveSession('s1', 'd2', NOW + 5 * MIN)).toBe(true);
+          expect(await alex(NOW + 6 * MIN)).toMatchObject({
+            recentlySeen: true,
+            lastSeenMinutesAgo: null,
+          });
+          // The public room shows the same "last seen" minutes.
+          await db.heartbeatLiveSession('s1', 'd1', NOW + 9 * MIN);
+          const room = await db.liveRoom(
+            (await db.liveSession('s1', 'd1', NOW))!.roomCode!,
+            NOW + 9 * MIN,
+          );
+          expect(room?.participants.find((p) => p.displayName === 'Alex')).toMatchObject({
+            recentlySeen: false,
+            lastSeenMinutesAgo: 4,
+          });
           // Not in it / after the end: nothing recorded.
           await device('d3');
           expect(await db.heartbeatLiveSession('s1', 'd3', NOW + 5 * MIN)).toBe(false);
@@ -630,7 +651,7 @@ export function describeDbContract(
           await db.joinLiveSession('s1', 'd2', NOW + MIN);
           const code = 'ROOMS1'.padEnd(16, 'Z');
           expect((await db.listLiveSessions('d1', NOW))[0]?.roomCode).toBe(code);
-          const room = await db.liveRoom(code, NOW + 2 * MIN);
+          const room = await db.liveRoom(code, NOW + 2 * MIN - 1);
           expect(room).toEqual({
             groupName: 'Group g1',
             goal: 'Chapter 4',
@@ -639,8 +660,20 @@ export function describeDbContract(
             endsAt: NOW + 25 * MIN,
             state: 'running',
             participants: [
-              { displayName: 'Sam', isHost: true, status: 'focusing', recentlySeen: true },
-              { displayName: 'Alex', isHost: false, status: 'focusing', recentlySeen: true },
+              {
+                displayName: 'Sam',
+                isHost: true,
+                status: 'focusing',
+                recentlySeen: true,
+                lastSeenMinutesAgo: null,
+              },
+              {
+                displayName: 'Alex',
+                isHost: false,
+                status: 'focusing',
+                recentlySeen: true,
+                lastSeenMinutesAgo: null,
+              },
             ],
           });
           expect(await db.liveRoom('ZZZZZZZZZZZZZZZZ', NOW)).toBeNull();

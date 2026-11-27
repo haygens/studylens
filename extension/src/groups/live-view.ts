@@ -3,6 +3,7 @@
  * status in words (never by color alone), and the summary. No browser APIs.
  */
 import {
+  focusingStatusText,
   formatFocusMinutes,
   toLocalTime,
   type LiveParticipant,
@@ -27,7 +28,7 @@ export function clockTime(localMs: number): string {
 }
 
 /**
- * A participant's status in words: "Focusing", "Focusing · not seen for a few minutes",
+ * A participant's status in words: "Focusing", "Away (last seen 4 min ago)",
  * "Finished · 25 min", "Left early · 10 min", "… · minutes not shared".
  */
 export function participantText(p: LiveParticipant): string {
@@ -35,7 +36,7 @@ export function participantText(p: LiveParticipant): string {
     p.focusMinutes === null ? 'minutes not shared' : formatFocusMinutes(p.focusMinutes);
   switch (p.status) {
     case 'focusing':
-      return p.recentlySeen ? 'Focusing' : 'Focusing · not seen for a few minutes';
+      return focusingStatusText(p);
     case 'finished':
       return `Finished · ${minutes}`;
     case 'left':

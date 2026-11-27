@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clockOffset, isLiveMinutes, toLocalTime } from './live';
+import { clockOffset, focusingStatusText, isLiveMinutes, toLocalTime } from './live';
 
 describe('live group sessions (P18b)', () => {
   it('clockOffset uses the middle of the request', () => {
@@ -12,5 +12,15 @@ describe('live group sessions (P18b)', () => {
   it('isLiveMinutes accepts whole minutes 5–180', () => {
     expect([5, 25, 50, 180].every(isLiveMinutes)).toBe(true);
     expect([4, 181, 25.5, NaN, '25', null].some(isLiveMinutes)).toBe(false);
+  });
+
+  it('focusingStatusText: "Focusing" while fresh, then "Away (last seen N min ago)"', () => {
+    expect(focusingStatusText({ recentlySeen: true, lastSeenMinutesAgo: null })).toBe('Focusing');
+    expect(focusingStatusText({ recentlySeen: false, lastSeenMinutesAgo: 7 })).toBe(
+      'Away (last seen 7 min ago)',
+    );
+    expect(focusingStatusText({ recentlySeen: false, lastSeenMinutesAgo: 0 })).toBe(
+      'Away (last seen 2 min ago)',
+    );
   });
 });

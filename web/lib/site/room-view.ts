@@ -1,5 +1,5 @@
 /** P18c: pure helpers for the live room page (/s/<code>), so they are unit-testable. */
-import type { RoomParticipant } from '@studylens/shared';
+import { focusingStatusText, type RoomParticipant } from '@studylens/shared';
 
 /** Server clock minus this browser's clock, from one request (the middle of it is "now"). */
 export function offsetFrom(sentAt: number, receivedAt: number, serverNow: number): number {
@@ -26,7 +26,7 @@ export function minutesLeftLabel(ms: number): string {
 export function statusText(p: RoomParticipant): string {
   switch (p.status) {
     case 'focusing':
-      return p.recentlySeen ? 'Focusing' : 'Focusing · not seen for a few minutes';
+      return focusingStatusText(p);
     case 'finished':
       return 'Finished';
     case 'left':

@@ -191,8 +191,9 @@ participants, roomCode }`; `state` is `running` / `ended`, `me` my status or nul
   `ends_at`. When **nobody** is focusing any more (all left, left the group, or deleted their
   device), the session ends at once (`ended_at` = now), so the group can start a new one.
 - **Status:** `focusing` → `finished` at `ends_at` (computed on read; the cleanup writes it down),
-  or `left` with `left_at`. `recentlySeen` is false while focusing with no heartbeat for 3 minutes
-  (offline or browser closed).
+  or `left` with `left_at`. `recentlySeen` is false while focusing with no heartbeat for 2 minutes
+  (offline or browser closed); then `lastSeenMinutesAgo` gives whole minutes since the last one
+  (else `null`), shown as "Away (last seen N min ago)" in the extension and on the room page.
 - **Summary minutes:** `focusMinutes` = whole minutes from joining to leaving / the end, shown only
   once the participant is done and **only if they share focus minutes in that group** (the P18
   switch); `null` = "not shared".

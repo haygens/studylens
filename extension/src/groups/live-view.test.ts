@@ -16,6 +16,7 @@ const p = (over: Partial<LiveParticipant> = {}): LiveParticipant => ({
   isHost: false,
   status: 'focusing',
   recentlySeen: true,
+  lastSeenMinutesAgo: null,
   focusMinutes: null,
   ...over,
 });
@@ -47,8 +48,12 @@ describe('live view (P18b)', () => {
 
   it('participant status in words, minutes only when shared', () => {
     expect(participantText(p())).toBe('Focusing');
-    expect(participantText(p({ recentlySeen: false }))).toBe(
-      'Focusing · not seen for a few minutes',
+    expect(participantText(p({ recentlySeen: false, lastSeenMinutesAgo: 5 }))).toBe(
+      'Away (last seen 5 min ago)',
+    );
+    // Never "Focusing" together with "not seen", never less than the 2-minute threshold.
+    expect(participantText(p({ recentlySeen: false, lastSeenMinutesAgo: null }))).toBe(
+      'Away (last seen 2 min ago)',
     );
     expect(participantText(p({ status: 'finished', focusMinutes: 25 }))).toBe('Finished · 25 min');
     expect(participantText(p({ status: 'finished' }))).toBe('Finished · minutes not shared');

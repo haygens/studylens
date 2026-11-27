@@ -67,7 +67,13 @@ describe('GET /api/rooms/:code (P18c)', () => {
         endsAt: NOW + 25 * MIN,
         state: 'running',
         participants: [
-          { displayName: 'Sam', isHost: true, status: 'focusing', recentlySeen: true },
+          {
+            displayName: 'Sam',
+            isHost: true,
+            status: 'focusing',
+            recentlySeen: true,
+            lastSeenMinutesAgo: null,
+          },
         ],
       },
     });

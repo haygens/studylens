@@ -86,12 +86,15 @@ export function buildLiveSession(
   const running = isRunning(s, sorted, now);
   const view = sorted.map((p): LiveParticipant => {
     const status = effectiveStatus(p, s, now);
+    const sinceHeartbeat = Math.max(0, now - p.lastHeartbeatAt);
+    const recentlySeen = status !== 'focusing' || sinceHeartbeat < LIVE_HEARTBEAT_STALE_MS;
     return {
       displayName: p.displayName,
       isMe: p.deviceId === viewerId,
       isHost: p.deviceId === s.hostDeviceId,
       status,
-      recentlySeen: status !== 'focusing' || now - p.lastHeartbeatAt < LIVE_HEARTBEAT_STALE_MS,
+      recentlySeen,
+      lastSeenMinutesAgo: recentlySeen ? null : Math.floor(sinceHeartbeat / MINUTE),
       focusMinutes: minutesOf(p, s, status),
     };
   });
@@ -140,6 +143,7 @@ export function buildLiveRoom(
       isHost: p.isHost,
       status: p.status,
       recentlySeen: p.recentlySeen,
+      lastSeenMinutesAgo: p.lastSeenMinutesAgo,
     })),
   };
 }
