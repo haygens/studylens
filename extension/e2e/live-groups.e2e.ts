@@ -11,11 +11,16 @@
  * (src/groups/live.test.ts, src/sessions/group-session.test.ts, web/lib/db/contract.ts).
  */
 import type { Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 import { E2E_API_BASE } from '../server-urls';
+import { STORAGE_KEYS } from '../src/storage/keys';
 import { expect, launchExtension, test } from './fixtures';
 import { joinCodeOf, members, startGroups } from './group-helpers';
 
 const GROUP = 'Live Chem';
+const LOOK_SHOT_DIR = fileURLToPath(
+  new URL('../../docs/store/screenshots/looks/', import.meta.url),
+);
 const SECONDS = 50;
 
 const people = (page: Page) =>
@@ -120,6 +125,23 @@ test('start, join late, host leaves, shared end and summary', async ({
       'Sam (started it) · Focusing',
       'Alex (you) · Focusing',
     ]);
+    // P21: Alex's card in the room look for the theme (Sunrise → Hearth by default).
+    const cardB = popupB.getByRole('region', { name: 'Focus session' });
+    await expect(cardB).toHaveAttribute('data-look', 'hearth');
+    if (process.env.STUDYLENS_LOOK_SHOTS === '1') {
+      // scripts/room-look-shots.mjs: the popup card in each theme's look.
+      await popupB.setViewportSize({ width: 380, height: 760 });
+      for (const [theme, look] of [
+        ['sunrise', 'hearth'],
+        ['ocean', 'rainy'],
+        ['pastel', 'cafe'],
+      ] as const) {
+        await personB.background.set({ [STORAGE_KEYS.theme]: theme });
+        await expect(cardB).toHaveAttribute('data-look', look);
+        await cardB.screenshot({ path: `${LOOK_SHOT_DIR}popup-${look}.png` });
+      }
+      await personB.background.set({ [STORAGE_KEYS.theme]: 'sunrise' });
+    }
     // The same shared end on both sides (within a second or two of clock measurement).
     const alexLocal = await personB.background.get<{ plannedEnd: number; mode: string }>(
       'sessions:active',

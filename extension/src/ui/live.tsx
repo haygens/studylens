@@ -210,7 +210,13 @@ export function ParticipantList({ session, look }: { session: LiveSession; look?
     <ul
       className="sl-live-people"
       aria-label={`Participants in ${session.groupName}`}
-      style={{ margin: '4px 0 0', paddingLeft: 20, display: 'grid', gap: 2 }}
+      style={{
+        margin: '4px 0 0',
+        paddingLeft: look ? 0 : 20,
+        listStyle: look ? 'none' : undefined,
+        display: 'grid',
+        gap: 2,
+      }}
     >
       {session.participants.map((p, i) => (
         <li key={i}>
