@@ -35,6 +35,14 @@ test('start, join late, host leaves, shared end and summary', async ({
     }
   });
   await background.set({ 'interventions:block': ['intention', 'control'] });
+  // The local web server is `next dev`, which compiles a page the first time it is visited (can
+  // take over 10 s). Warm up the room page and its API now, not inside the short test session.
+  const warm = await context.newPage();
+  await warm.goto(`${E2E_API_BASE}/s/${'Z'.repeat(16)}`);
+  await expect(
+    warm.getByRole('heading', { name: 'This room link has expired or doesn’t exist.' }),
+  ).toBeVisible({ timeout: 60_000 });
+  await warm.close();
 
   // Sam creates the group (sharing focus minutes).
   const a = await openOptions();
