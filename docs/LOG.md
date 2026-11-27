@@ -2159,3 +2159,5 @@ Problems / open questions:
 Disk space: C: 3.07 GB free, M: 14.16 GB free.
 
 Next piece (from PLAN.md): P20 — Results + show and tell.
+
+- 2026-11-26 (P21b): `npm run try:live -w extension [-- --two]` opens visible Edge window(s) with the store-ID copy of the Edge build against production for manual testing (no automated clicks); temp profiles + copy deleted on close/Ctrl+C. The copy logic moved from `smoke-live.mjs` to `scripts/store-id-copy.mjs` (shared). No extension, web, manifest or server changes.

@@ -14,6 +14,7 @@
     "check:builds": "node scripts/check-builds.mjs",
     "smoke:edge": "wxt build -b edge && node scripts/smoke-edge.mjs",
     "smoke:live": "wxt build -b edge && node scripts/smoke-live.mjs",
+    "try:live": "wxt build -b edge && node scripts/try-live.mjs",
     "icons": "node scripts/make-icons.mjs",
     "screenshots": "npm run build:e2e && node scripts/screenshots.mjs",
     "screenshots:crop": "node scripts/crop-screenshots.mjs",

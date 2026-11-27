@@ -7,14 +7,8 @@
  * throwaway profiles in TEMP (on M:), deleted afterwards. Display names `smoke-A` / `smoke-B`; at
  * the end both delete their server data and the script checks that nothing is left.
  *
- * The build is copied to a temp folder with TWO manifest-only changes (every other file is checked
- * to be byte-identical to `.output/edge-mv3`):
- *  - `key`: the Edge Add-ons store's public key, so the copy gets the store's extension ID
- *    (phepgpemnllainhhjemgknaeedjjekad). The production server's CORS accepts only that origin
- *    (an unpacked build otherwise gets a random ID). The key is public: Edge writes it into every
- *    installed copy's manifest.
- *  - the server origin moves from `optional_host_permissions` to `host_permissions`: the state
- *    after clicking "Allow" in the browser's prompt, which Playwright can't click.
+ * The build is copied to a temp folder with the store's key (so the copy gets the store ID that
+ * production CORS accepts) and the server origin granted; see `store-id-copy.mjs`.
  *
  * Steps: A registers + creates a group; B joins by code (sharing focus minutes OFF); A starts a
  * 5-minute group session; B sees "Live session" in the popup and joins late; both have the same end
@@ -24,30 +18,10 @@
  */
 /* global chrome */
 import { chromium, expect } from '@playwright/test';
-import { createHash } from 'node:crypto';
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
-import os from 'node:os';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-// Node 24 runs TypeScript files directly (type stripping).
-import { PRODUCTION_API_BASE } from '../server-urls.ts';
+import { API, BUILD, STORE_ID, makeStoreIdCopy, tempDir } from './store-id-copy.mjs';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const BUILD = path.join(ROOT, '.output', 'edge-mv3');
-const STORE_ID = 'phepgpemnllainhhjemgknaeedjjekad';
-/** Public key of the Edge Add-ons listing (from the store's CRX header). */
-const STORE_PUBLIC_KEY =
-  'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoKP+rzb85DOjdDXyCePwaf1AgI0bJN5aYzViwlGASxb3g3JB77IIwu1O7kvtv0c0RVehcfKMv7edwf9efqW5k51agaHcNyp6Yc8OMKcTrDPs2Em/luYGnwnHRhIWEG3S6MCb3xh2Vykai/9OEvHcH3NCzK3sSVqATQq44KeC0nQeSCbL1rIG4ToiB3yGfWbZXE708UsZ2QsnoDfRWPIh9P4B/Jng4AzT5T7MPZXgF/98dcDhj64wrDkwNR55RCjMBrE0mPJHBf4YS3hjvtNfY4LvG2SxsCU+SL2rnWVNSwTqfQ94zcC1BbCvTUm48nzbTQv9n0Y+9oaRyijJYppUjQIDAQAB';
-const API = PRODUCTION_API_BASE;
 const RUN = Date.now().toString(36).slice(-5);
 const GROUP = `smoke-${RUN}`;
 const GOAL = 'smoke test, please ignore';
@@ -88,29 +62,6 @@ async function always(name, fn) {
   }
 }
 
-function tempDir(prefix) {
-  const base = os.tmpdir();
-  if (/^c:/i.test(base)) throw new Error(`TEMP is on C: (${base}); point TEMP/TMP to M: first.`);
-  return mkdtempSync(path.join(base, prefix));
-}
-
-function hashes(dir) {
-  const out = new Map();
-  const walk = (d) => {
-    for (const name of readdirSync(d)) {
-      const full = path.join(d, name);
-      if (statSync(full).isDirectory()) walk(full);
-      else
-        out.set(
-          path.relative(dir, full).split(path.sep).join('/'),
-          createHash('sha256').update(readFileSync(full)).digest('hex'),
-        );
-    }
-  };
-  walk(dir);
-  return out;
-}
-
 /** Raw API call without an Origin header (like curl: no CORS involved). */
 async function api(method, pathname, token, body) {
   const res = await fetch(`${API}${pathname}`, {
@@ -142,20 +93,8 @@ const contexts = [];
 const tokens = {};
 
 await step('extension copy: only the manifest differs from the normal Edge build', () => {
-  cpSync(BUILD, EXT, { recursive: true });
-  const manifestPath = path.join(EXT, 'manifest.json');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  expect(manifest.optional_host_permissions).toEqual([`${API}/*`]);
-  manifest.key = STORE_PUBLIC_KEY;
-  manifest.host_permissions = [`${API}/*`];
-  delete manifest.optional_host_permissions;
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-  const a = hashes(BUILD);
-  const b = hashes(EXT);
-  a.delete('manifest.json');
-  b.delete('manifest.json');
-  expect(Object.fromEntries(b)).toEqual(Object.fromEntries(a));
-  return `${a.size} files identical; version ${manifest.version}`;
+  const { files, version } = makeStoreIdCopy(EXT);
+  return `${files} files identical; version ${version}`;
 });
 
 async function launch(label) {

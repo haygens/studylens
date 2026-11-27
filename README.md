@@ -161,6 +161,9 @@ npm test                           # unit tests (Vitest)
 npm run test:e2e                   # browser tests (Playwright, uses installed Edge; builds the
                                    # E2E and normal Edge versions first)
 npm run smoke:edge                 # smoke test of the real production Edge build in installed Edge
+npm run try:live -w extension      # manual test window: Edge with the extension against the real
+                                   # server (add `-- --two` for a second "friend" window); the
+                                   # temporary profiles are deleted when you close the windows
 npm run lint
 npm run typecheck
 ```
