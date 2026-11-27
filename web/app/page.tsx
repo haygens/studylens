@@ -10,24 +10,34 @@ import { SiteFooter, SiteHeader } from './site-chrome';
 
 export const dynamic = 'force-static';
 
+/**
+ * Full store screenshots (1280 × 800) on wide screens; on phones a tighter crop of just the popup
+ * or the helper card, so the text stays readable. One <img>, so one alt text for both.
+ */
+const PHONE_MEDIA = '(max-width: 520px)';
+
 const SCREENSHOTS = [
   {
     src: '/media/focus-session.png',
+    phone: { src: '/media/phone-focus-session.png', width: 332, height: 726 },
     alt: 'The StudyLens popup during a focus session: the goal, a countdown ring and the time left.',
     caption: 'Start a focus session with a goal and a timer.',
   },
   {
     src: '/media/friction-countdown.png',
+    phone: { src: '/media/phone-friction-countdown.png', width: 448, height: 484 },
     alt: 'A short countdown page shown before a site labeled as distracting loads.',
     caption: 'A short pause before a distracting site loads.',
   },
   {
     src: '/media/intention-question.png',
+    phone: { src: '/media/phone-intention-question.png', width: 424, height: 426 },
     alt: 'A page asking “What did you come here for?” before a distracting site loads.',
     caption: '“What did you come here for?” — a moment to decide.',
   },
   {
     src: '/media/insights.png',
+    phone: { src: '/media/phone-insights.png', width: 518, height: 200 },
     alt: 'The Insights page with charts of focus time per day and time of day.',
     caption: 'See your focus time and best time of day, calculated on your device.',
   },
@@ -61,16 +71,24 @@ export default function Home() {
             {SCREENSHOTS.map((s, i) => (
               <li key={s.src}>
                 <figure>
-                  {/* Plain <img> on purpose: static, prerendered, sized and lazy-loaded. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={s.src}
-                    alt={s.alt}
-                    width={1280}
-                    height={800}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    decoding="async"
-                  />
+                  <picture>
+                    <source
+                      media={PHONE_MEDIA}
+                      srcSet={s.phone.src}
+                      width={s.phone.width}
+                      height={s.phone.height}
+                    />
+                    {/* Plain <img> on purpose: static, prerendered, sized and lazy-loaded. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={s.src}
+                      alt={s.alt}
+                      width={1280}
+                      height={800}
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </picture>
                   <figcaption>{s.caption}</figcaption>
                 </figure>
               </li>

@@ -74,12 +74,63 @@ test('landing page: install buttons, screenshots, privacy promise, no third part
   expect(offSite).toEqual([]);
   await expectNoAxeViolations(page);
 
-  // Phone width: no horizontal scrolling.
-  await page.setViewportSize({ width: 375, height: 740 });
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
+  // Wide screen: the full screenshots. (Lazy images have no currentSrc until they load: load all.)
+  await page.locator('.shots img').evaluateAll((imgs) => {
+    for (const img of imgs) (img as HTMLImageElement).loading = 'eager';
+  });
+  const shotSrcs = () =>
+    page
+      .locator('.shots img')
+      .evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).currentSrc));
+  await expect
+    .poll(async () => (await shotSrcs()).filter((src) => /\/media\/[a-z-]+\.png$/.test(src)))
+    .toEqual([
+      `${WEB}/media/focus-session.png`,
+      `${WEB}/media/friction-countdown.png`,
+      `${WEB}/media/intention-question.png`,
+      `${WEB}/media/insights.png`,
+    ]);
+
+  // Narrow phone (360 px): no horizontal scrolling, nothing sticks out past the screen, and the
+  // header links sit fully inside the side gutter (no "GitHub" cut off at the edge).
+  await page.setViewportSize({ width: 360, height: 740 });
+  const layout = await page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const outside = [...document.querySelectorAll('body *')]
+      .filter((el) => !el.matches('.skip')) // the skip link is off-screen until focused
+      .filter((el) => {
+        const box = el.getBoundingClientRect();
+        return box.width > 0 && (box.right > width + 0.5 || box.left < -0.5);
+      })
+      .map((el) => `${el.tagName.toLowerCase()}.${el.className}`);
+    const links = [...document.querySelectorAll('header a:not(.skip)')].map((a) => {
+      const box = a.getBoundingClientRect();
+      return { text: a.textContent, left: box.left, right: box.right };
+    });
+    return {
+      overflow: document.documentElement.scrollWidth - width,
+      outside,
+      links,
+      width,
+    };
+  });
+  expect(layout.overflow).toBeLessThanOrEqual(0);
+  expect(layout.outside).toEqual([]);
+  expect(layout.links.map((l) => l.text)).toEqual(['StudyLens', 'Privacy', 'GitHub']);
+  for (const link of layout.links) {
+    expect(link.left).toBeGreaterThanOrEqual(12);
+    expect(link.right).toBeLessThanOrEqual(layout.width - 12);
+  }
+  // Phones get the tighter crops (same alt text).
+  await expect
+    .poll(shotSrcs)
+    .toEqual([
+      `${WEB}/media/phone-focus-session.png`,
+      `${WEB}/media/phone-friction-countdown.png`,
+      `${WEB}/media/phone-intention-question.png`,
+      `${WEB}/media/phone-insights.png`,
+    ]);
+  await expect(page.locator('.shots img').first()).toHaveAttribute('alt', /popup/);
 
   await page.getByRole('link', { name: 'Privacy', exact: true }).click();
   await expect(page).toHaveURL(`${WEB}/privacy`);

@@ -28,6 +28,20 @@ export const MEDIA: Record<string, { file: string; type: string }> = {
     type: 'image/png',
   },
   'insights.png': { file: 'docs/store/screenshots/4-insights.png', type: 'image/png' },
+  // Tighter crops for phones (npm run screenshots:crop -w extension).
+  'phone-focus-session.png': {
+    file: 'docs/store/screenshots/phone/focus-session.png',
+    type: 'image/png',
+  },
+  'phone-friction-countdown.png': {
+    file: 'docs/store/screenshots/phone/friction-countdown.png',
+    type: 'image/png',
+  },
+  'phone-intention-question.png': {
+    file: 'docs/store/screenshots/phone/intention-question.png',
+    type: 'image/png',
+  },
+  'phone-insights.png': { file: 'docs/store/screenshots/phone/insights.png', type: 'image/png' },
   'icon-128.png': { file: 'extension/public/icon/128.png', type: 'image/png' },
   'icon-48.png': { file: 'extension/public/icon/48.png', type: 'image/png' },
 };

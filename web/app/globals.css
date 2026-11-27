@@ -61,8 +61,9 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 16px 0;
+  gap: 8px 16px;
+  /* Block padding only: the side gutter comes from .wrap (else links touch the screen edge). */
+  padding-block: 16px;
   flex-wrap: wrap;
 }
 .brand {
@@ -76,8 +77,19 @@ img {
 }
 .site-head nav {
   display: flex;
-  gap: 16px;
+  gap: 4px 16px;
   flex-wrap: wrap;
+}
+/* Narrow phones: a smaller brand so the brand and both links share one line (they wrap if not). */
+@media (max-width: 400px) {
+  .brand {
+    font-size: 1.1rem;
+    gap: 8px;
+  }
+  .brand img {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .hero {
@@ -150,7 +162,11 @@ h2 {
 .shots figure {
   margin: 0;
 }
+.shots picture {
+  display: block;
+}
 .shots img {
+  margin-inline: auto;
   border-radius: var(--sl-radius-sm);
   border: 1px solid var(--sl-border);
   display: block;
@@ -188,7 +204,7 @@ h2 {
 
 .site-foot {
   border-top: 1px solid var(--sl-hair);
-  padding: 24px 0 40px;
+  padding-block: 24px 40px;
   margin-top: 40px;
   color: var(--sl-muted);
   font-size: 0.95rem;

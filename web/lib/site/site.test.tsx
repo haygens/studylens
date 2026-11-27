@@ -42,6 +42,18 @@ describe('landing page', () => {
     }
   });
 
+  it('phones get a tighter crop of each screenshot, sized, from this site', () => {
+    const sources = html.match(/<source [^>]*>/g) ?? [];
+    expect(sources).toHaveLength(4);
+    for (const source of sources) {
+      expect(source).toContain('media="(max-width: 520px)"');
+      expect(source).toMatch(/srcSet="\/media\/phone-[a-z-]+\.png"/);
+      expect(source).toMatch(/width="\d+" height="\d+"/);
+      const name = /srcSet="\/media\/([^"]+)"/.exec(source)![1]!;
+      expect(MEDIA[name]).toBeDefined();
+    }
+  });
+
   it('mentions the research only briefly and neutrally (study pending advisor + IRB review)', () => {
     expect(html).toContain('tests which focus helpers work');
     expect(html).not.toMatch(
@@ -50,7 +62,7 @@ describe('landing page', () => {
   });
 
   it('loads nothing from other sites (no third-party scripts, fonts or images)', () => {
-    const srcs = [...html.matchAll(/\ssrc="([^"]+)"/g)].map((m) => m[1]);
+    const srcs = [...html.matchAll(/\s(?:src|srcSet)="([^"]+)"/g)].map((m) => m[1]);
     expect(srcs.every((s) => s!.startsWith('/'))).toBe(true);
     expect(html).not.toContain('<script');
   });
