@@ -134,7 +134,7 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       session ends) with "Copy room link" in the extension. Stretch: "Join from the web" without
       the extension. Sunrise tokens shared via packages/shared; no analytics, cookies or
       third-party scripts; rooms rate-limited and `noindex`.
-      Done 2026-11-25 (items 1–3; for v0.6.0, extension not built or uploaded): landing page, `/privacy`
+      Done 2026-11-25 (items 1–3; v0.6.0 zips built 2026-11-26, not uploaded yet): landing page, `/privacy`
       from PRIVACY.md at build time, `/s/<code>` room page (migration 4: 16-character room code;
       `GET /api/rooms/:code`, per-address in-memory rate limit, noindex, no-referrer), "Copy room
       link" + "Open room page" in the extension, manifest `homepage_url` → landing page. Tests: web

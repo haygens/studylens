@@ -2023,3 +2023,60 @@ Next piece (from PLAN.md): P20 — Results + show and tell.
 
 v0.5.0 (P16 study groups + P18 passive groups) approved and live on both AMO and Microsoft Edge
 Add-ons by 2026-11-25. P18 marked released in `docs/PLAN.md`.
+
+## Handoff — 2026-11-26 (v0.6.0 release prepared: P18b + P18c)
+
+Done:
+
+- Logged v0.5.0 live on AMO and Edge Add-ons (by 2026-11-25); P18 marked released (`a03f315`).
+- Web polish from hs's phone test (live on production):
+  - Header: `.site-head { padding: 16px 0 }` cancelled the `.wrap` side gutter, so "GitHub"
+    touched the screen edge. Block padding only now (footer too), smaller brand under 400 px.
+    On production at 360 px the nav ends at 340 px; no horizontal overflow.
+  - "A quick look": `<picture>` serves tighter crops under 520 px (popup, countdown card,
+    question card, Insights title + table), same alt text. Crops in
+    `docs/store/screenshots/phone/`, made by `npm run screenshots:crop -w extension`.
+  - E2E at 360 px: no overflow, nothing outside the screen, header links ≥ 12 px from the edges,
+    phone crops chosen; full images on wide screens.
+- Status wording: "Away (last seen N min ago)" after 2 min without a heartbeat (was "Focusing ·
+  not seen for a few minutes" after 3 min), on the room page and in the extension. Server sends
+  `lastSeenMinutesAgo`; one shared helper `focusingStatusText`. PRIVACY.md and backend.md updated.
+- Version 0.6.0. `docs/store/release-notes-0.6.0.md`: AMO release notes, AMO notes to reviewer,
+  Edge certification notes (1,555 characters, starts with "No credentials or accounts are
+  needed."). **Edge Privacy tab: no change needed** (`edge-privacy-answers.md`).
+- E2E fix: live-groups warms up the room page first (`next dev` compiled it on first visit in
+  > 10 s, inside the 50-second session).
+- Zips (**not uploaded**):
+  - `M:\Projects\studylens\extension\.output\studylens-0.6.0-firefox.zip` (SHA-256 `991e6d9b…88dda6ada7`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.6.0-edge.zip` (SHA-256 `9590823b…d1b60a37`)
+  - `M:\Projects\studylens\extension\.output\studylens-0.6.0-sources.zip` (SHA-256 `395e15cc…6490a6190`)
+- Sources zip rebuilt in a clean `M:\temp\studylens-verify-0.6.0` (`npm ci` + `build:firefox`):
+  21/21 files identical; folder deleted. addons-linter 10.16.0 temporarily in
+  `M:\temp\addons-linter-tmp`, then deleted: 0 errors, 0 notices, 2 warnings (React DOM
+  `UNSAFE_VAR_ASSIGNMENT`, as before).
+
+Changed files: `packages/shared/src/live(.test).ts`; `web/lib/db/{live,contract}.ts`,
+`web/lib/site/{room-view,repo-files,site.test}.ts(x)`, `web/app/{page.tsx,globals.css}`,
+`web/app/api/rooms/[code]/route.test.ts`; `extension/src/groups/live-view(.test).ts`,
+`extension/e2e/{web-companion,live-groups}.e2e.ts`, `extension/scripts/crop-screenshots.mjs`,
+`extension/package.json`, `package-lock.json`; `docs/store/screenshots/phone/*.png`,
+`docs/store/{release-notes-0.6.0,edge-privacy-answers}.md`, `PRIVACY.md`, `docs/backend.md`,
+`docs/PLAN.md`, `docs/LOG.md`.
+
+Tests: unit 1026/1026; E2E 52/52; lint, format, typecheck, web build, both builds +
+`check:builds` clean; `smoke:edge` 11 passed, 0 failed, 1 skipped (PC idle, tracking check);
+`smoke:live` 15/15 against production with the 0.6.0 build. Pushed `3ac6a06`; the deploy was live
+after ~45 s; `/api/health` ok, db up. CI: hs checks Actions.
+
+Problems / open questions:
+
+- Store "website" fields → https://studylens-flame.vercel.app/ by hand (AMO Homepage, Edge
+  Website URL).
+- Store screenshot `3-intention-question.png` looks faded (captured mid fade-in); its phone crop
+  too. Retake with `npm run screenshots -w extension` + `screenshots:crop` if it matters.
+- C: free space fell from 3.35 to 1.6 GB since 2026-11-25; nothing from this session's tools
+  wrote there (TEMP and the npm cache are on M:).
+
+Disk space: C: 1.6 GB free, M: 15 GB free.
+
+Next piece (from PLAN.md): P20 — Results + show and tell.
