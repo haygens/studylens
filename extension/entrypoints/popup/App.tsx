@@ -10,7 +10,7 @@ import WhatsNew from './WhatsNew';
 
 export default function App() {
   return (
-    <main className="sl-popup">
+    <main className="sl-popup slm-fade-in">
       <header className="sl-pop-head">
         <img src="/icon/48.png" alt="" width={28} height={28} className="sl-logo" />
         <h1 className="sl-brand">StudyLens</h1>

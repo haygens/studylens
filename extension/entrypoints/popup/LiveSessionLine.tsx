@@ -42,8 +42,13 @@ function Line({ session, offsetMs }: { session: LiveSession; offsetMs: number })
 
   return (
     <li>
-      <span className="sl-chip sl-chip-study">● Live</span> Live session in{' '}
-      <strong>{session.groupName}</strong>
+      <span className="sl-chip sl-chip-study">
+        <span className="slm-live-dot" aria-hidden="true">
+          ●
+        </span>{' '}
+        Live
+      </span>{' '}
+      Live session in <strong>{session.groupName}</strong>
       <span className="sl-muted">
         {' '}
         · {timeLeftText(liveRemainingMs(session, offsetMs, now))}

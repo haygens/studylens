@@ -83,10 +83,14 @@ test('start, join late, host leaves, shared end and summary', async ({
     const roomHref = await liveCard
       .getByRole('link', { name: 'Open room page' })
       .getAttribute('href');
-    expect(roomHref).toMatch(new RegExp(`^${E2E_API_BASE}/s/[A-Z2-9]{16}$`));
+    // P21: Sunrise (the default theme) → the Hearth look, in the fragment (never sent to the server).
+    expect(roomHref).toMatch(new RegExp(`^${E2E_API_BASE}/s/[A-Z2-9]{16}#look=hearth$`));
+    await expect(liveCard).toHaveAttribute('data-look', 'hearth');
+    await expect(liveCard.getByText('Live by the fire')).toBeVisible();
     const roomPage = await context.newPage();
     await roomPage.goto(roomHref!);
     await expect(roomPage.getByRole('heading', { level: 1, name: GROUP })).toBeVisible();
+    await expect(roomPage.locator('html')).toHaveAttribute('data-look', 'hearth');
     await expect(
       roomPage.getByRole('list', { name: `Participants in ${GROUP}` }).getByRole('listitem'),
     ).toHaveText([/^Sam \(started it\)\s*Focusing$/]);

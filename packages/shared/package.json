@@ -11,7 +11,7 @@
     "./contrast": "./src/contrast.ts",
     "./links": "./src/links.ts",
     "./room-looks": "./src/room-looks.ts",
-    "./motion.css": "./styles/motion.css"
+    "./motion": "./src/motion.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

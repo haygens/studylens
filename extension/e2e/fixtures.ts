@@ -232,6 +232,7 @@ async function openContext(
   const context = await chromium.launchPersistentContext(profile, {
     channel: channel(),
     headless,
+    reducedMotion: 'reduce', // P21: animations can't cause flakes
     args: [
       `--disable-extensions-except=${EXTENSION_DIR}`,
       `--load-extension=${EXTENSION_DIR}`,

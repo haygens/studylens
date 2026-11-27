@@ -47,6 +47,7 @@ import {
   useLiveSessions,
   useSecondTick,
 } from '@/src/ui/live';
+import { LookPill, LookStrip, useLook } from '@/src/ui/live-look';
 import { ActivityConsentNote, ensureActivityConsent } from './GroupActivity';
 
 const h2 = { margin: 0, fontSize: 'var(--sl-fs-h2)' } as const;
@@ -67,6 +68,7 @@ function LiveCard({
   onChanged: () => void;
 }) {
   const now = useSecondTick();
+  const look = useLook();
   const active = useActiveSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,13 +112,15 @@ function LiveCard({
 
   return (
     <section
-      className="sl-card"
-      style={{ marginTop: 12, background: 'var(--sl-bg-2)' }}
+      className="sl-card sl-look slm-slide-up"
+      data-look={look}
+      style={{ marginTop: 12 }}
       aria-label={`Live session in ${session.groupName}`}
     >
+      <LookStrip look={look} />
       <div className="sl-row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ margin: 0, fontSize: 'var(--sl-fs-body)' }}>
-          <span className="sl-chip sl-chip-study">● Live</span> {session.groupName}
+        <h3 className="sl-look-title">
+          <LookPill look={look} /> {session.groupName}
         </h3>
         <span className="sl-muted">
           Ends at {clockTime(toLocalTime(session.endsAt, offsetMs))} · {timeLeftText(left)}
@@ -126,7 +130,7 @@ function LiveCard({
       <p className="sl-muted" style={{ margin: '6px 0 0' }}>
         {session.plannedMinutes} min session · {focusingCount(session)}
       </p>
-      <ParticipantList session={session} />
+      <ParticipantList session={session} look={look} />
       {session.roomCode && <RoomLink roomCode={session.roomCode} groupName={session.groupName} />}
       <div className="sl-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
         {action === 'join' && (

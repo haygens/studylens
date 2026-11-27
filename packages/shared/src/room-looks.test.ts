@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { AA_NON_TEXT, AA_TEXT, contrastRatio } from './contrast';
 import {
@@ -17,6 +16,7 @@ import {
   pickLook,
   type LookTokens,
 } from './room-looks';
+import { MOTION_CSS } from './motion';
 import { THEME_IDS } from './themes';
 
 describe('theme → look', () => {
@@ -123,11 +123,8 @@ describe.each(LOOK_IDS)('%s meets WCAG AA', (id) => {
   );
 });
 
-describe('motion.css', () => {
-  const css = readFileSync(new URL('../styles/motion.css', import.meta.url), 'utf8').replace(
-    /\/\*[\s\S]*?\*\//g,
-    '',
-  );
+describe('motion CSS', () => {
+  const css = MOTION_CSS;
   it('animates only under prefers-reduced-motion: no-preference', () => {
     const outside = css.slice(0, css.indexOf('@media (prefers-reduced-motion: no-preference)'));
     expect(outside).not.toMatch(/animation|transition|@keyframes/);

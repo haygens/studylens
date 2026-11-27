@@ -105,6 +105,7 @@ const profile = mkdtempSync(path.join(os.tmpdir(), 'studylens-shots-'));
 const context = await chromium.launchPersistentContext(profile, {
   channel: process.env.E2E_CHANNEL ?? 'msedge',
   headless: true,
+  reducedMotion: 'reduce', // P21: still frames, no half-faded screenshots
   args: [
     `--disable-extensions-except=${EXTENSION_DIR}`,
     `--load-extension=${EXTENSION_DIR}`,

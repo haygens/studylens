@@ -14,6 +14,7 @@ import {
   LOOK_STORAGE_KEY,
   ROOM_LOOKS,
   isLookId,
+  lookFromUrlPart,
   pickLook,
   type LookId,
 } from '@studylens/shared/room-looks';
@@ -60,10 +61,14 @@ function showLook(look: LookId): void {
   for (const listener of listeners) listener();
 }
 
+/** The look from ?look=, kept after it is removed from the address bar (see dropLookQuery). */
+let queryLook: LookId | null = null;
+
 /** Removes `look` from the query string (the address bar only; nothing is requested). */
 function dropLookQuery(): void {
   const url = new URL(window.location.href);
   if (!url.searchParams.has('look')) return;
+  queryLook = lookFromUrlPart(url.search);
   url.searchParams.delete('look');
   window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
 }
@@ -104,7 +109,8 @@ export default function RoomShell({ code }: { code: string }) {
   useEffect(() => {
     // The boot script doesn't run after a client-side navigation: pick the look here then.
     if (!isLookId(document.documentElement.dataset.look)) {
-      showLook(pickLook(readStored(), window.location.hash, window.location.search));
+      const search = queryLook ? `?look=${queryLook}` : window.location.search;
+      showLook(pickLook(readStored(), window.location.hash, search));
     }
     dropLookQuery();
     return () => {

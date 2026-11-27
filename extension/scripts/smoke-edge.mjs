@@ -156,6 +156,7 @@ const extensionErrors = [];
 const context = await chromium.launchPersistentContext(profile, {
   channel: 'msedge',
   headless: true,
+  reducedMotion: 'reduce', // P21: still frames, no half-faded screenshots
   args: [
     `--disable-extensions-except=${EXTENSION_DIR}`,
     `--load-extension=${EXTENSION_DIR}`,

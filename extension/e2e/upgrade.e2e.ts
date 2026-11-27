@@ -55,6 +55,7 @@ test('update from 0.2.0: no welcome page, a "New: themes!" hint that links to Se
     context = await chromium.launchPersistentContext(path.join(root, 'profile'), {
       channel: CHANNEL,
       headless: true,
+      reducedMotion: 'reduce',
       args: [
         `--disable-extensions-except=${ext}`,
         `--load-extension=${ext}`,

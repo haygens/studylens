@@ -164,6 +164,7 @@ async function launch(label) {
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'msedge',
     headless: true,
+    reducedMotion: 'reduce', // P21: still frames, no half-faded screenshots
     args: [
       `--disable-extensions-except=${EXT}`,
       `--load-extension=${EXT}`,

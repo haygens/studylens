@@ -11,6 +11,8 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { localStore } from '../background/browser-adapter';
 import { THEME_KEY, asTheme, loadTheme } from '../storage/theme-store';
+import { MOTION_CSS } from '@studylens/shared/motion';
+import { lookCss } from '@studylens/shared/room-looks';
 import { DEFAULT_THEME, themeCss, type ThemeId } from './themes';
 import './styles.css';
 
@@ -24,7 +26,8 @@ function addTokens(): void {
   if (document.getElementById('sl-theme-tokens')) return;
   const style = document.createElement('style');
   style.id = 'sl-theme-tokens';
-  style.textContent = themeCss();
+  // P21: the room looks' tokens (live session cards: `.sl-look[data-look]`) and gentle motion.
+  style.textContent = themeCss() + lookCss((id) => `.sl-look[data-look="${id}"]`) + MOTION_CSS;
   document.head.append(style);
 }
 

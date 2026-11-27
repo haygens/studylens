@@ -213,7 +213,7 @@ export default function App() {
   const blocked = step === 'helpers' && !helpersDone;
 
   return (
-    <div className="sl-welcome">
+    <div className="sl-welcome slm-slide-up">
       <header className="sl-welcome-head">
         <img src="/icon/48.png" alt="" width={44} height={44} className="sl-logo" />
         <div>

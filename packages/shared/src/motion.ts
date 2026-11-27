@@ -1,5 +1,8 @@
-/*
+/**
  * StudyLens motion layer (P21), shared by the web companion and the extension pages.
+ *
+ * A CSS string, like themeCss(): the web layout and the extension's page.tsx put it in a <style>
+ * element. (A .css file imported across workspaces made `next dev` reload pages in a loop.)
  *
  * Gentle, CSS-only: only transform and opacity animate (no layout-affecting animation), no
  * animation libraries. Everything sits inside `prefers-reduced-motion: no-preference`, so with
@@ -13,7 +16,7 @@
  *   .slm-live-dot   a soft pulse for "Live" dots (make the dot its own inline element)
  *   .slm-tick       a gentle ease when timer digits change (key the element by its text)
  */
-:root {
+export const MOTION_CSS = `:root {
   --dur-fast: 150ms;
   --dur-med: 250ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -93,3 +96,4 @@
     animation: slm-digit var(--dur-fast) var(--ease-out);
   }
 }
+`;

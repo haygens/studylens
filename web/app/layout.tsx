@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { WEBSITE_URL } from '@studylens/shared/links';
+import { MOTION_CSS } from '@studylens/shared/motion';
 import { THEMES, rootThemeCss } from '@studylens/shared/themes';
-import '@studylens/shared/motion.css';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // suppressHydrationWarning: room pages set data-look before hydration (P21).
     <html lang="en" suppressHydrationWarning>
       <head>
-        <style dangerouslySetInnerHTML={{ __html: rootThemeCss('sunrise') }} />
+        <style dangerouslySetInnerHTML={{ __html: rootThemeCss('sunrise') + MOTION_CSS }} />
       </head>
       <body>{children}</body>
     </html>

@@ -24,6 +24,8 @@ import type { ActiveSession } from '../sessions/session';
 import { STORAGE_KEYS } from '../storage/keys';
 import { loadActiveSession } from '../storage/sessions-store';
 import { SparkleIcon } from './icons';
+import { useLook } from './live-look';
+import { isAway, lookStatusText, type LookId } from '@studylens/shared/room-looks';
 
 /** The study-group dependencies plus "start the local session" (a message to the background). */
 export const beginDeps: BeginDeps = {
@@ -129,9 +131,13 @@ export function useSecondTick(): number {
   return now;
 }
 
-/** P18c: the read-only web room of a live session (works on any phone, no extension needed). */
-export function roomUrl(roomCode: string): string {
-  return `${API_BASE}/s/${roomCode}`;
+/**
+ * P18c: the read-only web room of a live session (works on any phone, no extension needed).
+ * P21: "Open room page" adds `#look=<look>` for the user's theme. It is a URL fragment, which
+ * browsers never send to the server, so the look is never sent or logged. Copied links stay plain.
+ */
+export function roomUrl(roomCode: string, look?: LookId): string {
+  return `${API_BASE}/s/${roomCode}${look ? `#look=${look}` : ''}`;
 }
 
 /**
@@ -140,6 +146,7 @@ export function roomUrl(roomCode: string): string {
  */
 export function RoomLink({ roomCode, groupName }: { roomCode: string; groupName: string }) {
   const [copy, setCopy] = useState<'idle' | 'copied' | 'manual'>('idle');
+  const look = useLook();
   const url = roomUrl(roomCode);
   return (
     <div style={{ marginTop: 8 }}>
@@ -156,7 +163,12 @@ export function RoomLink({ roomCode, groupName }: { roomCode: string; groupName:
         >
           Copy room link
         </button>
-        <a href={url} target="_blank" rel="noopener noreferrer" className="sl-link">
+        <a
+          href={roomUrl(roomCode, look)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sl-link"
+        >
           Open room page
         </a>
         {copy === 'copied' && (
@@ -183,8 +195,17 @@ export function RoomLink({ roomCode, groupName }: { roomCode: string; groupName:
   );
 }
 
-/** Who is in a live session, each with their status in words. */
-export function ParticipantList({ session }: { session: LiveSession }) {
+/** P21: a status dot (decorative; the words carry the status): lit, hollow or done. */
+function dotClass(p: LiveSession['participants'][number]): string {
+  if (p.status === 'finished') return 'sl-dot sl-dot-done';
+  return p.status === 'focusing' && !isAway(p) ? 'sl-dot sl-dot-on' : 'sl-dot';
+}
+
+/**
+ * Who is in a live session, each with their status in words. With a look (P21), each name gets a
+ * status dot and "away" uses the look's words ("Lamp off · 3 min").
+ */
+export function ParticipantList({ session, look }: { session: LiveSession; look?: LookId }) {
   return (
     <ul
       className="sl-live-people"
@@ -193,7 +214,11 @@ export function ParticipantList({ session }: { session: LiveSession }) {
     >
       {session.participants.map((p, i) => (
         <li key={i}>
-          {participantName(p)} <span className="sl-muted">· {participantText(p)}</span>
+          {look && <span className={dotClass(p)} aria-hidden="true" />}
+          {participantName(p)}{' '}
+          <span className="sl-muted">
+            · {look && p.status === 'focusing' ? lookStatusText(look, p) : participantText(p)}
+          </span>
         </li>
       ))}
     </ul>

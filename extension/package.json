@@ -17,6 +17,7 @@
     "icons": "node scripts/make-icons.mjs",
     "screenshots": "npm run build:e2e && node scripts/screenshots.mjs",
     "screenshots:crop": "node scripts/crop-screenshots.mjs",
+    "screenshots:looks": "npm run build:e2e && node scripts/room-look-shots.mjs",
     "test:e2e": "npm run build:e2e && npm run build:edge && playwright test",
     "typecheck": "tsc --noEmit",
     "postinstall": "wxt prepare"

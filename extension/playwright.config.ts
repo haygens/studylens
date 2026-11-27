@@ -20,7 +20,9 @@ export default defineConfig({
       [['list'], ['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : [['list']],
   outputDir: 'test-results',
-  use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  // P21: reduced motion everywhere, so no animation can make a test flaky (the extension's
+  // persistent contexts set it too, in e2e/fixtures.ts).
+  use: { trace: 'retain-on-failure', screenshot: 'only-on-failure', reducedMotion: 'reduce' },
   globalSetup: './e2e/global-setup.ts',
   webServer: webServerConfig(),
 });

@@ -79,25 +79,25 @@ export default function App() {
         ))}
       </nav>
       {tab === 'insights' ? (
-        <main style={page}>
+        <main style={page} className="slm-fade-in">
           <ErrorBoundary name="Insights">
             <Insights />
           </ErrorBoundary>
         </main>
       ) : tab === 'groups' ? (
-        <main style={page}>
+        <main style={page} className="slm-fade-in">
           <ErrorBoundary name="Study groups">
             <StudyGroups />
           </ErrorBoundary>
         </main>
       ) : tab === 'my-data' ? (
-        <main style={page}>
+        <main style={page} className="slm-fade-in">
           <ErrorBoundary name="My Data">
             <MyData />
           </ErrorBoundary>
         </main>
       ) : tab === 'settings' ? (
-        <main style={page}>
+        <main style={page} className="slm-fade-in">
           <h1 style={{ margin: 0, fontSize: 'var(--sl-fs-h1)' }}>Settings</h1>
           <section className="sl-card" style={{ marginTop: 16 }} aria-labelledby="sl-look">
             <h2 id="sl-look" style={{ margin: '0 0 4px', fontSize: 'var(--sl-fs-h2)' }}>

@@ -4,6 +4,7 @@
  * background script to start or end sessions.
  */
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import type { LookId } from '@studylens/shared/room-looks';
 import { browser } from 'wxt/browser';
 import { LIVE_GOAL_MAX_LENGTH } from '@studylens/shared';
 import { localStore } from '@/src/background/browser-adapter';
@@ -36,6 +37,7 @@ import { ACTIVE_SESSION_KEY, SESSION_HISTORY_KEY } from '@/src/storage/sessions-
 import { E2E_BUILD_MARKER, MAX_TEST_SECONDS } from '@/src/e2e/test-seconds';
 import { lastSessionSummary, sessionProgress, startBlockReason } from '@/src/popup/popup-view';
 import { CheckIcon, InfoIcon, PauseIcon } from '@/src/ui/icons';
+import { LookPill, LookStrip, useLook } from '@/src/ui/live-look';
 import { useTrackingPaused } from '@/src/ui/use-tracking-paused';
 import { shouldShowNotice } from '@/src/storage/interventions-store';
 import { useInterventions } from '@/src/ui/use-interventions';
@@ -266,7 +268,7 @@ function StartForm() {
       )}
       <button
         type="submit"
-        className="sl-btn-primary sl-btn-big"
+        className="sl-btn-primary sl-btn-big slm-lift"
         disabled={!canStart}
         aria-describedby={reason ? reasonId : undefined}
       >
@@ -308,9 +310,21 @@ function RunningSession({ session }: { session: ActiveSession }) {
     hour: 'numeric',
     minute: '2-digit',
   });
+  const look = useLook();
+  // P21: a group session shows in the room look for the user's theme.
+  const looked = session.group ? { 'data-look': look } : {};
+  const clock = formatCountdown(left);
 
   return (
-    <section className="sl-card sl-run" aria-label="Focus session">
+    <section
+      className={
+        session.group ? 'sl-card sl-run sl-look slm-slide-up' : 'sl-card sl-run slm-slide-up'
+      }
+      aria-label="Focus session"
+      {...looked}
+    >
+      {session.group && <LookStrip look={look} />}
+      {session.group && <LookPill look={look} />}
       <p className="sl-eyebrow">
         {session.group ? `Group session · ${session.group.groupName}` : 'Focusing on'}
       </p>
@@ -329,14 +343,18 @@ function RunningSession({ session }: { session: ActiveSession }) {
           />
         </svg>
         <div className="sl-ring-text" aria-live="off">
-          <span className="sl-time">{formatCountdown(left)}</span>
+          <span className="sl-time">
+            <span key={clock} className="slm-tick">
+              {clock}
+            </span>
+          </span>
           <span className="sl-muted sl-small">of {Math.round(session.plannedMinutes)} min</span>
         </div>
       </div>
       <p className="sl-muted" style={{ margin: 0 }}>
         Ends at {ends} · {progress >= 0.5 ? 'past halfway, keep going!' : 'you can do this!'}
       </p>
-      {session.group && <GroupParticipants sessionId={session.group.sessionId} />}
+      {session.group && <GroupParticipants sessionId={session.group.sessionId} look={look} />}
       {paused.status === 'ready' && paused.data && (
         <p className="sl-hint" style={{ justifyContent: 'center' }}>
           <PauseIcon />
@@ -361,12 +379,12 @@ function RunningSession({ session }: { session: ActiveSession }) {
 }
 
 /** P18b: who else is in my group session, refreshed every 15 s while the popup is open. */
-function GroupParticipants({ sessionId }: { sessionId: string }) {
+function GroupParticipants({ sessionId, look }: { sessionId: string; look: LookId }) {
   const state = useLiveSession(sessionId);
   if (state.status !== 'ready') return null;
   return (
     <div style={{ textAlign: 'left', width: '100%' }}>
-      <ParticipantList session={state.session} />
+      <ParticipantList session={state.session} look={look} />
       {state.session.roomCode && (
         <RoomLink roomCode={state.session.roomCode} groupName={state.session.groupName} />
       )}
