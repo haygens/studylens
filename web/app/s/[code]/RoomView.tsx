@@ -2,18 +2,25 @@
 /**
  * The live room (P18c), client side: polls GET /api/rooms/<code> every 15 s while the page is
  * visible, and ticks the shared timer every second using the server's clock. Read-only. Unknown or
- * expired codes show only a short message. No cookies, no storage, no third-party requests.
+ * expired codes show only a short message. No cookies, no third-party requests (P21: the only
+ * storage is the room look, in RoomShell.tsx).
  */
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { ROOM_POLL_MS, type LiveRoom, type LiveRoomResponse } from '@studylens/shared';
 import {
-  formatClock,
-  minutesLeftLabel,
-  offsetFrom,
-  participantLabel,
-  statusText,
-} from '@/lib/site/room-view';
+  ROOM_POLL_MS,
+  type LiveRoom,
+  type LiveRoomResponse,
+  type RoomParticipant,
+} from '@studylens/shared';
+import {
+  DEFAULT_LOOK,
+  ROOM_LOOKS,
+  isAway,
+  lookStatusText,
+  type LookId,
+} from '@studylens/shared/room-looks';
+import { formatClock, minutesLeftLabel, offsetFrom, participantLabel } from '@/lib/site/room-view';
 
 type State =
   | { status: 'loading' }
@@ -21,45 +28,74 @@ type State =
   | { status: 'gone' }
   | { status: 'error' };
 
-export function RoomDetails({ room, now }: { room: LiveRoom; now: number }) {
+/** A status dot: lit while focusing, hollow when away or gone, filled softly when finished. */
+function dotClass(p: RoomParticipant): string {
+  if (p.status === 'finished') return 'dot dot-done';
+  return p.status === 'focusing' && !isAway(p) ? 'dot dot-on' : 'dot dot-off';
+}
+
+function statusClass(p: RoomParticipant): string {
+  if (p.status === 'finished') return 'status status-finished';
+  return p.status === 'focusing' && !isAway(p) ? 'status status-focusing' : 'status status-away';
+}
+
+export function RoomDetails({
+  room,
+  now,
+  look = DEFAULT_LOOK,
+}: {
+  room: LiveRoom;
+  now: number;
+  look?: LookId;
+}) {
   const left = Math.max(0, room.endsAt - now);
   const running = room.state === 'running' && left > 0;
+  const copy = ROOM_LOOKS[look];
+  const clock = formatClock(running ? left : 0);
   const endsAt = new Date(room.endsAt).toLocaleTimeString([], {
     hour: 'numeric',
     minute: '2-digit',
   });
   return (
     <>
-      <div className="card">
-        <p style={{ margin: 0 }}>
-          <span className={running ? 'live-chip' : 'live-chip ended-chip'}>
-            {running ? '● Live group session' : 'Session complete'}
+      <div className="room-board slm-fade-in">
+        <p className="room-pill-line">
+          <span className={running ? 'room-pill' : 'room-pill room-pill-ended'}>
+            {running && (
+              <span className="slm-live-dot" aria-hidden="true">
+                ●
+              </span>
+            )}
+            {running ? copy.pill : 'Session complete'}
           </span>
         </p>
-        <h1 style={{ marginTop: 8 }}>{room.groupName}</h1>
-        {room.goal && <p style={{ margin: '4px 0 0' }}>Goal: {room.goal}</p>}
+        <h1 className="room-title">{room.groupName}</h1>
+        {room.goal && <p className="room-goal">Goal: {room.goal}</p>}
         <p
-          className="timer"
+          className="room-timer"
           role="timer"
           aria-label={running ? minutesLeftLabel(left) : 'Time is up'}
         >
-          {formatClock(running ? left : 0)}
+          <span key={clock} className="slm-tick">
+            {clock}
+          </span>
         </p>
-        <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+        <p className="room-ends">
           {running
             ? `Ends at ${endsAt} · ${room.plannedMinutes} min session`
             : `Ended at ${endsAt}`}
         </p>
       </div>
-      <section className="card" aria-labelledby="people-title" style={{ margin: 0 }}>
-        <h2 id="people-title" style={{ fontSize: '1.15rem' }}>
-          Who’s here
-        </h2>
+      <section className="room-people slm-slide-up" aria-labelledby="people-title">
+        <h2 id="people-title">{copy.listTitle}</h2>
         <ul className="people" aria-label={`Participants in ${room.groupName}`}>
           {room.participants.map((p, i) => (
             <li key={i}>
-              <span>{participantLabel(p)}</span>
-              <span className={`status-${p.status}`}>{statusText(p)}</span>
+              <span className="person">
+                <span className={dotClass(p)} aria-hidden="true" />
+                {participantLabel(p)}
+              </span>
+              <span className={statusClass(p)}>{lookStatusText(look, p)}</span>
             </li>
           ))}
         </ul>
@@ -68,7 +104,7 @@ export function RoomDetails({ room, now }: { room: LiveRoom; now: number }) {
   );
 }
 
-export default function RoomView({ code }: { code: string }) {
+export default function RoomView({ code, look }: { code: string; look: LookId }) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [now, setNow] = useState(() => Date.now());
 
@@ -122,14 +158,14 @@ export default function RoomView({ code }: { code: string }) {
 
   if (state.status === 'loading') {
     return (
-      <p className="muted" role="status">
+      <p className="room-note" role="status">
         Loading the room…
       </p>
     );
   }
   if (state.status === 'gone') {
     return (
-      <div className="card" role="status">
+      <div className="card room-card" role="status">
         <h1>This room link has expired or doesn’t exist.</h1>
         <p style={{ marginBottom: 0 }}>
           Room links work until one hour after the group session ends.{' '}
@@ -140,7 +176,7 @@ export default function RoomView({ code }: { code: string }) {
   }
   if (state.status === 'error') {
     return (
-      <div className="card" role="alert">
+      <div className="card room-card" role="alert">
         <h1>The room couldn’t load.</h1>
         <p style={{ marginBottom: 0 }}>Check your connection; it will try again in a moment.</p>
       </div>
@@ -148,9 +184,9 @@ export default function RoomView({ code }: { code: string }) {
   }
   return (
     <>
-      <RoomDetails room={state.room} now={now + state.offsetMs} />
+      <RoomDetails room={state.room} now={now + state.offsetMs} look={look} />
       {state.stale && (
-        <p className="muted" role="status" style={{ margin: 0 }}>
+        <p className="room-note" role="status">
           Couldn’t refresh just now. Showing the last update.
         </p>
       )}

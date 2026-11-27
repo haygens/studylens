@@ -7,6 +7,7 @@ import { THEMES } from '@studylens/shared/themes';
 import type { LiveRoom } from '@studylens/shared';
 import Home from '@/app/page';
 import { RoomDetails } from '@/app/s/[code]/RoomView';
+import { RoomScenes } from '@/app/s/[code]/scenes';
 import { MEDIA, repoPath } from './repo-files';
 import { absolutizeLinks, privacyHtml } from './privacy';
 import {
@@ -16,7 +17,8 @@ import {
   participantLabel,
   statusText,
 } from './room-view';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { ROOM_LOOKS, lookVarName, type LookTokens } from '@studylens/shared/room-looks';
 
 describe('landing page', () => {
   const html = renderToStaticMarkup(<Home />);
@@ -72,6 +74,7 @@ describe('landing page', () => {
   });
 });
 
+// The live room uses the room looks instead (P21: packages/shared/src/room-looks.test.ts).
 describe('Sunrise colors on the web pages meet WCAG AA', () => {
   const t = THEMES.sunrise.tokens;
   const pairs: [string, string, string][] = [
@@ -84,11 +87,6 @@ describe('Sunrise colors on the web pages meet WCAG AA', () => {
     ['links on page background', t.primary, t.bg],
     ['primary button', t.onPrimary, t.primary],
     ['secondary button', t.primary, t.surface],
-    ['live chip', t.study, t.studySoft],
-    ['ended chip', t.neutral, t.neutralSoft],
-    ['focusing status on rows', t.study, t.bg],
-    ['finished status on rows', t.primary, t.bg],
-    ['left status on rows', t.muted, t.bg],
     ['code in the policy', t.ink, t.primarySoft],
   ];
   it.each(pairs)('%s', (_name, fg, bg) => {
@@ -181,11 +179,69 @@ describe('live room', () => {
     expect(html).toContain('Left early');
   });
 
+  it('each look: its pill and list title, statuses in its words, dots hidden from readers', () => {
+    const cafe = renderToStaticMarkup(<RoomDetails room={room} now={60_000} look="cafe" />);
+    expect(cafe).toContain('Café open · live');
+    expect(cafe).toContain('At the table');
+    expect(cafe).toContain('Stepped away · 3 min');
+    const hearth = renderToStaticMarkup(<RoomDetails room={room} now={60_000} look="hearth" />);
+    expect(hearth).toContain('Live by the fire');
+    expect(hearth).toContain('Around the fire');
+    expect(hearth).toContain('Away (last seen 3 min ago)');
+    const rainy = renderToStaticMarkup(<RoomDetails room={room} now={60_000} look="rainy" />);
+    expect(rainy).toContain('Live · quiet hours');
+    expect(rainy).toContain('Lamps on');
+    expect(rainy).toContain('Lamp off · 3 min');
+    expect(rainy).toContain('class="dot dot-on" aria-hidden="true"');
+    expect(rainy).toContain('class="dot dot-off" aria-hidden="true"');
+  });
+
+  it('without a look: the café', () => {
+    expect(renderToStaticMarkup(<RoomDetails room={room} now={60_000} />)).toContain(
+      'Café open · live',
+    );
+  });
+
+  it('the scenes are decorative (aria-hidden), one per look, colours from the look tokens', () => {
+    const html = renderToStaticMarkup(<RoomScenes />);
+    expect(html.startsWith('<div class="room-scene" aria-hidden="true">')).toBe(true);
+    for (const id of ['hearth', 'cafe', 'rainy']) expect(html).toContain(`scene-${id}`);
+    expect(html).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
+  });
+
   it('after the end: "Session complete" and 0:00', () => {
     const html = renderToStaticMarkup(
       <RoomDetails room={{ ...room, state: 'ended' }} now={30 * 60_000} />,
     );
     expect(html).toContain('Session complete');
     expect(html).toContain('>0:00<');
+  });
+});
+
+describe('room look CSS (P21)', () => {
+  const css = readFileSync(repoPath('web/app/globals.css'), 'utf8');
+  const defined = new Set([
+    ...Object.keys(ROOM_LOOKS.cafe.tokens).map((k) => lookVarName(k as keyof LookTokens)),
+    lookVarName('display'),
+    lookVarName('body'),
+  ]);
+
+  it('uses only look variables that exist', () => {
+    const used = [...new Set([...css.matchAll(/var\((--lk-[a-z0-9-]+)\)/g)].map((m) => m[1]!))];
+    expect(used.length).toBeGreaterThan(20);
+    expect(used.filter((v) => !defined.has(v))).toEqual([]);
+  });
+
+  it('scene animation only under prefers-reduced-motion: no-preference', () => {
+    const outside = css.replace(
+      /@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}\n/g,
+      '',
+    );
+    expect(outside).not.toMatch(/@keyframes|animation:(?!\s*none)/);
+  });
+
+  it('has no colours of its own in the room section (they come from the look tokens)', () => {
+    const room = css.slice(css.indexOf('/s/<code>: the live room in three looks'));
+    expect(room).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i);
   });
 });

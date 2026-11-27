@@ -48,7 +48,7 @@ export default function Home() {
     <>
       <SiteHeader />
       <main id="main" className="wrap">
-        <section className="hero" aria-labelledby="hero-title">
+        <section className="hero slm-slide-up" aria-labelledby="hero-title">
           <h1 id="hero-title">Focus sessions that respect your privacy.</h1>
           <p className="lead">
             StudyLens is a free browser extension for students. Start a focus session, see where
@@ -56,10 +56,14 @@ export default function Home() {
             away. Everything it records stays on your device.
           </p>
           <div className="buttons">
-            <a className="btn" href={INSTALL_LINKS.firefox} rel="noopener noreferrer">
+            <a className="btn slm-lift" href={INSTALL_LINKS.firefox} rel="noopener noreferrer">
               Install for Firefox
             </a>
-            <a className="btn btn-secondary" href={INSTALL_LINKS.edge} rel="noopener noreferrer">
+            <a
+              className="btn btn-secondary slm-lift"
+              href={INSTALL_LINKS.edge}
+              rel="noopener noreferrer"
+            >
               Install for Edge
             </a>
           </div>
@@ -98,19 +102,19 @@ export default function Home() {
         <section aria-labelledby="features-title">
           <h2 id="features-title">What it does</h2>
           <div className="features">
-            <div className="card">
+            <div className="card slm-lift">
               <h3>Focus sessions</h3>
               <p>Pick a goal and a length. A quick check-in at the end asks how it went.</p>
             </div>
-            <div className="card">
+            <div className="card slm-lift">
               <h3>Your own labels</h3>
               <p>You decide which sites count as study, neutral or distraction.</p>
             </div>
-            <div className="card">
+            <div className="card slm-lift">
               <h3>Insights</h3>
               <p>Charts of your focus time, calculated in your browser.</p>
             </div>
-            <div className="card">
+            <div className="card slm-lift">
               <h3>Study groups (optional)</h3>
               <p>
                 Focus together with friends: shared timers and daily focus minutes, only if you
