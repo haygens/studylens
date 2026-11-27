@@ -2161,3 +2161,4 @@ Disk space: C: 3.07 GB free, M: 14.16 GB free.
 Next piece (from PLAN.md): P20 — Results + show and tell.
 
 - 2026-11-26 (P21b): `npm run try:live -w extension [-- --two]` opens visible Edge window(s) with the store-ID copy of the Edge build against production for manual testing (no automated clicks); temp profiles + copy deleted on close/Ctrl+C. The copy logic moved from `smoke-live.mjs` to `scripts/store-id-copy.mjs` (shared). No extension, web, manifest or server changes.
+- 2026-11-26 (P21c): `try:live` windows couldn't be clicked or closed (Playwright kept control of the browser). Now Edge is started as a plain program (no Playwright, no automation flags); the store ID is checked from the manifest key; cleanup after the last window closes or Ctrl+C (Edge killed with taskkill, then folders removed). Tested: two windows, normal close of each, simulated Ctrl+C; nothing left in M:\temp.
