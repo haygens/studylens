@@ -1,0 +1,95 @@
+/*
+ * StudyLens motion layer (P21), shared by the web companion and the extension pages.
+ *
+ * Gentle, CSS-only: only transform and opacity animate (no layout-affecting animation), no
+ * animation libraries. Everything sits inside `prefers-reduced-motion: no-preference`, so with
+ * reduced motion turned on nothing here animates at all. No colours here (they come from the
+ * theme / look tokens).
+ *
+ * Utilities:
+ *   .slm-fade-in    fade in once
+ *   .slm-slide-up   fade in while rising 8px
+ *   .slm-lift       hover/focus lift (1px up; the shadow just appears) for buttons and cards
+ *   .slm-live-dot   a soft pulse for "Live" dots (make the dot its own inline element)
+ *   .slm-tick       a gentle ease when timer digits change (key the element by its text)
+ */
+:root {
+  --dur-fast: 150ms;
+  --dur-med: 250ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.slm-live-dot {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes slm-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slm-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes slm-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.55;
+      transform: scale(0.82);
+    }
+  }
+
+  @keyframes slm-digit {
+    from {
+      opacity: 0.6;
+      transform: translateY(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .slm-fade-in {
+    animation: slm-fade var(--dur-med) var(--ease-out) both;
+  }
+
+  .slm-slide-up {
+    animation: slm-rise var(--dur-med) var(--ease-out) both;
+  }
+
+  .slm-lift {
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .slm-lift:hover:not(:disabled),
+  .slm-lift:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: var(--slm-lift-shadow, var(--sl-btn-shadow));
+  }
+
+  .slm-live-dot {
+    animation: slm-pulse 2.4s ease-in-out infinite;
+  }
+
+  .slm-tick {
+    display: inline-block;
+    animation: slm-digit var(--dur-fast) var(--ease-out);
+  }
+}
