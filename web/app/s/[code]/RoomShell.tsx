@@ -7,12 +7,13 @@
  * localStorage only (silently skipped if storage is blocked).
  */
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import {
   DEFAULT_LOOK,
   LOOK_IDS,
   LOOK_STORAGE_KEY,
   ROOM_LOOKS,
+  isLookId,
   pickLook,
   type LookId,
 } from '@studylens/shared/room-looks';
@@ -37,8 +38,26 @@ function store(look: LookId): void {
   }
 }
 
+/*
+ * The current look lives on <html data-look> (set by the boot script in page.tsx before the
+ * page paints, or by the effect below after a client-side navigation). React reads it from
+ * there, so the server render (café) and the first browser render agree.
+ */
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function currentLook(): LookId {
+  const value = document.documentElement.dataset.look;
+  return isLookId(value) ? value : DEFAULT_LOOK;
+}
+
 function showLook(look: LookId): void {
   document.documentElement.dataset.look = look;
+  for (const listener of listeners) listener();
 }
 
 /** Removes `look` from the query string (the address bar only; nothing is requested). */
@@ -80,14 +99,13 @@ export function LookSwitcher({
 }
 
 export default function RoomShell({ code }: { code: string }) {
-  // The first render matches the server (café); the boot script in page.tsx has already put
-  // the real look on <html>, so the colours and scene are right before this effect runs.
-  const [look, setLook] = useState<LookId>(DEFAULT_LOOK);
+  const look = useSyncExternalStore(subscribe, currentLook, () => DEFAULT_LOOK);
 
   useEffect(() => {
-    const initial = pickLook(readStored(), window.location.hash, window.location.search);
-    showLook(initial);
-    setLook(initial);
+    // The boot script doesn't run after a client-side navigation: pick the look here then.
+    if (!isLookId(document.documentElement.dataset.look)) {
+      showLook(pickLook(readStored(), window.location.hash, window.location.search));
+    }
     dropLookQuery();
     return () => {
       delete document.documentElement.dataset.look;
@@ -97,7 +115,6 @@ export default function RoomShell({ code }: { code: string }) {
   const choose = useCallback((next: LookId) => {
     store(next);
     showLook(next);
-    setLook(next);
   }, []);
 
   return (
