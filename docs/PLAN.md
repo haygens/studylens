@@ -102,8 +102,8 @@ the plan as the full vision; the show and tell presents whatever is done plus th
       the extension.
 - [x] **P18. Study groups (passive)** — members see each other's **daily focus totals** and who is in a
       session right now. Never site names. Polling (WebSockets optional; Vercel's are in beta).
-      Done 2026-11-23 — **released-pending:** v0.5.0 submitted to AMO and Edge Add-ons on
-      2026-11-23 (Edge: In review; v0.4.0 live until approval). Per-group switches "Share my focus
+      Done 2026-11-23 — **released:** v0.5.0 submitted to AMO and Edge Add-ons on 2026-11-23,
+      approved and live on both by 2026-11-25. Per-group switches "Share my focus
       minutes" / "Show when I'm focusing" (ON after the explanation + live preview on join; off
       deletes the data on the server). New endpoints: totals (plausibility checks), presence (3-min
       TTL), sharing switches, group overview (today + 7-day history + focusing now, only what each

@@ -2018,3 +2018,8 @@ Problems / open questions:
 Disk space: C: 3.35 GB free, M: 14.20 GB free.
 
 Next piece (from PLAN.md): P20 — Results + show and tell.
+
+## Store release — 2026-11-25 (hs)
+
+v0.5.0 (P16 study groups + P18 passive groups) approved and live on both AMO and Microsoft Edge
+Add-ons by 2026-11-25. P18 marked released in `docs/PLAN.md`.
