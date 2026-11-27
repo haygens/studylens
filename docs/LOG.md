@@ -2080,3 +2080,82 @@ Problems / open questions:
 Disk space: C: 1.6 GB free, M: 15 GB free.
 
 Next piece (from PLAN.md): P20 — Results + show and tell.
+
+## Handoff — 2026-11-26 (P21 cozy room looks + motion, v0.7.0 prepared)
+
+Done:
+
+- Shared: `packages/shared/src/room-looks.ts`: look ids, theme → look (Sunrise → Hearth, Ocean →
+  Rainy Window, Pastel → Corner Café, unknown → Café), `pickLook` (stored > `#look=` >
+  `?look=` > Café), status wording per look ("Stepped away · N min", "Lamp off · N min"), colour
+  tokens (`--lk-*`), and `LOOK_CONTRAST_PAIRS`, checked for WCAG AA in every look.
+  `packages/shared/src/motion.ts`: the motion layer (`--dur-fast` 150ms, `--dur-med` 250ms,
+  `--ease-out`; fade-in, slide-up 8px, hover lift, Live-dot pulse, timer tick). It animates only
+  transform and opacity, and everything sits inside `prefers-reduced-motion: no-preference`.
+- Web `/s/<code>`: one layout with three looks and an aria-hidden inline-SVG scene per look
+  (flames, steam, rain; still under reduced motion). The fonts are self-hosted via `next/font` and
+  not preloaded. A "Room look" switcher (keyboard accessible, `aria-pressed`) saves the choice in
+  localStorage only (try/catch). A tiny boot script sets `<html data-look>` before the page
+  paints. `?look=` is read in the browser and removed from the address bar. All existing
+  behaviour is kept. The landing page got a slide-up and a hover lift.
+- Extension: the popup's group-session card and the Study groups live card take the theme's
+  look, with a 64 px scene strip, status dots next to the words, and system fonts only. "Open
+  room page" adds `#look=<look>` (a fragment, never sent to the server). "Copy room link" stays
+  plain. Motion on the popup, options, welcome, buttons, Live dots and the timer.
+- Deviation from the prompt: the extension passes the look as `#look=`, not `?look=`, because a
+  query string reaches the server (and Vercel's request logs). The page accepts both.
+- Deviation: the motion layer is a TS string (like `themeCss()`), not a `.css` file. Importing
+  a CSS file across workspaces correlated with `next dev` reloading pages in a loop during E2E.
+- Playwright: `reducedMotion: 'reduce'` in the config, the fixtures and every launch script.
+  This also fixes half-faded store screenshots.
+- New E2E `room-looks.e2e.ts`: `?look=` mapping, `#look=` not sent to the server, unknown values
+  fall back to Café, the switcher persists after a reload, blocked storage, no horizontal
+  overflow at 390 px, axe WCAG 2.1 AA in every look. The live-groups test checks
+  `#look=hearth` and the card's look.
+- PRIVACY.md: the website now says the "Room look" choice is the only thing it stores in the
+  browser (local only, never sent). It used to say "stores nothing".
+- Version 0.7.0. `docs/store/release-notes-0.7.0.md` (AMO notes, reviewer notes, Edge notes:
+  1,200 characters). Manifest diff vs 0.6.0: only the version.
+- Zips (**not uploaded**):
+  - `extension\.output\studylens-0.7.0-firefox.zip` (SHA-256 `c5a22eca…d6e1ea`)
+  - `extension\.output\studylens-0.7.0-edge.zip` (SHA-256 `38a3ca23…d9f09f`)
+  - `extension\.output\studylens-0.7.0-sources.zip` (SHA-256 `122a77d4…138a50`)
+
+Changed files: `packages/shared/src/{room-looks,room-looks.test,motion,index}.ts`,
+`packages/shared/package.json`; `web/app/{layout.tsx,page.tsx,globals.css}`,
+`web/app/s/[code]/{page,RoomShell,RoomView,scenes}.tsx`, `web/app/s/[code]/fonts.ts`,
+`web/lib/site/site.test.tsx`; `extension/src/ui/{live,live-look,page}.tsx`,
+`extension/src/ui/styles.css`, `extension/entrypoints/{popup/App,popup/FocusSession,popup/LiveSessionLine,options/App,options/LiveSessions,welcome/App}.tsx`,
+`extension/e2e/{fixtures,live-groups,upgrade,room-looks}.e2e.ts`/`.ts`, `extension/playwright.config.ts`,
+`extension/scripts/{room-look-shots,screenshots,ux-review-shots,smoke-edge,smoke-live}.mjs`,
+`extension/package.json`, `package-lock.json`; `docs/store/screenshots/looks/*.png`,
+`docs/store/release-notes-0.7.0.md`, `PRIVACY.md`, `docs/PLAN.md`, `docs/LOG.md`.
+
+Tests: unit 1201/1201; E2E 54/54; lint, format, typecheck, web build, both builds +
+`check:builds` clean; `smoke:edge` 11 passed, 0 failed, 1 skipped (idle PC); addons-linter
+10.16.0: 0 errors, 0 notices, 2 warnings (React DOM `UNSAFE_VAR_ASSIGNMENT`, as before; temp
+folder deleted). Sources zip rebuilt in a clean `M:\temp\studylens-verify-0.7.0`: 21/21 files
+identical, folder deleted. **`smoke:live` not run**: the push to `main` (production deploy) was
+blocked by the session's permission check, so hs pushes, then runs it.
+
+Bundle size: unpacked 997,945 → 1,011,762 B (Edge), 998,242 → 1,012,059 B (Firefox), +13.8 KB
+(+1.4%). Zips 374,814 → 379,641 B (Edge), 374,946 → 379,778 B (Firefox). No fonts are bundled.
+
+Screenshots: `docs/store/screenshots/looks/` holds `phone-{hearth,cafe,rainy}.png` (390 px,
+full page), `desktop-{hearth,cafe,rainy}.png` (1280 px) and `popup-{hearth,cafe,rainy}.png`
+(the popup's live card). Remake them with `npm run screenshots:looks -w extension`.
+
+Problems / open questions:
+
+- The `next dev` reload loop in E2E happened intermittently while I worked on this (failed runs
+  showed "Compiled" plus a full page reload after each load). It stopped once the cross-workspace
+  CSS import was gone, but I didn't fully pin down the cause. Afterwards: 10/10 repeat runs and
+  the full suite 54/54 passed. If it shows up in CI, look at the Turbopack watch first.
+- The extension uses system serif fonts. The display fonts (Fraunces, DM Serif Display, Lora)
+  are on the web only.
+- I didn't add phone crops of the looks to `screenshots:crop`: the 390 px shots are already
+  phone-sized.
+
+Disk space: C: 3.07 GB free, M: 14.16 GB free.
+
+Next piece (from PLAN.md): P20 — Results + show and tell.
