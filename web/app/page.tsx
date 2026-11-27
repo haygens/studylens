@@ -79,7 +79,6 @@ export default function Home() {
                       height={s.phone.height}
                     />
                     {/* Plain <img> on purpose: static, prerendered, sized and lazy-loaded. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={s.src}
                       alt={s.alt}
