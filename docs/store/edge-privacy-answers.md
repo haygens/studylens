@@ -19,10 +19,12 @@ match each question to the closest answer below. **Submitted 2026-11-23** with t
 The single-purpose description mentions study groups, and the certification notes describe the
 optional host permission (requested at runtime, never at install).
 
-**0.6.0 (not submitted yet): live group sessions (P18b)** add no new kind of data: the same
-display name and focus activity (whether I'm focusing in a live session, my minutes in it), plus
-an optional session goal the group sees (deleted from the server 24 h after the session). Same
-three boxes; same optional permissions.
+**0.6.0 (live group sessions P18b + room links P18c): no change to the Privacy tab.** It adds no
+new kind of data: the same display name and focus activity (whether I'm focusing in a live
+session, my minutes in it), plus an optional session goal the group sees (deleted from the server
+24 h after the session). The room link shows only names and statuses to people the user gives it
+to. Same three boxes, same single purpose, same privacy policy URL, same optional permissions.
+Only the certification notes change (see `release-notes-0.6.0.md`).
 
 **Privacy policy URL:** https://github.com/haygens/studylens/blob/main/PRIVACY.md
 

@@ -1,7 +1,7 @@
 # StudyLens Privacy Policy
 
-_Updated: November 25, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.6.0
-(live group sessions, not released yet), 0.5.0 (study groups) and earlier. Versions up to 0.4.0
+_Updated: November 26, 2026 · Applies to StudyLens for Firefox and Microsoft Edge, version 0.6.0
+(live group sessions and room links), 0.5.0 (study groups) and earlier. Versions up to 0.4.0
 have no study groups._
 
 StudyLens is a browser extension that helps you see how you study. It is built so that your
@@ -256,7 +256,7 @@ any server and nothing about you leaves your device.
   that moment, your data on this device is still deleted, you are told, and StudyLens keeps only the secret token so it can
   finish deleting your server data automatically later (it tries about every 30 minutes while
   your browser is open and the permission is still granted).
-- **Error reports.** StudyLens 0.5.0 does not send error reports. (The server can accept short,
+- **Error reports.** StudyLens (up to version 0.6.0) does not send error reports. (The server can accept short,
   scrubbed error messages for a later version; any address, domain, email or IP address is removed
   before saving, they are not linked to a device, and they are deleted after 14 days.)
 - **Hosting.** The server runs on Vercel (in Portland, Oregon, USA) and the database on Turso
@@ -275,7 +275,8 @@ who joins gets the same timer and sees who is in it. Nothing changes unless you 
   and, while the popup or the Study groups tab is open, a check every 15 seconds for who is in it.
   **When you leave early:** that you left (sent again later if you were offline).
 - **What the group sees:** the goal, the end time, and each participant's display name and status
-  ("Focusing", "Finished", "Left early"). When it's over, a shared "Session complete!" card shows
+  ("Focusing"; "Away (last seen N min ago)" when their browser hasn't sent a heartbeat for 2
+  minutes; "Finished"; "Left early"). When it's over, a shared "Session complete!" card shows
   each participant's minutes in the session — **only for members who share focus minutes in that
   group**; for everyone else it says "minutes not shared". The server works the minutes out from
   when you joined and left; your browser doesn't send them.
@@ -294,7 +295,7 @@ who joins gets the same timer and sees who is in it. Nothing changes unless you 
   (`https://studylens-flame.vercel.app/s/…`, 16 random characters, impossible to guess). Members
   can copy it to show the session on a phone or another screen without the extension. **Anyone
   with the link** sees the group name, the goal, the shared timer, and each participant's display
-  name and status ("Focusing", "Finished", "Left early"). It does **not** show minutes, sites,
+  name and status ("Focusing", "Away (last seen N min ago)", "Finished", "Left early"). It does **not** show minutes, sites,
   device IDs or anything else. Share it only with people you'd show the session to. The link stops
   working **1 hour after the session ends**. Room pages are marked so search engines don't index
   them, and they don't pass the link on to other sites. Looking up a room is rate-limited per
